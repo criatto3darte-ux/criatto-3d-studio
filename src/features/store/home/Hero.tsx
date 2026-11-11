@@ -33,8 +33,14 @@ export function Hero() {
           </ul>
         </div>
         <div className={styles.visual}>
-          <LogoMark className={styles.cube} />
-          <span className={styles.placeholderTag}>Espaço reservado para a foto do banner</span>
+          {storeConfig.heroImage ? (
+            <img className={styles.photo} src={storeConfig.heroImage} alt="Produtos impressos em 3D da Criatto 3D" fetchPriority="high" />
+          ) : (
+            <>
+              <LogoMark className={styles.cube} />
+              <span className={styles.placeholderTag}>Espaço reservado para a foto do banner</span>
+            </>
+          )}
         </div>
       </div>
     </section>

@@ -1,0 +1,22 @@
+.layout { display: grid; grid-template-columns: 240px 1fr; gap: var(--space-6); align-items: start; }
+.filters { position: sticky; top: calc(var(--header-height) + 16px); display: grid; gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.group { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.legend { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 4px; }
+.option { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; padding: 3px 0; }
+.option input { accent-color: var(--color-primary); width: 16px; height: 16px; }
+.toolbar { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: var(--space-4); }
+.search { flex: 1; min-width: 220px; max-width: 420px; }
+.select { height: 44px; padding: 0 14px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: var(--color-surface-elevated); color: var(--color-text); font: inherit; }
+.select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.sortLabel { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--color-text-muted); }
+.result { font-size: 14px; color: var(--color-text-muted); margin-bottom: var(--space-4); }
+.empty { text-align: center; padding: var(--space-8) var(--space-5); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); display: grid; justify-items: center; gap: var(--space-3); }
+.empty svg { color: var(--color-text-muted); }
+.more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: var(--space-6); font-size: 14px; color: var(--color-text-muted); }
+.filterToggle { display: none; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .filters { position: static; }
+  .filters[data-open="false"] { display: none; }
+  .filterToggle { display: inline-flex; }
+}

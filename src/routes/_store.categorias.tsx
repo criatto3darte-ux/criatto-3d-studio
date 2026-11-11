@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { CategoriesPage } from "@/features/store/pages/CategoriesPage";
 
 export const Route = createFileRoute("/_store/categorias")({
   head: () => ({
@@ -12,13 +12,5 @@ export const Route = createFileRoute("/_store/categorias")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Page,
+  component: CategoriesPage,
 });
-
-function Page() {
-  return (
-    <div className="container">
-      <StagePlaceholder title="Categorias" description="Decoração, Geek / Nerd, Casa e Organização, Vasos e Jardinagem, Presentes, Utilitários e Personalizados." stage="CR-002" />
-    </div>
-  );
-}

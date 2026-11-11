@@ -1,0 +1,22 @@
+.crumbs { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; color: var(--color-text-muted); padding-top: var(--space-5); }
+.crumbs a:hover { color: var(--color-primary); }
+.grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--space-7); margin-top: var(--space-5); align-items: start; }
+.main { border-radius: var(--radius-lg); border: 1px solid var(--color-border); overflow: hidden; }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-top: var(--space-3); }
+.thumb { padding: 0; border: 2px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; background: none; cursor: pointer; }
+.thumb[aria-pressed="true"] { border-color: var(--color-primary); }
+.info { display: grid; gap: var(--space-4); }
+.title { font-size: clamp(28px, 3.5vw, 40px); }
+.price { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: var(--color-primary); }
+.muted { color: var(--color-text-muted); }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.group { border: 0; padding: 0; margin: 0; }
+.legend { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.options { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { min-width: 44px; height: 40px; padding: 0 14px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: var(--color-surface-elevated); cursor: pointer; font-weight: 600; }
+.chip:hover { border-color: var(--color-primary); }
+.chip[aria-pressed="true"] { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+.buy { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; }
+.notice { display: flex; gap: 8px; align-items: center; font-size: 14px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--color-surface-elevated); border: 1px solid var(--color-border); }
+.added { color: var(--color-success); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; gap: var(--space-5); } }

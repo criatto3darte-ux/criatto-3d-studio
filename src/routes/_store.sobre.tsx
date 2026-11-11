@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { AboutPage } from "@/features/store/pages/AboutPage";
 
 export const Route = createFileRoute("/_store/sobre")({
   head: () => ({
@@ -12,13 +12,5 @@ export const Route = createFileRoute("/_store/sobre")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Page,
+  component: AboutPage,
 });
-
-function Page() {
-  return (
-    <div className="container">
-      <StagePlaceholder title="Sobre a Criatto 3D" description="Nossa história, processo de fabricação e compromisso com qualidade." stage="CR-002" />
-    </div>
-  );
-}

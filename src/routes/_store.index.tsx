@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Hero } from "@/features/store/home/Hero";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { HomeSections } from "@/features/store/home/HomeSections";
 
 export const Route = createFileRoute("/_store/")({
   head: () => ({
@@ -20,13 +20,7 @@ function Home() {
   return (
     <>
       <Hero />
-      <div className="container">
-        <StagePlaceholder
-          title="Categorias e destaques"
-          description="Os cards de categorias e os produtos em destaque da Criatto 3D entram na próxima etapa."
-          stage="CR-002"
-        />
-      </div>
+      <HomeSections />
     </>
   );
 }

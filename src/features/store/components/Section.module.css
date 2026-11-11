@@ -1,0 +1,9 @@
+.section { padding-block: var(--space-7) 0; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-5); flex-wrap: wrap; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-primary); }
+.title { font-size: clamp(24px, 3vw, 32px); margin-top: 4px; }
+.text { color: var(--color-text-muted); margin-top: 6px; max-width: 620px; }
+.link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--color-primary); }
+.link:hover { text-decoration: underline; }
+.pageHead { padding-block: var(--space-7) var(--space-5); }
+.pageTitle { font-size: clamp(30px, 4vw, 44px); }

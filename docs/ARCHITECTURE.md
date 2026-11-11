@@ -23,3 +23,16 @@ Decisões:
 - Painel em modo demonstração, sem autenticação falsa; `noindex` em todas as rotas `/admin`.
 - Preços em centavos; regra "venda confirmada" centralizada em `isConfirmedSale`.
 - Integração futura com Lovable Cloud: serviços mock serão trocados por funções de servidor.
+
+## CR-002 — Loja virtual
+| Pasta | Conteúdo |
+|---|---|
+| `src/features/catalog/` | Categorias, produtos de demonstração (`products.mock.ts`), regras puras de busca/filtro/ordenação (`catalog.logic.ts`) e `catalog.service.ts` (fonte de dados mock, trocada pelo servidor depois) |
+| `src/features/store/components/` | ProductCard, CategoryCard, Section, mídia de produto |
+| `src/features/store/pages/` | Telas: catálogo, produto, carrinho, personalizados, sobre, contato, categorias |
+| `src/shared/ui/MediaImage`, `QuantityStepper` | Imagem com placeholder/lazy loading e seletor de quantidade |
+| `public/images/{banner,categorias,produtos}` | Imagens reais (ver README da pasta) |
+
+- Filtros do catálogo ficam na URL (`/produtos?q=&categoria=&disponibilidade=&ordem=`), validados por `parseCatalogSearch`.
+- Página do produto: `/produto/$slug` (404 próprio para slug inexistente).
+- Contatos e foto do banner vêm de `store.config.ts`; vazio = "Ainda não configurado"/placeholder.

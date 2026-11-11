@@ -10,7 +10,12 @@ export const storeConfig = {
   whatsappNumber: "",
   /** Only show "Envio para todo o Brasil" when the business really offers it. */
   offersNationalShipping: false,
+  /** E-mail comercial. Empty = not configured. */
+  email: "",
+  /** Full profile URLs. Empty = not configured. */
   social: { instagram: "", tiktok: "" },
+  /** Banner photo path (ex.: "/images/banner/hero.jpg"). Empty = placeholder. */
+  heroImage: "",
 } as const;
 
 export type StoreConfig = typeof storeConfig;

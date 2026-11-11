@@ -10,6 +10,9 @@ export type CategorySlug =
 export interface Category {
   slug: CategorySlug;
   name: string;
+  description: string;
+  /** Optional photo path (public/images/categorias). Empty = placeholder. */
+  image?: string;
 }
 
 export type ProductAvailability = "pronta-entrega" | "sob-demanda" | "indisponivel";
