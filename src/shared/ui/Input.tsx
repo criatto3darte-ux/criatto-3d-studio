@@ -3,9 +3,9 @@ import styles from "./Input.module.css";
 import { cx } from "@/shared/utils/cx";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  hint?: string;
-  error?: string;
+  label?: string | undefined;
+  hint?: string | undefined;
+  error?: string | undefined;
   trailing?: ReactNode;
 }
 

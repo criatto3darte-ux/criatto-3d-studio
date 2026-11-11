@@ -5,7 +5,7 @@ import { Input } from "@/shared/ui/Input";
 import { buttonClass } from "@/shared/ui/Button";
 import { formatBRL } from "@/shared/utils/format";
 import { useCart } from "@/features/cart/CartContext";
-import { demoProducts } from "@/features/catalog/products.mock";
+import { useDemoData } from "@/features/demo-data/repository";
 import { NAME_MAX, NOTES_MAX, buildOrderMessage, maskPhone, validateName, validatePhone } from "@/features/checkout/checkout.logic";
 import { WhatsAppAction } from "@/features/checkout/WhatsAppAction";
 import { ProductMedia } from "../components/ProductMedia";
@@ -15,6 +15,7 @@ import styles from "./CheckoutPage.module.css";
 interface Errors { name?: string; phone?: string }
 
 export function CheckoutPage() {
+  const demoProducts = useDemoData().products;
   const { items, count, subtotalCents } = useCart();
   // Personal data lives only in component memory: never written to storage or logs.
   const [name, setName] = useState("");

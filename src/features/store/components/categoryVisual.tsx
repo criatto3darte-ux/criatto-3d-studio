@@ -1,7 +1,7 @@
-import { Boxes, Gamepad2, Gift, Lamp, Sparkles, Sprout, Wrench, type LucideIcon } from "lucide-react";
+import { Boxes, Shapes, Gamepad2, Gift, Lamp, Sparkles, Sprout, Wrench, type LucideIcon } from "lucide-react";
 import type { CategorySlug } from "@/shared/types/catalog";
 
-export const categoryVisual: Record<CategorySlug, { icon: LucideIcon; accent: string }> = {
+const known: Record<string, { icon: LucideIcon; accent: string }> = {
   decoracao: { icon: Lamp, accent: "var(--color-orange)" },
   "geek-nerd": { icon: Gamepad2, accent: "var(--color-purple)" },
   "casa-organizacao": { icon: Boxes, accent: "var(--color-blue)" },
@@ -10,3 +10,10 @@ export const categoryVisual: Record<CategorySlug, { icon: LucideIcon; accent: st
   utilitarios: { icon: Wrench, accent: "var(--color-yellow)" },
   personalizados: { icon: Sparkles, accent: "var(--color-primary)" },
 };
+
+const fallback = { icon: Shapes, accent: "var(--color-primary)" };
+
+/** Visual for a category; categories created in the admin get a neutral fallback. */
+export function categoryVisualFor(slug: CategorySlug): { icon: LucideIcon; accent: string } {
+  return known[slug] ?? fallback;
+}

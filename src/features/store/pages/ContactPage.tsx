@@ -1,23 +1,25 @@
 import type { ReactNode } from "react";
 import { AtSign, Mail, MessageCircle, Music2 } from "lucide-react";
-import { storeConfig } from "@/shared/config/store.config";
+import { useStoreSettings } from "@/features/catalog/catalog.service";
+import type { StoreSettings } from "@/features/demo-data/model";
+import { isValidBusinessNumber } from "@/features/checkout/checkout.logic";
 import { PageHeader } from "../components/Section";
 import styles from "./InfoPages.module.css";
 
 interface Channel { name: string; icon: ReactNode; value: string; href: string }
 
-function channels(): Channel[] {
-  const c = storeConfig;
+function channels(c: StoreSettings): Channel[] {
   return [
-    { name: "WhatsApp", icon: <MessageCircle size={28} />, value: c.whatsappNumber, href: c.whatsappNumber ? `https://wa.me/${c.whatsappNumber}` : "" },
+    { name: "WhatsApp", icon: <MessageCircle size={28} />, value: isValidBusinessNumber(c.whatsappNumber) ? c.whatsappNumber : "", href: isValidBusinessNumber(c.whatsappNumber) ? `https://wa.me/${c.whatsappNumber}` : "" },
     { name: "E-mail", icon: <Mail size={28} />, value: c.email, href: c.email ? `mailto:${c.email}` : "" },
-    { name: "Instagram", icon: <AtSign size={28} />, value: c.social.instagram, href: c.social.instagram },
-    { name: "TikTok", icon: <Music2 size={28} />, value: c.social.tiktok, href: c.social.tiktok },
+    { name: "Instagram", icon: <AtSign size={28} />, value: c.instagram, href: c.instagram },
+    { name: "TikTok", icon: <Music2 size={28} />, value: c.tiktok, href: c.tiktok },
   ];
 }
 
 export function ContactPage() {
-  const list = channels();
+  const settings = useStoreSettings();
+  const list = channels(settings);
   const anyConfigured = list.some((c) => c.value);
   return (
     <div className="container">

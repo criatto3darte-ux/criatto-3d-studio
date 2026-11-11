@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { CouponsPage } from "@/features/admin/pages/CouponsPage";
 
 export const Route = createFileRoute("/admin/cupons")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/cupons")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Cupons e Promoções" description="Criação de cupons e campanhas." stage="CR-005" />;
+  return <CouponsPage />;
 }

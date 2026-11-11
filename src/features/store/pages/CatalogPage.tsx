@@ -4,8 +4,7 @@ import { PackageSearch, Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/shared/ui/Input";
 import { Button } from "@/shared/ui/Button";
 import { DemoNotice } from "@/shared/ui/DemoNotice";
-import { categories } from "@/features/catalog/categories";
-import { catalogService } from "@/features/catalog/catalog.service";
+import { useStoreCatalog } from "@/features/catalog/catalog.service";
 import { AVAILABILITY_LABEL, PAGE_SIZE, SORT_OPTIONS, parseCatalogSearch, queryCatalog, type CatalogSearch } from "@/features/catalog/catalog.logic";
 import { ProductGrid, ProductGridSkeleton } from "../components/ProductCard";
 import { PageHeader } from "../components/Section";
@@ -47,7 +46,8 @@ export function CatalogPage() {
     return () => clearTimeout(t);
   }, [key, lastKey]);
 
-  const results = useMemo(() => queryCatalog(catalogService.list(), search), [search]);
+  const { products, categories } = useStoreCatalog();
+  const results = useMemo(() => queryCatalog(products, search), [products, search]);
   const shown = results.slice(0, visible);
   const hasFilters = Object.keys(search).length > 0;
   const catName = search.categoria ? categories.find((c) => c.slug === search.categoria)?.name : undefined;

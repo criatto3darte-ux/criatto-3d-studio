@@ -15,7 +15,7 @@ const tamanhos = (...labels: string[]): ProductVariantGroup => ({
   options: labels.map((l) => ({ id: l.toLowerCase(), label: l })),
 });
 
-type Seed = Omit<Product, "images" | "tags"> & { tags?: string[] };
+type Seed = Omit<Product, "images" | "tags" | "active"> & { tags?: string[] };
 const seeds: Seed[] = [
   { id: "p01", slug: "luminaria-lua", name: "Luminária Lua", category: "decoracao", description: "Luminária com textura de superfície lunar e luz quente difusa.", priceCents: 12990, badge: "Mais Vendido", availability: "pronta-entrega", stock: 8, featured: true, variants: [tamanhos("P", "M", "G")], tags: ["luz", "abajur"] },
   { id: "p02", slug: "escultura-onda", name: "Escultura Onda", category: "decoracao", description: "Escultura de linhas fluidas para estantes e mesas.", priceCents: 7990, badge: "Novo", availability: "sob-demanda", productionDays: 5, stock: 0, featured: false, variants: [cores("Branco", "Preto", "Ciano")] },
@@ -37,4 +37,4 @@ const seeds: Seed[] = [
   { id: "p18", slug: "placa-nome", name: "Placa com Nome", category: "personalizados", description: "Placa decorativa com nome em relevo para portas e quartos.", priceCents: 6990, availability: "sob-demanda", productionDays: 6, stock: 0, featured: false, variants: [cores("Branco", "Roxo", "Ciano"), tamanhos("P", "M")], tags: ["nome", "quarto"] },
 ];
 
-export const demoProducts: Product[] = seeds.map((s) => ({ ...s, tags: s.tags ?? [], images: [] }));
+export const demoProducts: Product[] = seeds.map((s) => ({ ...s, tags: s.tags ?? [], images: [], active: true }));

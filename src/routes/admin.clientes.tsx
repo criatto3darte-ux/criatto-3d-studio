@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { CustomersPage } from "@/features/admin/pages/CustomersPage";
 
 export const Route = createFileRoute("/admin/clientes")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/clientes")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Clientes" description="Clientes registrados internamente, com WhatsApp mascarado e histórico." stage="CR-004" />;
+  return <CustomersPage />;
 }

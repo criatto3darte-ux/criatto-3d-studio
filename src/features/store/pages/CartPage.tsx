@@ -6,12 +6,13 @@ import { QuantityStepper } from "@/shared/ui/QuantityStepper";
 import { formatBRL } from "@/shared/utils/format";
 import { useCart } from "@/features/cart/CartContext";
 import { MAX_ITEM_QUANTITY } from "@/features/cart/cart.logic";
-import { demoProducts } from "@/features/catalog/products.mock";
+import { useDemoData } from "@/features/demo-data/repository";
 import { ProductMedia } from "../components/ProductMedia";
 import { PageHeader } from "../components/Section";
 import styles from "./CartPage.module.css";
 
 export function CartPage() {
+  const demoProducts = useDemoData().products;
   const { items, count, subtotalCents, setQuantity, remove, clear } = useCart();
 
   return (

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { CustomRequestsPage } from "@/features/admin/pages/CustomRequestsPage";
 
 export const Route = createFileRoute("/admin/personalizacoes")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/personalizacoes")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Personalizações" description="Análise das solicitações personalizadas e orçamento manual." stage="CR-005" />;
+  return <CustomRequestsPage />;
 }

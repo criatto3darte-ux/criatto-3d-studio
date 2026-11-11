@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import type { Category } from "@/shared/types/catalog";
 import { MediaImage } from "@/shared/ui/MediaImage";
-import { categoryVisual } from "./categoryVisual";
+import { categoryVisualFor } from "./categoryVisual";
 import styles from "./CategoryCard.module.css";
 
 export function CategoryCard({ category, count }: { category: Category; count: number }) {
-  const v = categoryVisual[category.slug];
+  const v = categoryVisualFor(category.slug);
   const Icon = v.icon;
   return (
     <Link to="/produtos" search={{ categoria: category.slug }} className={styles.card}>

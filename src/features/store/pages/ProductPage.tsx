@@ -6,8 +6,9 @@ import { Button, buttonClass } from "@/shared/ui/Button";
 import { DemoNotice } from "@/shared/ui/DemoNotice";
 import { QuantityStepper } from "@/shared/ui/QuantityStepper";
 import { formatBRL } from "@/shared/utils/format";
-import { getCategory } from "@/features/catalog/categories";
-import { catalogService } from "@/features/catalog/catalog.service";
+import { useStoreCatalog } from "@/features/catalog/catalog.service";
+import { effectivePriceCents } from "@/features/demo-data/rules";
+import { PriceTag } from "../components/PriceTag";
 import { canPurchase, relatedProducts } from "@/features/catalog/catalog.logic";
 import { useCart } from "@/features/cart/CartContext";
 import { MAX_ITEM_QUANTITY } from "@/features/cart/cart.logic";
@@ -22,7 +23,8 @@ const VIEWS = 4;
 
 export function ProductPage({ product }: { product: Product }) {
   const cart = useCart();
-  const category = getCategory(product.category);
+  const catalog = useStoreCatalog();
+  const category = { slug: product.category, name: catalog.categoryName(product.category) };
   const [view, setView] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -33,7 +35,7 @@ export function ProductPage({ product }: { product: Product }) {
   const views = Math.max(product.images.length, VIEWS);
 
   function addToCart() {
-    cart.add({ productId: product.id, name: product.name, unitPriceCents: product.priceCents, quantity: qty, variants: selected, ...(product.images[0] ? { image: product.images[0] } : {}) });
+    cart.add({ productId: product.id, name: product.name, unitPriceCents: effectivePriceCents(product), quantity: qty, variants: selected, ...(product.images[0] ? { image: product.images[0] } : {}) });
     setAdded(true);
   }
 
@@ -59,7 +61,7 @@ export function ProductPage({ product }: { product: Product }) {
             <AvailabilityBadge product={product} />
           </div>
           <h1 className={styles.title}>{product.name}</h1>
-          <p className={styles.price}>{formatBRL(product.priceCents)}</p>
+          <PriceTag product={product} className={styles.price} />
           <p className={styles.muted}>{product.description}</p>
 
           {product.availability === "pronta-entrega" && (
@@ -98,9 +100,9 @@ export function ProductPage({ product }: { product: Product }) {
           <DemoNotice>Produto de demonstração: preço, estoque e prazo são fictícios.</DemoNotice>
         </div>
       </div>
-      {relatedProducts(catalogService.list(), product).length > 0 && (
+      {relatedProducts(catalog.products, product).length > 0 && (
         <Section id="relacionados" title="Produtos relacionados">
-          <ProductGrid products={relatedProducts(catalogService.list(), product)} />
+          <ProductGrid products={relatedProducts(catalog.products, product)} />
         </Section>
       )}
     </div>

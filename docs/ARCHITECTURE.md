@@ -48,3 +48,17 @@ Decisões:
 - Dados pessoais ficam só em memória (estado React); LocalStorage guarda apenas carrinho e tema.
 - Sem número comercial válido (`55` + DDD + número) a finalização fica desativada; nunca há contato fictício.
 - Carrinho não é esvaziado ao abrir o WhatsApp (abrir a conversa não confirma a venda).
+
+## CR-004 — Painel administrativo funcional (demonstração)
+| Pasta/arquivo | Conteúdo |
+|---|---|
+| `src/features/demo-data/model.ts` | Modelo único (produtos, categorias, pedidos, clientes, personalizações, banners, cupons, configurações) + `DEMO_SCHEMA_VERSION` |
+| `src/features/demo-data/seed.ts` | Dados fictícios iniciais (reaproveita `products.mock.ts` e `categories.ts`) |
+| `src/features/demo-data/rules.ts` | Regras puras: validações, preço promocional, disponibilidade efetiva, estoque, métricas e relatórios |
+| `src/features/demo-data/repository.ts` | Repositório LocalStorage versionado (`criatto3d:demo-data`), sincronização entre abas, `reset`; hooks `useDemoData` |
+| `src/features/catalog/catalog.service.ts` | Hooks públicos `useStoreCatalog`, `useStoreSettings`, `useHeroBanner` (só itens ativos) |
+| `src/features/admin/pages/*`, `src/features/admin/ui/*` | Telas do painel e componentes (tabela, modal `<dialog>`, gráficos CSS, imagens) |
+
+- Loja e painel leem a mesma fonte; o servidor renderiza o seed e o navegador assume os dados salvos após a hidratação. Telas do painel só renderizam após hidratação.
+- Itens de pedido guardam snapshot (nome, preço, variações); excluir produto não altera o histórico.
+- Imagens: só caminhos/URLs são salvos; arquivos locais são `blob:` temporários e nunca persistidos.

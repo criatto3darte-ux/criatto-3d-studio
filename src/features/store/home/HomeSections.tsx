@@ -2,8 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Headset, Layers, Palette, ShieldCheck, Sparkles } from "lucide-react";
 import { buttonClass } from "@/shared/ui/Button";
 import { DemoNotice } from "@/shared/ui/DemoNotice";
-import { categories } from "@/features/catalog/categories";
-import { catalogService } from "@/features/catalog/catalog.service";
+import { useStoreCatalog } from "@/features/catalog/catalog.service";
 import { countByCategory } from "@/features/catalog/catalog.logic";
 import { CategoryGrid } from "../components/CategoryCard";
 import { ProductGrid } from "../components/ProductCard";
@@ -18,7 +17,8 @@ const benefits = [
 ];
 
 export function HomeSections() {
-  const products = catalogService.list();
+  const catalogService = useStoreCatalog();
+  const { products, categories } = catalogService;
   return (
     <div className="container">
       <Section id="home-categorias" eyebrow="Explore" title="Categorias" action={<Link to="/categorias" className={sectionLinkClass}>Ver todas <ArrowRight size={16} /></Link>}>

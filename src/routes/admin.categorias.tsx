@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { AdminCategoriesPage } from "@/features/admin/pages/CategoriesPage";
 
 export const Route = createFileRoute("/admin/categorias")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/categorias")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Categorias" description="Gerenciamento das categorias da loja." stage="CR-004" />;
+  return <AdminCategoriesPage />;
 }

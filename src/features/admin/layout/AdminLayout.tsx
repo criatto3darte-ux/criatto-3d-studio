@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useHydrated } from "@tanstack/react-router";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell, ChevronsLeft, ChevronsRight, CircleHelp, ExternalLink, Menu } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
@@ -18,6 +19,7 @@ const demoNotifications = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = findAdminNav(pathname);
+  const hydrated = useHydrated();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [panel, setPanel] = useState<"none" | "notifications" | "help">("none");
@@ -95,14 +97,15 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             {panel === "help" && (
               <div className={styles.popover} role="dialog" aria-label="Ajuda">
                 <h2>Ajuda</h2>
-                <p>Este painel está em modo demonstração. Nenhuma alteração é enviada a um servidor e todos os números são simulados.</p>
+                <p>Este painel está em modo demonstração. As alterações ficam salvas apenas neste navegador (sincronizadas entre abas), nenhuma informação é enviada a um servidor e todos os números são simulados. Use "Restaurar dados fictícios" em Configurações para voltar ao início.</p>
               </div>
             )}
           </div>
         </header>
         <div className={styles.content}>
           <DemoNotice />
-          <div style={{ marginTop: 24 }}>{children}</div>
+          {/* Demo data lives in this browser (LocalStorage): render admin screens only after hydration. */}
+          <div style={{ marginTop: 24 }}>{hydrated ? children : <p aria-busy="true">Carregando dados de demonstração…</p>}</div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { SettingsPage } from "@/features/admin/pages/SettingsPage";
 
 export const Route = createFileRoute("/admin/configuracoes")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/configuracoes")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Configurações" description="Nome da loja, logo, WhatsApp comercial, redes sociais e entrega." stage="CR-005" />;
+  return <SettingsPage />;
 }

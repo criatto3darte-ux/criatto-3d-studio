@@ -35,3 +35,7 @@ use the editor.
 - Shared UI lives in src/shared/ui; feature code in src/features/{store,admin,cart}; business rules stay in pure modules (e.g. cart.logic.ts) outside components.
 - Work is delivered in stages CR-001..CR-006; wait for client approval between stages.
 - tsconfig sets noPropertyAccessFromIndexSignature=false so CSS Module classes can be read as styles.foo; all other strict flags stay on.
+
+## Criatto demo data
+- Store and admin read one data source: `src/features/demo-data/repository.ts` (versioned LocalStorage, swap for server functions later); never add a second catalog or read mock files directly in UI.
+- Business rules for demo data (validation, prices, stock, metrics) live in `src/features/demo-data/rules.ts` as pure functions with tests.

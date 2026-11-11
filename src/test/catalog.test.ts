@@ -22,7 +22,7 @@ describe("catalog rules", () => {
     expect(queryCatalog(demoProducts, { categoria: "geek-nerd", ordem: "preco-asc" }).map((p) => p.slug)).toEqual(["suporte-controle", "suporte-headset", "dragao-articulado"]);
   });
   it("drops invalid search params", () => {
-    expect(parseCatalogSearch({ q: "  ", categoria: "x", ordem: "y", disponibilidade: "sob-demanda" })).toEqual({ disponibilidade: "sob-demanda" });
+    expect(parseCatalogSearch({ q: "  ", categoria: "X!", ordem: "y", disponibilidade: "sob-demanda" })).toEqual({ disponibilidade: "sob-demanda" });
   });
   it("counts and relates by category", () => {
     expect(countByCategory(demoProducts, "personalizados")).toBe(2);

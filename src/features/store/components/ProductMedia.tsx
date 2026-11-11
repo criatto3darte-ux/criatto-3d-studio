@@ -1,9 +1,9 @@
 import type { Product } from "@/shared/types/catalog";
 import { MediaImage } from "@/shared/ui/MediaImage";
-import { categoryVisual } from "./categoryVisual";
+import { categoryVisualFor } from "./categoryVisual";
 
 export function ProductMedia({ product, index = 0, eager, showTag, className }: { product: Product; index?: number; eager?: boolean; showTag?: boolean; className?: string | undefined }) {
-  const v = categoryVisual[product.category];
+  const v = categoryVisualFor(product.category);
   const Icon = v.icon;
   return (
     <MediaImage

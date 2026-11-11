@@ -1,7 +1,7 @@
 import { useRef, useState, type MouseEvent } from "react";
 import { Button } from "@/shared/ui/Button";
 import { AlertTriangle, CheckCircle2, MessageCircle } from "lucide-react";
-import { storeConfig } from "@/shared/config/store.config";
+import { useStoreSettings } from "@/features/catalog/catalog.service";
 import { buildWhatsAppUrl, isValidBusinessNumber } from "./checkout.logic";
 import styles from "./WhatsAppAction.module.css";
 
@@ -12,8 +12,9 @@ import styles from "./WhatsAppAction.module.css";
 export function WhatsAppAction({ message, validate, label = "Finalizar pelo WhatsApp", openedText }: { message: string; validate: () => boolean; label?: string; openedText: string }) {
   const [opened, setOpened] = useState(false);
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const configured = isValidBusinessNumber(storeConfig.whatsappNumber);
-  const url = buildWhatsAppUrl(storeConfig.whatsappNumber, message);
+  const { whatsappNumber } = useStoreSettings();
+  const configured = isValidBusinessNumber(whatsappNumber);
+  const url = buildWhatsAppUrl(whatsappNumber, message);
 
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (!url || !validate()) { e.preventDefault(); setOpened(false); return; }

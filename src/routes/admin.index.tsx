@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StagePlaceholder } from "@/shared/ui/StagePlaceholder";
+import { DashboardPage } from "@/features/admin/pages/DashboardPage";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -17,5 +17,5 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function Page() {
-  return <StagePlaceholder title="Painel Administrativo" description="Cards de pedidos, gráficos de pedidos e vendas confirmadas, últimos pedidos e atalhos." stage="CR-004" />;
+  return <DashboardPage />;
 }

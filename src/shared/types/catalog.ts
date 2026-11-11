@@ -1,11 +1,5 @@
-export type CategorySlug =
-  | "decoracao"
-  | "geek-nerd"
-  | "casa-organizacao"
-  | "vasos-jardinagem"
-  | "presentes"
-  | "utilitarios"
-  | "personalizados";
+/** Stable category identifier (lowercase, digits and hyphens). Categories are editable in the admin. */
+export type CategorySlug = string;
 
 export interface Category {
   slug: CategorySlug;
@@ -13,6 +7,10 @@ export interface Category {
   description: string;
   /** Optional photo path (public/images/categorias). Empty = placeholder. */
   image?: string;
+  /** Hidden from the public store when false. */
+  active: boolean;
+  /** Display order (ascending). */
+  order: number;
 }
 
 export type ProductAvailability = "pronta-entrega" | "sob-demanda" | "indisponivel";
@@ -37,11 +35,15 @@ export interface Product {
   description: string;
   /** Price in cents (BRL) to avoid floating point errors. */
   priceCents: number;
+  /** Optional promotional price in cents; must be lower than priceCents. */
+  promoPriceCents?: number;
   images: string[];
   badge?: "Mais Vendido" | "Novo" | "Destaque";
   availability: ProductAvailability;
   productionDays?: number;
   stock: number;
   featured: boolean;
+  /** Published in the public store. */
+  active: boolean;
   variants: ProductVariantGroup[];
 }
