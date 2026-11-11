@@ -62,8 +62,8 @@ export function CartPage() {
             <div className={styles.row}><span>Frete</span><span className={styles.muted}>A combinar</span></div>
             <hr style={{ border: 0, borderTop: "1px solid var(--color-border)", width: "100%", margin: 0 }} />
             <div className={styles.row}><span>Total estimado</span><span className={styles.total}>{formatBRL(subtotalCents)}</span></div>
-            <Button size="lg" block disabled aria-describedby="checkout-note"><MessageCircle size={20} /> Finalizar pelo WhatsApp</Button>
-            <p id="checkout-note" className={styles.muted}>O envio do pedido pelo WhatsApp será liberado na próxima etapa (CR-003). Nenhum dado pessoal é armazenado.</p>
+            <Link to="/checkout" className={buttonClass("primary", "lg", styles.checkoutBtn)}><MessageCircle size={20} /> Finalizar pelo WhatsApp</Link>
+            <p className={styles.muted}>Sem cadastro. Você confirma o pedido conversando com a loja.</p>
             <DemoNotice>Carrinho de demonstração salvo apenas neste navegador.</DemoNotice>
           </aside>
         </div>

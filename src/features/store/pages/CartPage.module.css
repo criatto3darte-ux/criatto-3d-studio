@@ -16,3 +16,6 @@
 .empty { text-align: center; padding: var(--space-8) var(--space-5); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); display: grid; justify-items: center; gap: var(--space-3); }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .summary { position: static; } }
 @media (max-width: 520px) { .item { grid-template-columns: 64px 1fr; } .right { grid-column: 1 / -1; justify-items: start; } }
+.checkoutBtn { width: 100%; }
+.layout > * { min-width: 0; }
+.checkoutBtn { white-space: normal; text-align: center; height: auto; min-height: 52px; padding-block: 10px; }

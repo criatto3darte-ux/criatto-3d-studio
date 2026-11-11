@@ -33,6 +33,7 @@ export function StoreFooter() {
               <li><Link to="/carrinho">Meu carrinho</Link></li>
               <li><Link to="/personalizados">Solicitar personalizado</Link></li>
               <li><Link to="/contato">Fale conosco</Link></li>
+              <li><Link to="/privacidade">Política de Privacidade</Link></li>
               {whatsappNumber && <li><a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></li>}
               {email && <li><a href={`mailto:${email}`}>{email}</a></li>}
               {social.instagram && <li><a href={social.instagram} target="_blank" rel="noopener noreferrer">Instagram</a></li>}

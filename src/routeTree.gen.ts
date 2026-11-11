@@ -17,6 +17,7 @@ import { Route as StoreCategoriasRouteImport } from './routes/_store.categorias'
 import { Route as StoreCheckoutRouteImport } from './routes/_store.checkout'
 import { Route as StoreContatoRouteImport } from './routes/_store.contato'
 import { Route as StorePersonalizadosRouteImport } from './routes/_store.personalizados'
+import { Route as StorePrivacidadeRouteImport } from './routes/_store.privacidade'
 import { Route as StoreProdutosRouteImport } from './routes/_store.produtos'
 import { Route as StoreSobreRouteImport } from './routes/_store.sobre'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -70,6 +71,11 @@ const StoreContatoRoute = StoreContatoRouteImport.update({
 const StorePersonalizadosRoute = StorePersonalizadosRouteImport.update({
   id: '/personalizados',
   path: '/personalizados',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StorePrivacidadeRoute = StorePrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => StoreRoute,
 } as any)
 const StoreProdutosRoute = StoreProdutosRouteImport.update({
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof StoreCheckoutRoute
   '/contato': typeof StoreContatoRoute
   '/personalizados': typeof StorePersonalizadosRoute
+  '/privacidade': typeof StorePrivacidadeRoute
   '/produtos': typeof StoreProdutosRoute
   '/sobre': typeof StoreSobreRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof StoreCheckoutRoute
   '/contato': typeof StoreContatoRoute
   '/personalizados': typeof StorePersonalizadosRoute
+  '/privacidade': typeof StorePrivacidadeRoute
   '/produtos': typeof StoreProdutosRoute
   '/sobre': typeof StoreSobreRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/_store/checkout': typeof StoreCheckoutRoute
   '/_store/contato': typeof StoreContatoRoute
   '/_store/personalizados': typeof StorePersonalizadosRoute
+  '/_store/privacidade': typeof StorePrivacidadeRoute
   '/_store/produtos': typeof StoreProdutosRoute
   '/_store/sobre': typeof StoreSobreRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/contato'
     | '/personalizados'
+    | '/privacidade'
     | '/produtos'
     | '/sobre'
     | '/admin/banners'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/contato'
     | '/personalizados'
+    | '/privacidade'
     | '/produtos'
     | '/sobre'
     | '/admin/banners'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_store/checkout'
     | '/_store/contato'
     | '/_store/personalizados'
+    | '/_store/privacidade'
     | '/_store/produtos'
     | '/_store/sobre'
     | '/admin/banners'
@@ -358,6 +370,13 @@ declare module '@tanstack/react-router' {
       path: '/personalizados'
       fullPath: '/personalizados'
       preLoaderRoute: typeof StorePersonalizadosRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/_store/privacidade': {
+      id: '/_store/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof StorePrivacidadeRouteImport
       parentRoute: typeof StoreRoute
     }
     '/_store/produtos': {
@@ -474,6 +493,7 @@ interface StoreRouteChildren {
   StoreCheckoutRoute: typeof StoreCheckoutRoute
   StoreContatoRoute: typeof StoreContatoRoute
   StorePersonalizadosRoute: typeof StorePersonalizadosRoute
+  StorePrivacidadeRoute: typeof StorePrivacidadeRoute
   StoreProdutosRoute: typeof StoreProdutosRoute
   StoreSobreRoute: typeof StoreSobreRoute
   StoreIndexRoute: typeof StoreIndexRoute
@@ -486,6 +506,7 @@ const StoreRouteChildren: StoreRouteChildren = {
   StoreCheckoutRoute: StoreCheckoutRoute,
   StoreContatoRoute: StoreContatoRoute,
   StorePersonalizadosRoute: StorePersonalizadosRoute,
+  StorePrivacidadeRoute: StorePrivacidadeRoute,
   StoreProdutosRoute: StoreProdutosRoute,
   StoreSobreRoute: StoreSobreRoute,
   StoreIndexRoute: StoreIndexRoute,

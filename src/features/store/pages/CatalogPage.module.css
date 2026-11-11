@@ -20,3 +20,4 @@
   .filters[data-open="false"] { display: none; }
   .filterToggle { display: inline-flex; }
 }
+.layout > * { min-width: 0; }

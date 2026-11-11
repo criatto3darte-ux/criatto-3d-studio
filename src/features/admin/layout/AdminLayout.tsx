@@ -79,8 +79,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <CircleHelp size={21} />
             </Button>
             <span className={styles.hideMobile}><ThemeToggleButton /></span>
-            <Link to="/" className={buttonClass("outline", "md")} target="_blank" rel="noopener">
-              Ver Loja <ExternalLink size={16} />
+            <Link to="/" className={buttonClass("outline", "md", styles.storeLink)} target="_blank" rel="noopener" aria-label="Ver Loja (abre em nova aba)">
+              <span className={styles.storeLabel}>Ver Loja</span> <ExternalLink size={16} aria-hidden="true" />
             </Link>
             {panel === "notifications" && (
               <div className={styles.popover} role="dialog" aria-label="Notificações">

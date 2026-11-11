@@ -18,11 +18,12 @@
 .profileText small { color: var(--color-text-muted); }
 .main { min-width: 0; display: flex; flex-direction: column; }
 .header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); background: var(--color-header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border); }
-.titles h1 { font-size: 26px; }
+.titles { min-width: 0; }
+.titles h1 { font-size: 26px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .titles p { color: var(--color-text-muted); font-size: 14px; }
-.headerActions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); position: relative; }
+.headerActions { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: var(--space-2); position: relative; }
 .bellDot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
-.popover { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-md); z-index: 50; }
+.popover { position: absolute; top: calc(100% + 8px); right: 0; width: min(320px, calc(100vw - 32px)); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-md); z-index: 50; }
 .popover h2 { font-size: 15px; margin-bottom: var(--space-3); }
 .popover ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
 .popover small { display: block; color: var(--color-text-muted); }
@@ -44,3 +45,9 @@
 }
 @media (max-width: 900px) { .mobileOnly { display: inline-flex; } }
 .bell { position: relative; }
+/* Phones: "Ver Loja" becomes icon-only so the header fits 320px+ without horizontal scroll. */
+@media (max-width: 480px) {
+  .storeLabel { display: none; }
+  .storeLink { width: 44px; padding: 0; }
+  .header { gap: var(--space-2); }
+}

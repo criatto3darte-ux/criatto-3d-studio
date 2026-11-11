@@ -1,6 +1,7 @@
 .grid2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-6); align-items: start; }
 .panel { padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
-.form { display: grid; gap: var(--space-4); }
+.form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+.form fieldset { min-width: 0; }
 .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .field { display: grid; gap: 6px; }
 .label { font-size: 13px; font-weight: 600; }
@@ -27,3 +28,5 @@
 a.channel:hover { border-color: var(--color-primary); box-shadow: var(--shadow-glow); }
 @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .row3 { grid-template-columns: 1fr; } }
+.grid2 > * { min-width: 0; }
+.file input[type="file"] { max-width: 100%; }

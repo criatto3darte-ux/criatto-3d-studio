@@ -36,3 +36,15 @@ Decisões:
 - Filtros do catálogo ficam na URL (`/produtos?q=&categoria=&disponibilidade=&ordem=`), validados por `parseCatalogSearch`.
 - Página do produto: `/produto/$slug` (404 próprio para slug inexistente).
 - Contatos e foto do banner vêm de `store.config.ts`; vazio = "Ainda não configurado"/placeholder.
+
+## CR-003 — Checkout pelo WhatsApp
+| Pasta/arquivo | Conteúdo |
+|---|---|
+| `src/features/checkout/checkout.logic.ts` | Regras puras: máscara e validação de telefone, nome completo, número comercial, referência demonstrativa, mensagens de pedido e personalizado, URL `wa.me` codificada |
+| `src/features/checkout/WhatsAppAction.tsx` | Botão "Finalizar pelo WhatsApp" (link aberto pelo clique do usuário), estado não configurado e prévia da mensagem |
+| `src/features/store/pages/CheckoutPage.tsx` | `/checkout`: dados do cliente + resumo |
+| `src/routes/_store.privacidade.tsx` | Política de Privacidade provisória |
+
+- Dados pessoais ficam só em memória (estado React); LocalStorage guarda apenas carrinho e tema.
+- Sem número comercial válido (`55` + DDD + número) a finalização fica desativada; nunca há contato fictício.
+- Carrinho não é esvaziado ao abrir o WhatsApp (abrir a conversa não confirma a venda).
