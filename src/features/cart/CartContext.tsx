@@ -12,6 +12,7 @@ interface CartContextValue {
   setQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
+  replace: (items: CartItem[]) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -24,7 +25,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw) as CartItem[]);
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setItems(parsed.filter(logic.isCartItem));
     } catch {
       /* ignore corrupt storage */
     }
@@ -39,6 +41,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setQty = useCallback((key: string, q: number) => setItems((s) => logic.setQuantity(s, key, q)), []);
   const remove = useCallback((key: string) => setItems((s) => logic.removeItem(s, key)), []);
   const clear = useCallback(() => setItems([]), []);
+  const replace = useCallback((next: CartItem[]) => setItems(next), []);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -49,8 +52,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQuantity: setQty,
       remove,
       clear,
+      replace,
     }),
-    [items, add, setQty, remove, clear],
+    [items, add, setQty, remove, clear, replace],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

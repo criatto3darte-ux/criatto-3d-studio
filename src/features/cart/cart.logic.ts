@@ -36,3 +36,12 @@ export function countItems(items: CartItem[]): number {
 export function subtotalCents(items: CartItem[]): number {
   return items.reduce((n, i) => n + i.unitPriceCents * i.quantity, 0);
 }
+
+/** Guards against corrupted LocalStorage entries. */
+export function isCartItem(x: unknown): x is CartItem {
+  if (!x || typeof x !== "object") return false;
+  const i = x as Record<string, unknown>;
+  return typeof i.key === "string" && typeof i.productId === "string" && typeof i.name === "string"
+    && Number.isInteger(i.unitPriceCents) && Number.isInteger(i.quantity) && (i.quantity as number) > 0
+    && !!i.variants && typeof i.variants === "object";
+}

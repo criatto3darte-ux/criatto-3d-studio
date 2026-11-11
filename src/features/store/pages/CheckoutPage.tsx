@@ -4,7 +4,7 @@ import { ArrowLeft, ShieldCheck, ShoppingCart } from "lucide-react";
 import { Input } from "@/shared/ui/Input";
 import { buttonClass } from "@/shared/ui/Button";
 import { formatBRL } from "@/shared/utils/format";
-import { useCart } from "@/features/cart/CartContext";
+import { useReconciledCart } from "@/features/cart/useReconciledCart";
 import { useDemoData } from "@/features/demo-data/repository";
 import { NAME_MAX, NOTES_MAX, buildOrderMessage, maskPhone, validateName, validatePhone } from "@/features/checkout/checkout.logic";
 import { WhatsAppAction } from "@/features/checkout/WhatsAppAction";
@@ -16,7 +16,7 @@ interface Errors { name?: string; phone?: string }
 
 export function CheckoutPage() {
   const demoProducts = useDemoData().products;
-  const { items, count, subtotalCents } = useCart();
+  const { items, lines, count, subtotalCents, blocked, priceChanged } = useReconciledCart();
   // Personal data lives only in component memory: never written to storage or logs.
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -40,7 +40,7 @@ export function CheckoutPage() {
     return !n && !p;
   }
 
-  if (items.length === 0) {
+  if (lines.length === 0) {
     return (
       <div className="container">
         <PageHeader eyebrow="Finalizar pedido" title="Seu carrinho está vazio" text="Adicione produtos ao carrinho para finalizar pelo WhatsApp." />
@@ -95,11 +95,16 @@ export function CheckoutPage() {
           <div className={styles.row}><span>Subtotal</span><span>{formatBRL(subtotalCents)}</span></div>
           <div className={styles.row}><span>Frete</span><span>A combinar</span></div>
           <div className={styles.row}><strong>Total estimado</strong><span className={styles.total}>{formatBRL(subtotalCents)}</span></div>
+          {priceChanged && !blocked && <p className={styles.hint} role="note">Alguns preços foram atualizados pela loja; o resumo e a mensagem usam os valores atuais.</p>}
+          {blocked ? (
+            <p className={styles.errorSummary} role="alert">Há itens indisponíveis no carrinho. <Link to="/carrinho">Atualize o carrinho</Link> para finalizar.</p>
+          ) : (
           <WhatsAppAction
             message={message}
             validate={() => check(true)}
             openedText="Abrimos o WhatsApp em uma nova aba com a mensagem pronta. Confira e toque em enviar: o pedido só é confirmado na conversa com a loja. Seu carrinho continua aqui caso queira ajustar algo."
           />
+          )}
         </aside>
       </div>
     </div>

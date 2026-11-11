@@ -39,3 +39,4 @@ use the editor.
 ## Criatto demo data
 - Store and admin read one data source: `src/features/demo-data/repository.ts` (versioned LocalStorage, swap for server functions later); never add a second catalog or read mock files directly in UI.
 - Business rules for demo data (validation, prices, stock, metrics) live in `src/features/demo-data/rules.ts` as pure functions with tests.
+- Cart lines are reconciled against the public catalog (src/features/cart/cart.reconcile.ts) before display/checkout; never price checkout from stored cart prices. Future backend contracts live in src/features/data-contracts.
