@@ -1,0 +1,7 @@
+.logo { display: inline-flex; align-items: center; gap: 10px; }
+.mark { width: 46px; height: 46px; flex-shrink: 0; filter: drop-shadow(0 0 10px rgb(0 229 240 / 0.35)); }
+.text { display: flex; flex-direction: column; line-height: 1; }
+.name { font-family: var(--font-display); font-weight: 700; font-size: 25px; letter-spacing: -0.02em; color: var(--color-text); }
+.name span { color: var(--color-primary); }
+.sub { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-text-muted); margin-top: 4px; }
+.compact .mark { width: 38px; height: 38px; }

@@ -1,0 +1,18 @@
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--color-border); background: var(--gradient-glow), var(--color-background); }
+.inner { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: var(--space-6); min-height: 460px; padding-block: var(--space-7); }
+.eyebrow { font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-primary); }
+.title { font-size: clamp(42px, 6vw, 76px); font-weight: 800; letter-spacing: -0.035em; margin: 12px 0 16px; }
+.subtitle { font-size: 19px; color: var(--color-text); opacity: 0.9; max-width: 520px; }
+.cta { margin-top: var(--space-5); }
+.features { list-style: none; padding: 0; margin: var(--space-6) 0 0; display: flex; flex-wrap: wrap; gap: var(--space-5); }
+.feature { display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.25; color: var(--color-text-muted); max-width: 130px; }
+.feature svg { color: var(--color-text); flex-shrink: 0; }
+.visual { position: relative; aspect-ratio: 16 / 11; border-radius: var(--radius-lg); overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 30% 40%, rgb(255 122 26 / 0.35), transparent 45%), radial-gradient(circle at 70% 30%, rgb(233 0 214 / 0.35), transparent 45%), radial-gradient(circle at 60% 80%, rgb(0 229 240 / 0.3), transparent 50%), var(--color-surface); border: 1px solid var(--color-border); }
+.visual::after { content: ""; position: absolute; inset: auto 0 0 0; height: 35%; background: linear-gradient(to top, var(--color-background), transparent); }
+.cube { width: 46%; height: auto; animation: float 6s ease-in-out infinite; filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.45)); }
+.placeholderTag { position: absolute; z-index: 1; bottom: 14px; left: 14px; font-size: 12px; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--color-overlay); color: #fff; }
+@keyframes float { 50% { transform: translateY(-14px) rotate(-3deg); } }
+@media (max-width: 900px) {
+  .inner { grid-template-columns: 1fr; min-height: 0; }
+  .visual { order: -1; aspect-ratio: 16 / 9; }
+}

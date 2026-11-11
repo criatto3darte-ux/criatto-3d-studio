@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Criatto 3D architecture
+- Styling uses CSS Modules + tokens in src/styles/tokens.css (no Tailwind, per client brief); theme via `data-theme` on <html>.
+- Store routes are `src/routes/_store.*` (pathless layout); admin routes are `src/routes/admin.*`; `/admin/login` is `admin_.login.tsx` to stay outside the sidebar layout.
+- Shared UI lives in src/shared/ui; feature code in src/features/{store,admin,cart}; business rules stay in pure modules (e.g. cart.logic.ts) outside components.
+- Work is delivered in stages CR-001..CR-006; wait for client approval between stages.
+- tsconfig sets noPropertyAccessFromIndexSignature=false so CSS Module classes can be read as styles.foo; all other strict flags stay on.

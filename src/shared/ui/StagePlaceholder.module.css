@@ -1,0 +1,6 @@
+.wrap { padding: var(--space-8) 0; }
+.box { max-width: 640px; margin: 0 auto; text-align: center; padding: var(--space-7) var(--space-5); border-radius: var(--radius-lg); border: 1px dashed var(--color-border-strong); background: var(--gradient-glow), var(--color-surface); }
+.icon { width: 56px; height: 56px; margin: 0 auto var(--space-4); display: grid; place-items: center; border-radius: var(--radius-md); background: var(--color-primary-soft); color: var(--color-primary); }
+.title { font-size: 28px; margin-bottom: var(--space-3); }
+.text { color: var(--color-text-muted); }
+.stage { margin-top: var(--space-4); }

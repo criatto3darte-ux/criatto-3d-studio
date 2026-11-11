@@ -1,0 +1,24 @@
+.header { position: sticky; top: 0; z-index: 40; height: var(--header-height); background: var(--color-header-bg); backdrop-filter: blur(14px); border-bottom: 1px solid var(--color-border); }
+.inner { height: 100%; display: flex; align-items: center; gap: var(--space-5); }
+.nav { display: flex; gap: var(--space-2); margin-left: var(--space-5); }
+.link { position: relative; padding: 8px 12px; font-size: 15px; font-weight: 500; color: var(--color-text); opacity: 0.85; transition: color var(--transition), opacity var(--transition); }
+.link:hover { opacity: 1; color: var(--color-primary); }
+.active { opacity: 1; font-weight: 700; }
+.active::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -14px; height: 3px; border-radius: 3px; background: var(--color-primary); box-shadow: 0 0 12px var(--color-primary); }
+.actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.search { width: 270px; }
+.searchBtn { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-muted); cursor: pointer; }
+.searchBtn:hover { color: var(--color-primary); }
+.cart { position: relative; }
+.count { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--color-primary); color: var(--color-primary-contrast); font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.menuBtn { display: none; }
+.mobilePanel { position: fixed; inset: var(--header-height) 0 0 0; background: var(--color-background); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); overflow-y: auto; }
+.mobileLink { padding: 14px 4px; font-size: 18px; font-weight: 600; border-bottom: 1px solid var(--color-border); }
+.mobileLink.active { color: var(--color-primary); }
+.mobileLink.active::after { display: none; }
+@media (max-width: 1360px) { .search { width: 210px; } .inner { gap: var(--space-3); } }
+@media (max-width: 1180px) { .search { width: 180px; } .link { padding: 8px 8px; font-size: 14px; } .nav { margin-left: 0; } }
+@media (max-width: 980px) {
+  .nav, .search { display: none; }
+  .menuBtn { display: inline-flex; }
+}

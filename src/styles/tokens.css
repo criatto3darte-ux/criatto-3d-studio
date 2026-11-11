@@ -1,0 +1,91 @@
+/* Criatto 3D design tokens. Light is the base; [data-theme="dark"] overrides. */
+:root {
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-primary: #009fb5;
+  --color-primary-hover: #00879a;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: rgb(0 159 181 / 0.1);
+  --color-text: #111827;
+  --color-text-muted: #64748b;
+  --color-header-bg: rgb(255 255 255 / 0.82);
+  --color-overlay: rgb(15 23 42 / 0.45);
+
+  --color-purple: #9333ea;
+  --color-magenta: #c800b8;
+  --color-blue: #0b74e0;
+  --color-yellow: #d99a00;
+  --color-orange: #ea580c;
+  --color-green: #16a34a;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  --gradient-brand: linear-gradient(90deg, #ffbf00 0%, #ff6a00 30%, #e900d6 60%, #a855f7 80%, #168bff 100%);
+  --gradient-glow: radial-gradient(60% 80% at 80% 0%, rgb(0 229 240 / 0.12), transparent 70%),
+    radial-gradient(50% 70% at 0% 100%, rgb(168 85 247 / 0.1), transparent 70%);
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 8px 24px -8px rgb(15 23 42 / 0.15);
+  --shadow-glow: 0 0 0 1px rgb(0 159 181 / 0.25), 0 8px 28px -10px rgb(0 159 181 / 0.45);
+
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --container: 1320px;
+  --header-height: 72px;
+  --sidebar-width: 268px;
+  --sidebar-collapsed: 76px;
+  --transition: 180ms ease;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --color-background: #080b14;
+  --color-surface: #111827;
+  --color-surface-elevated: #192235;
+  --color-border: #30394b;
+  --color-border-strong: #475569;
+  --color-primary: #00e5f0;
+  --color-primary-hover: #5cf3fa;
+  --color-primary-contrast: #04121a;
+  --color-primary-soft: rgb(0 229 240 / 0.12);
+  --color-text: #f8fafc;
+  --color-text-muted: #a8b3c7;
+  --color-header-bg: rgb(8 11 20 / 0.82);
+  --color-overlay: rgb(0 0 0 / 0.6);
+
+  --color-purple: #a855f7;
+  --color-magenta: #e900d6;
+  --color-blue: #168bff;
+  --color-yellow: #ffbf00;
+  --color-orange: #ff7a1a;
+  --color-green: #22c55e;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f43f5e;
+
+  --gradient-glow: radial-gradient(60% 80% at 80% 0%, rgb(0 229 240 / 0.14), transparent 70%),
+    radial-gradient(50% 70% at 0% 100%, rgb(233 0 214 / 0.12), transparent 70%);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 12px 32px -12px rgb(0 0 0 / 0.7);
+  --shadow-glow: 0 0 0 1px rgb(0 229 240 / 0.35), 0 0 24px -4px rgb(0 229 240 / 0.45);
+  color-scheme: dark;
+}
+

@@ -1,0 +1,2 @@
+.notice { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 13px; border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-yellow) 12%, transparent); border: 1px solid color-mix(in srgb, var(--color-yellow) 40%, transparent); color: var(--color-text); }
+.notice svg { color: var(--color-yellow); flex-shrink: 0; }
