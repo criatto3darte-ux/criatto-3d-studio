@@ -16,7 +16,7 @@ interface Errors { name?: string; phone?: string }
 
 export function CheckoutPage() {
   const demoProducts = useDemoData().products;
-  const { items, lines, count, subtotalCents, blocked, priceChanged } = useReconciledCart();
+  const { items, lines, count, subtotalCents, blocked, priceChanged, persistenceError, validateCurrent } = useReconciledCart();
   // Personal data lives only in component memory: never written to storage or logs.
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -54,6 +54,7 @@ export function CheckoutPage() {
   return (
     <div className="container">
       <PageHeader eyebrow="Finalizar pedido" title="Finalizar pelo WhatsApp" text="Sem cadastro: informe seus dados e conclua a compra conversando com a Criatto 3D." />
+      {persistenceError && <p role="alert" className={styles.errorSummary}>Não foi possível salvar o carrinho. Ele permanece apenas nesta aba.</p>}
       <div className={styles.layout}>
         <form className={styles.panel} noValidate onSubmit={(e) => e.preventDefault()} aria-labelledby="dados-title">
           <h2 id="dados-title" className={styles.h2}>Seus dados</h2>
@@ -97,11 +98,11 @@ export function CheckoutPage() {
           <div className={styles.row}><strong>Total estimado</strong><span className={styles.total}>{formatBRL(subtotalCents)}</span></div>
           {priceChanged && !blocked && <p className={styles.hint} role="note">Alguns preços foram atualizados pela loja; o resumo e a mensagem usam os valores atuais.</p>}
           {blocked ? (
-            <p className={styles.errorSummary} role="alert">Há itens indisponíveis no carrinho. <Link to="/carrinho">Atualize o carrinho</Link> para finalizar.</p>
+            <p className={styles.errorSummary} role="alert">Há itens indisponíveis ou quantidades acima do estoque no carrinho. <Link to="/carrinho">Atualize o carrinho</Link> para finalizar.</p>
           ) : (
           <WhatsAppAction
             message={message}
-            validate={() => check(true)}
+            validate={() => validateCurrent() && check(true)}
             openedText="Abrimos o WhatsApp em uma nova aba com a mensagem pronta. Confira e toque em enviar: o pedido só é confirmado na conversa com a loja. Seu carrinho continua aqui caso queira ajustar algo."
           />
           )}

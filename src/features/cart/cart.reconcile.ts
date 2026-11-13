@@ -1,6 +1,7 @@
 import type { Product } from "@/shared/types/catalog";
 import type { CartItem } from "@/shared/types/cart";
 import { effectivePriceCents } from "@/features/demo-data/rules";
+import { availableQuantity, productQuantityLimit, quantityForProduct, validVariants } from "./cart.stock";
 
 /**
  * Política da sessão de compra (CR-005):
@@ -9,31 +10,38 @@ import { effectivePriceCents } from "@/features/demo-data/rules";
  *   até o carrinho ser atualizado.
  * Valores calculados no navegador não são seguros para produção; validar no backend depois.
  */
-export type LineStatus = "ok" | "price-changed" | "unavailable" | "removed";
+export type LineStatus = "ok" | "price-changed" | "unavailable" | "removed" | "stock-exceeded";
 
 export interface ReconciledLine {
   item: CartItem; // already carries the current price when still purchasable
   status: LineStatus;
   previousUnitCents: number;
+  maxQuantity: number;
+  adjustedQuantity: number;
+  priceChanged: boolean;
 }
 
 /** `products` must be the PUBLIC list (publicProducts), with effective availability applied. */
 export function reconcileCart(items: CartItem[], products: Product[]): ReconciledLine[] {
+  const allocated: CartItem[] = [];
   return items.map((item) => {
     const p = products.find((x) => x.id === item.productId);
     const previousUnitCents = item.unitPriceCents;
-    if (!p) return { item, status: "removed", previousUnitCents };
-    const variantsOk = Object.entries(item.variants).every(([group, label]) =>
-      p.variants.find((g) => g.name === group)?.options.some((o) => o.label === label),
-    );
-    if (p.availability === "indisponivel" || !variantsOk) return { item, status: "unavailable", previousUnitCents };
+    const unavailable = { item, previousUnitCents, maxQuantity: 0, adjustedQuantity: 0, priceChanged: false };
+    if (!p) return { ...unavailable, status: "removed" };
+    if (productQuantityLimit(p) === 0 || !validVariants(p, item.variants)) return { ...unavailable, status: "unavailable" };
     const current = effectivePriceCents(p);
     const updated = { ...item, name: p.name, unitPriceCents: current };
-    return { item: updated, status: current !== previousUnitCents ? "price-changed" : "ok", previousUnitCents };
+    const maxQuantity = availableQuantity(items, p, item.key);
+    const adjustedQuantity = Math.min(item.quantity, availableQuantity(allocated, p));
+    if (adjustedQuantity > 0) allocated.push({ ...updated, quantity: adjustedQuantity });
+    const exceeded = p.availability !== "sob-demanda" && quantityForProduct(items, p.id) > productQuantityLimit(p);
+    const priceChanged = current !== previousUnitCents;
+    return { item: updated, status: exceeded ? "stock-exceeded" : priceChanged ? "price-changed" : "ok", previousUnitCents, maxQuantity, adjustedQuantity, priceChanged };
   });
 }
 
-export const isBlocking = (l: ReconciledLine) => l.status === "unavailable" || l.status === "removed";
+export const isBlocking = (l: ReconciledLine) => l.status === "unavailable" || l.status === "removed" || l.status === "stock-exceeded";
 
 /** Items that may go to checkout, at current prices. */
 export function purchasableItems(lines: ReconciledLine[]): CartItem[] {
@@ -42,5 +50,5 @@ export function purchasableItems(lines: ReconciledLine[]): CartItem[] {
 
 /** "Atualizar carrinho": apply current prices and drop items that can no longer be bought. */
 export function applyReconciliation(lines: ReconciledLine[]): CartItem[] {
-  return purchasableItems(lines);
+  return lines.filter((line) => line.adjustedQuantity > 0).map((line) => ({ ...line.item, quantity: line.adjustedQuantity }));
 }

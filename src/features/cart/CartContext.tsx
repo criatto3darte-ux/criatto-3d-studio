@@ -1,14 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import type { CartItem } from "@/shared/types/cart";
 import * as logic from "./cart.logic";
 
-const STORAGE_KEY = "criatto3d:cart";
+import { cartRepository } from "./cart.repository";
+import { availableQuantity, validVariants } from "./cart.stock";
+import { demoRepository } from "@/features/demo-data/repository";
+import { effectivePriceCents, publicProducts } from "@/features/demo-data/rules";
 
 interface CartContextValue {
   items: CartItem[];
   count: number;
   subtotalCents: number;
-  add: (item: Omit<CartItem, "key">) => void;
+  add: (item: Omit<CartItem, "key">) => boolean;
+  persistenceError: boolean;
   setQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
@@ -18,34 +22,36 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  // Demo cart lives in the browser only; read after hydration to avoid SSR mismatch.
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) setItems(parsed.filter(logic.isCartItem));
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setLoaded(true);
+  const { items, persistenceError } = useSyncExternalStore(cartRepository.subscribe, () => cartRepository.get(), cartRepository.serverSnapshot);
+  const add = useCallback((item: Omit<CartItem, "key">) => {
+    let added = false;
+    cartRepository.update((current) => {
+      const product = publicProducts(demoRepository.get()).find((p) => p.id === item.productId);
+      if (!product || !validVariants(product, item.variants) || !Number.isSafeInteger(item.quantity) || item.quantity < 1) return current;
+      const key = logic.buildCartKey(item.productId, item.variants);
+      const existing = current.find((line) => line.key === key)?.quantity ?? 0;
+      if (item.quantity > Math.min(availableQuantity(current, product), logic.MAX_ITEM_QUANTITY - existing)) return current;
+      added = true;
+      return logic.addItem(current, { ...item, name: product.name, unitPriceCents: effectivePriceCents(product) });
+    });
+    return added;
   }, []);
-
-  useEffect(() => {
-    if (loaded) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, loaded]);
-
-  const add = useCallback((item: Omit<CartItem, "key">) => setItems((s) => logic.addItem(s, item)), []);
-  const setQty = useCallback((key: string, q: number) => setItems((s) => logic.setQuantity(s, key, q)), []);
-  const remove = useCallback((key: string) => setItems((s) => logic.removeItem(s, key)), []);
-  const clear = useCallback(() => setItems([]), []);
-  const replace = useCallback((next: CartItem[]) => setItems(next), []);
+  const setQty = useCallback((key: string, q: number) => cartRepository.update((current) => {
+    if (!Number.isSafeInteger(q)) return current;
+    if (q <= 0) return logic.removeItem(current, key);
+    const item = current.find((line) => line.key === key);
+    const product = publicProducts(demoRepository.get()).find((p) => p.id === item?.productId);
+    if (!product) return current;
+    return logic.setQuantity(current, key, Math.min(q, availableQuantity(current, product, key)));
+  }), []);
+  const remove = useCallback((key: string) => { cartRepository.update((current) => logic.removeItem(current, key)); }, []);
+  const clear = useCallback(() => { cartRepository.update(() => []); }, []);
+  const replace = useCallback((next: CartItem[]) => { cartRepository.update(() => next); }, []);
 
   const value = useMemo<CartContextValue>(
     () => ({
       items,
+      persistenceError,
       count: logic.countItems(items),
       subtotalCents: logic.subtotalCents(items),
       add,
@@ -54,7 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clear,
       replace,
     }),
-    [items, add, setQty, remove, clear, replace],
+    [items, persistenceError, add, setQty, remove, clear, replace],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

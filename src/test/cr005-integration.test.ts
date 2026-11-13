@@ -10,7 +10,7 @@ import type { CartItem } from "@/shared/types/cart";
 
 const seed = createSeed(new Date("2026-11-10T15:00:00"));
 const prod = publicProducts(seed).find((p) => p.availability !== "indisponivel" && !p.promoPriceCents && p.variants.length === 0) ?? publicProducts(seed)[0]!;
-const item = (over: Partial<CartItem> = {}): CartItem => ({ key: prod.id, productId: prod.id, name: prod.name, unitPriceCents: prod.priceCents, quantity: 2, variants: {}, ...over });
+const item = (over: Partial<CartItem> = {}): CartItem => ({ key: prod.id, productId: prod.id, name: prod.name, unitPriceCents: prod.priceCents, quantity: 2, variants: Object.fromEntries(prod.variants.map((g) => [g.name, g.options[0]?.label ?? ""])), ...over });
 
 describe("carrinho x catálogo", () => {
   it("price change: checkout uses the current price and flags it", () => {

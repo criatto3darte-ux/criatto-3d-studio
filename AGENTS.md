@@ -41,3 +41,5 @@ use the editor.
 - Business rules for demo data (validation, prices, stock, metrics) live in `src/features/demo-data/rules.ts` as pure functions with tests.
 - Cart lines are reconciled against the public catalog (src/features/cart/cart.reconcile.ts) before display/checkout; never price checkout from stored cart prices. Future backend contracts live in src/features/data-contracts.
 - Catalog filtering stays synchronous for the demo repository; URL updates merge the latest search state and price sorting uses effectivePriceCents, preventing stale filters and mismatched displayed prices.
+- Cart stock limits live in cart.stock.ts and apply across variations for ready-stock products; mutations and checkout revalidate the public catalog, while stock reconciliation stays explicit (no reservation or deduction).
+- Cart persistence uses cart.repository.ts with useSyncExternalStore, sanitized legacy arrays and non-echoing storage events; mutations read the latest snapshot and persistence failures remain visible without crashing.

@@ -11,7 +11,8 @@ import { effectivePriceCents } from "@/features/demo-data/rules";
 import { PriceTag } from "../components/PriceTag";
 import { canPurchase, relatedProducts } from "@/features/catalog/catalog.logic";
 import { useCart } from "@/features/cart/CartContext";
-import { MAX_ITEM_QUANTITY } from "@/features/cart/cart.logic";
+import { buildCartKey, MAX_ITEM_QUANTITY } from "@/features/cart/cart.logic";
+import { availableQuantity } from "@/features/cart/cart.stock";
 import { ProductMedia } from "../components/ProductMedia";
 import { AvailabilityBadge } from "../components/AvailabilityBadge";
 import { ProductGrid } from "../components/ProductCard";
@@ -28,15 +29,21 @@ export function ProductPage({ product }: { product: Product }) {
   const [view, setView] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState(false);
   const [selected, setSelected] = useState<Record<string, string>>(() =>
     Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
   );
   const purchasable = canPurchase(product);
   const views = Math.max(product.images.length, VIEWS);
+  const key = buildCartKey(product.id, selected);
+  const already = cart.items.find((item) => item.key === key)?.quantity ?? 0;
+  const remaining = Math.min(availableQuantity(cart.items, product), MAX_ITEM_QUANTITY - already);
+  const selectedQty = Math.min(qty, Math.max(1, remaining));
 
   function addToCart() {
-    cart.add({ productId: product.id, name: product.name, unitPriceCents: effectivePriceCents(product), quantity: qty, variants: selected, ...(product.images[0] ? { image: product.images[0] } : {}) });
-    setAdded(true);
+    const success = cart.add({ productId: product.id, name: product.name, unitPriceCents: effectivePriceCents(product), quantity: selectedQty, variants: selected });
+    setAdded(success);
+    setAddError(!success);
   }
 
   return (
@@ -88,11 +95,14 @@ export function ProductPage({ product }: { product: Product }) {
           <div>
             <div className={styles.legend}>Quantidade</div>
             <div className={styles.buy}>
-              <QuantityStepper label="Quantidade" value={qty} max={MAX_ITEM_QUANTITY} onChange={(v) => { setQty(v); setAdded(false); }} />
-              <Button size="lg" disabled={!purchasable} onClick={addToCart}><ShoppingCart size={20} /> Adicionar ao carrinho</Button>
+              <QuantityStepper label="Quantidade" value={selectedQty} max={remaining} onChange={(v) => { setQty(v); setAdded(false); }} />
+              <Button size="lg" disabled={!purchasable || remaining < 1} onClick={addToCart}><ShoppingCart size={20} /> Adicionar ao carrinho</Button>
             </div>
           </div>
           <div aria-live="polite">
+            {purchasable && remaining < 1 && <p className={styles.notice}>O limite disponível para este produto já está no carrinho.</p>}
+            {addError && <p role="alert" className={styles.notice}>A disponibilidade mudou. Revise a quantidade antes de adicionar.</p>}
+            {cart.persistenceError && <p role="alert" className={styles.notice}>Não foi possível salvar o carrinho neste navegador. Ele permanece apenas nesta aba.</p>}
             {added && (
               <p className={styles.added}><CheckCircle2 size={18} /> Adicionado ao carrinho. <Link to="/carrinho" className={cx(buttonClass("ghost", "sm"))}>Ver carrinho</Link></p>
             )}
