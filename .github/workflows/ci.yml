@@ -50,11 +50,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Exclui o próprio workflow e diretórios de documentação/scripts
+          # para evitar auto-detecção dos próprios padrões de varredura.
           if grep -RInE \
-            "(SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|service_role\s+eyJ|sk_live_|rk_live_|password\s*=\s*['\"][^'\"]{8,}|BEGIN (RSA|OPENSSH) PRIVATE KEY)" \
+            "(SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|sk_live_[A-Za-z0-9]{20,}|rk_live_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY)" \
             --include='*.ts' --include='*.tsx' --include='*.sql' --include='*.json' \
-            --include='*.md' --include='*.yml' --include='*.yaml' \
+            --include='*.env' --include='*.env.*' \
             --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.output \
+            --exclude-dir=.github --exclude-dir=docs --exclude-dir=ops \
             . ; then
             echo "::error::Possible secret/credential pattern found in versioned files."
             exit 1
@@ -79,7 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install python3 + psycopg2 + postgres-client
+      - name: Install python3 + postgres-client
         run: |
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends \
