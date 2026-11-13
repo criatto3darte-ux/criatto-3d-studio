@@ -11,3 +11,4 @@ Sem banco, autenticação ou publicação comercial nesta etapa.
 ## CR-007 — Planejamento de produção
 
 - [x] CR-007A: auditoria documental concluída; cinco documentos entregues em docs/CR-007A-*.md; 122 testes existentes aprovados; nenhuma alteração funcional ou conexão; CR-007B aguarda autorização expressa.
+- [ ] CR-007B / Etapa 1: diagnóstico e plano de migrations; confirmar conexão, exclusividade e inventário do Supabase de homologação antes de qualquer execução. Etapas 2–5 bloqueadas por essa confirmação e autorização posterior.

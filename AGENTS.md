@@ -30,6 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 ## Criatto 3D architecture
+- Production data architecture targets a client-owned Supabase project with TanStack Start hosted on Lovable; verify a dedicated staging database before migrations, because preview isolation alone does not protect production.
 - Styling uses CSS Modules + tokens in src/styles/tokens.css (no Tailwind, per client brief); theme via `data-theme` on <html>.
 - Store routes are `src/routes/_store.*` (pathless layout); admin routes are `src/routes/admin.*`; `/admin/login` is `admin_.login.tsx` to stay outside the sidebar layout.
 - Shared UI lives in src/shared/ui; feature code in src/features/{store,admin,cart}; business rules stay in pure modules (e.g. cart.logic.ts) outside components.
