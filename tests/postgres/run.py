@@ -29,21 +29,33 @@ def psql(db, sql):
                '-U','postgres','-X','-q','-v','ON_ERROR_STOP=1','-At','-d',db]
         return subprocess.run(cmd, input=sql, text=True, capture_output=True)
 
+def _out(s):
+    """psql can return None on stdout for DDL that returns no rows."""
+    return (s or '').strip()
+
 def execute(db, sql):
     r = psql(db, sql)
     if r.returncode:
-        raise RuntimeError(r.stderr)
-    return r.stdout.strip()
+        sys.stderr.write(r.stderr or '')
+        raise RuntimeError(r.stderr or 'psql failed')
+    return _out(r.stdout)
 
 def check(db, label, sql, expected=None, error=None):
     global passed
     r = psql(db, sql)
     if error:
-        assert r.returncode != 0 and error in r.stderr, (label, r.stdout, r.stderr)
+        if not (r.returncode != 0 and error in (r.stderr or '')):
+            sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+            raise AssertionError(label)
     else:
-        assert r.returncode == 0, (label, r.stderr)
+        if r.returncode != 0:
+            sys.stderr.write(f'CHECK FAILED (rc={r.returncode}): {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+            raise AssertionError(label)
         if expected is not None:
-            assert r.stdout.strip().splitlines()[-1] == expected, (label, r.stdout, expected)
+            last = _out(r.stdout).splitlines()[-1] if _out(r.stdout) else ''
+            if last != expected:
+                sys.stderr.write(f'CHECK FAILED: {label}\nexpected={expected!r}\ngot={last!r}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+                raise AssertionError(label)
     passed += 1
     print('PASS', label, flush=True)
 
@@ -106,10 +118,10 @@ def dropdb(name):
                        check=True)
 
 fingerprint = None
-for iteration in range(2):
-    db = 'cr007b_test_' + uuid.uuid4().hex[:12]
-    createdb(db)
-    try:
+try:
+    for iteration in range(2):
+        db = 'cr007b_test_' + uuid.uuid4().hex[:12]
+        createdb(db)
         execute(db, setup)
         for migration in sorted((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')):
             execute(db, migration.read_text())
@@ -319,6 +331,12 @@ COMMIT;
         else:
             assert schema == fingerprint, 'schema differs between clean rebuilds'
         print('CLEAN REBUILD', iteration+1, 'OK')
-    finally:
-        dropdb(db)
-print(json.dumps({'postgres':'17','assertions_passed':passed,'clean_rebuilds':2,'remote_connections':0}))
+        try:
+            dropdb(db)
+        except Exception as ex:
+            sys.stderr.write(f'warning: failed to drop {db}: {ex}\n')
+    print(json.dumps({'postgres':'17','assertions_passed':passed,'clean_rebuilds':2,'remote_connections':0}))
+except Exception:
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
