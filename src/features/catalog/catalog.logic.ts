@@ -1,5 +1,6 @@
 import type { CategorySlug, Product, ProductAvailability } from "@/shared/types/catalog";
 import { isCategorySlug } from "./categories";
+import { effectivePriceCents } from "@/features/demo-data/rules";
 
 export const SORT_OPTIONS = [
   { value: "relevancia", label: "Relevância" },
@@ -62,8 +63,8 @@ const availabilityRank: Record<ProductAvailability, number> = { "pronta-entrega"
 export function sortProducts(products: Product[], sort: SortKey = "relevancia"): Product[] {
   const list = [...products];
   switch (sort) {
-    case "preco-asc": return list.sort((a, b) => a.priceCents - b.priceCents);
-    case "preco-desc": return list.sort((a, b) => b.priceCents - a.priceCents);
+    case "preco-asc": return list.sort((a, b) => effectivePriceCents(a) - effectivePriceCents(b));
+    case "preco-desc": return list.sort((a, b) => effectivePriceCents(b) - effectivePriceCents(a));
     case "nome-asc": return list.sort((a, b) => collator.compare(a.name, b.name));
     case "nome-desc": return list.sort((a, b) => collator.compare(b.name, a.name));
     default:

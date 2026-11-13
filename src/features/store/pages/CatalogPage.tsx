@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { PackageSearch, Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/shared/ui/Input";
@@ -6,7 +6,7 @@ import { Button } from "@/shared/ui/Button";
 import { DemoNotice } from "@/shared/ui/DemoNotice";
 import { useStoreCatalog } from "@/features/catalog/catalog.service";
 import { AVAILABILITY_LABEL, PAGE_SIZE, SORT_OPTIONS, parseCatalogSearch, queryCatalog, type CatalogSearch } from "@/features/catalog/catalog.logic";
-import { ProductGrid, ProductGridSkeleton } from "../components/ProductCard";
+import { ProductGrid } from "../components/ProductCard";
 import { PageHeader } from "../components/Section";
 import styles from "./CatalogPage.module.css";
 
@@ -17,11 +17,10 @@ export function CatalogPage() {
   const navigate = useNavigate();
   const [term, setTerm] = useState(search.q ?? "");
   const [visible, setVisible] = useState(PAGE_SIZE);
-  const [loading, setLoading] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const update = (patch: Partial<Record<keyof CatalogSearch, string | undefined>>) =>
-    navigate({ to: "/produtos", search: parseCatalogSearch({ ...search, ...patch }), replace: true, resetScroll: false });
+  const update = useCallback((patch: Partial<Record<keyof CatalogSearch, string | undefined>>) =>
+    navigate({ to: "/produtos", search: (previous) => parseCatalogSearch({ ...previous, ...patch }), replace: true, resetScroll: false }), [navigate]);
 
   // Keep the box in sync when the header search changes the URL.
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
@@ -31,20 +30,13 @@ export function CatalogPage() {
     if (term.trim() === (search.q ?? "")) return;
     const t = setTimeout(() => update({ q: term }), 350);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term]);
+  }, [term, search.q, update]);
 
   const key = JSON.stringify(search);
-  const [lastKey, setLastKey] = useState(key);
-  // Demo loading state when the query changes (simulates a server round-trip).
+  // The shared demo catalog is synchronous: no simulated request or loading timer.
   useEffect(() => {
-    if (key === lastKey) return;
-    setLastKey(key);
     setVisible(PAGE_SIZE);
-    setLoading(true);
-    const t = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(t);
-  }, [key, lastKey]);
+  }, [key]);
 
   const { products, categories } = useStoreCatalog();
   const results = useMemo(() => queryCatalog(products, search), [products, search]);
@@ -92,11 +84,9 @@ export function CatalogPage() {
             </label>
           </div>
 
-          <p className={styles.result} aria-live="polite">{loading ? "Carregando…" : `${results.length} ${results.length === 1 ? "produto encontrado" : "produtos encontrados"}`}</p>
+          <p className={styles.result} aria-live="polite">{`${results.length} ${results.length === 1 ? "produto encontrado" : "produtos encontrados"}`}</p>
 
-          {loading ? (
-            <ProductGridSkeleton count={Math.min(6, Math.max(3, results.length))} />
-          ) : results.length === 0 ? (
+          {results.length === 0 ? (
             <div className={styles.empty}>
               <PackageSearch size={44} strokeWidth={1.4} aria-hidden="true" />
               <h2 style={{ fontSize: 20 }}>Nenhum produto encontrado</h2>
