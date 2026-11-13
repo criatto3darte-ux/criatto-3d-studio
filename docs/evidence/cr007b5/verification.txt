@@ -1,0 +1,5 @@
+PASS Vitest
+PASS tsc --noEmit
+PASS targeted ESLint --max-warnings 0
+PASS build
+PASS PostgreSQL: 614 assertions, 2 clean rebuilds

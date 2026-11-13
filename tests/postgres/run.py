@@ -63,7 +63,7 @@ for iteration in range(2):
         for migration in sorted((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')):
             execute(db,migration.read_text())
         check(db,'27 RLS/FORCE tables',"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",'27')
-        check(db,'8 applied source migrations',f"SELECT {len(list((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')))}",'8')
+        check(db,'9 applied source migrations',f"SELECT {len(list((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')))}",'9')
         check(db,'all table PKs',"SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='p'",'27')
         check(db,'composite foreign keys',"SELECT count(*)>=5 FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='f' AND cardinality(c.conkey)>1",'t')
         check(db,'no anon base grants',"SELECT count(*) FROM information_schema.role_table_grants WHERE grantee='anon' AND table_schema='public' AND table_name NOT LIKE 'public_%'",'0')
@@ -115,6 +115,7 @@ COMMIT;
         operations={t:1 for t in ['customers','orders','order_items','order_status_history','inventory','inventory_movements','order_allocations','coupon_redemptions','custom_requests','custom_request_images','custom_request_history']}
         for k in ['owner','editor','operator','finance','roleless','inactive','revoked']:
             counts={**{t:(n if k in ['owner','editor'] else 0) for t,n in catalog.items()},**{t:(n if k in ['owner','operator'] else 0) for t,n in operations.items()}}
+            if k=='editor': counts['media_assets']=1
             counts.update({'payments':1 if k in ['owner','operator','finance'] else 0,'coupons':1 if k in ['owner','editor','operator'] else 0,'store_settings':1 if k=='owner' else 0,'admin_audit_events':1 if k=='owner' else 0,'admin_profiles':7 if k=='owner' else 1,'user_roles':5 if k=='owner' else 1 if k in ['editor','operator','finance','inactive'] else 0})
             assert len(counts)==27
             for t,n in counts.items():
@@ -129,6 +130,17 @@ COMMIT;
         check(db,'payment pending denied',f"BEGIN; UPDATE public.orders SET status='aguardando-contato' WHERE id={q('order')}; INSERT INTO public.payments(order_id,amount_cents,kind,method,confirmed_by,operation_key) VALUES({q('order')},1,'receipt','test',{q('owner')},gen_random_uuid()); COMMIT;",error='payment requires confirmed')
         check(db,'settings social URL denied',"UPDATE public.store_settings SET social_links='{\"instagram\":\"javascript:alert(1)\"}'",error='invalid social link')
         check(db,'media not published withheld',f"BEGIN; UPDATE public.media_assets SET state='verified' WHERE id={q('media')}; SET LOCAL ROLE anon; SELECT count(*) FROM public.public_product_images; ROLLBACK;",'0')
+        check(db,'editor private media denied',actor('editor',f"SELECT count(*) FROM public.media_assets WHERE id={q('private-media')}"),'0')
+        check(db,'editor editorial media allowed',actor('editor',f"SELECT object_key FROM public.media_assets WHERE id={q('media')}"),'fake.webp')
+        check(db,'editor cannot self-verify',actor('editor',f"UPDATE public.media_assets SET state='verified' WHERE id={q('media')}"),error='permission denied')
+        check(db,'owner uses trusted command for media writes',actor('owner',f"UPDATE public.media_assets SET state='verified' WHERE id={q('media')}"),error='permission denied')
+        check(db,'editor cannot insert verified media',actor('editor',"INSERT INTO public.media_assets(bucket,object_key,mime,byte_size,width,height,checksum,state) VALUES('forged','fake','image/webp',1,1,1,'fake','published')"),error='permission denied')
+        check(db,'editor cannot delete private media',actor('editor',f"DELETE FROM public.media_assets WHERE id={q('private-media')}"),error='permission denied')
+        check(db,'anon cannot call media helper',f"SET ROLE anon; SELECT public.editor_can_read_media({q('media')})",error='permission denied')
+        check(db,'roleless cannot probe media classification',actor('roleless',f"SELECT public.editor_can_read_media({q('media')})"),'f')
+        check(db,'editor unlinked media denied',f"BEGIN; DELETE FROM public.product_images; DELETE FROM public.category_images; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub={q('editor')}; SELECT count(*) FROM public.media_assets; ROLLBACK;",'0')
+        check(db,'editor private attachment remains hidden even with editorial link',f"BEGIN; INSERT INTO public.product_images VALUES({q('product')},{q('private-media')},1,false); SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub={q('editor')}; SELECT count(*) FROM public.media_assets WHERE id={q('private-media')}; ROLLBACK;",'0')
+        check(db,'service retains trusted metadata updates',f"BEGIN; SET LOCAL ROLE service_role; UPDATE public.media_assets SET alt='Trusted' WHERE id={q('media')}; SELECT alt FROM public.media_assets WHERE id={q('media')}; ROLLBACK;",'Trusted')
         check(db,'anon narrow product parents',"SET ROLE anon; SELECT count(*) FROM public.public_products",'1')
         check(db,'anon effective price',"SET ROLE anon; SELECT effective_price_cents FROM public.public_products",'900')
         check(db,'anon availability boolean',"SET ROLE anon; SELECT available FROM public.public_availability",'t')

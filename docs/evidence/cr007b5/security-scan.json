@@ -1,0 +1,10 @@
+{
+  "scan": "heuristic literal-secret patterns; not a full secret scanner or guarantee",
+  "paths_scanned": 29,
+  "findings": [],
+  "github_connector": "unsupported",
+  "gh_cli_available": false,
+  "git_credential_helper_configured": false,
+  "standard_github_auth_env_present": false,
+  "no_auth_values_accessed_or_logged": true
+}
