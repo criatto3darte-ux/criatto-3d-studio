@@ -7,3 +7,7 @@
 - [x] CR-006E: transições/pagamentos protegidos, indicadores unificados, logo aplicada e encomendas revisadas; 122 testes aprovados, compra e painel validados em navegador; relatórios entregues para aprovação.
 
 Sem banco, autenticação ou publicação comercial nesta etapa.
+
+## CR-007 — Planejamento de produção
+
+- [x] CR-007A: auditoria documental concluída; cinco documentos entregues em docs/CR-007A-*.md; 122 testes existentes aprovados; nenhuma alteração funcional ou conexão; CR-007B aguarda autorização expressa.
