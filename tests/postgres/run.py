@@ -75,20 +75,35 @@ def actor(k,sql):
     return f"BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub={q(k)}; {sql}; ROLLBACK;"
 
 def createdb(name):
+    """Create an empty test database. Use psql (always present) instead of
+    relying on createdb/dropdb binaries which might not be in PATH in CI."""
     if os.environ.get('PGHOST'):
-        subprocess.run(['createdb','-h',os.environ['PGHOST'],'-p',os.environ.get('PGPORT','5432'),
-                        '-U',os.environ.get('PGUSER','postgres'),name],
-                       check=True, env={**os.environ,'PGPASSWORD':os.environ.get('PGPASSWORD','')})
+        env = {**os.environ, 'PGPASSWORD': os.environ.get('PGPASSWORD', '')}
+        subprocess.run(['psql','-h',os.environ['PGHOST'],'-p',os.environ.get('PGPORT','5432'),
+                        '-U',os.environ.get('PGUSER','postgres'),'-d','postgres',
+                        '-v','ON_ERROR_STOP=1','-c',f'CREATE DATABASE {name};'],
+                       check=True, env=env)
     else:
-        subprocess.run(['sudo','-u','postgres','createdb',name], check=True)
+        subprocess.run(['sudo','-u','postgres','psql','-d','postgres',
+                        '-v','ON_ERROR_STOP=1','-c',f'CREATE DATABASE {name};'],
+                       check=True)
 
 def dropdb(name):
+    """Force-drop a database. FORCE terminates lingering connections (like
+    psql in PIPESTATUS or half-finished transactions) which plain dropdb
+    would reject."""
     if os.environ.get('PGHOST'):
-        subprocess.run(['dropdb','-h',os.environ['PGHOST'],'-p',os.environ.get('PGPORT','5432'),
-                        '-U',os.environ.get('PGUSER','postgres'),name],
-                       check=True, env={**os.environ,'PGPASSWORD':os.environ.get('PGPASSWORD','')})
+        cmd = ['psql','-h',os.environ['PGHOST'],'-p',os.environ.get('PGPORT','5432'),
+               '-U',os.environ.get('PGUSER','postgres'),'-d','postgres',
+               '-v','ON_ERROR_STOP=1','-c',
+               f'DROP DATABASE IF EXISTS {name} WITH (FORCE);']
+        subprocess.run(cmd, check=True,
+                       env={**os.environ,'PGPASSWORD':os.environ.get('PGPASSWORD','')})
     else:
-        subprocess.run(['sudo','-u','postgres','dropdb',name], check=True)
+        subprocess.run(['sudo','-u','postgres','psql','-d','postgres',
+                        '-v','ON_ERROR_STOP=1','-c',
+                        f'DROP DATABASE IF EXISTS {name} WITH (FORCE);'],
+                       check=True)
 
 fingerprint = None
 for iteration in range(2):
