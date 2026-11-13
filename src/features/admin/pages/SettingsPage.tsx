@@ -20,6 +20,7 @@ export function SettingsPage() {
   const set = (p: Partial<StoreSettings>) => { setForm((f) => ({ ...f, ...p })); setSaved(false); };
 
   function save() {
+    setSaved(false);
     const clean: StoreSettings = { ...form, name: form.name.trim(), whatsappNumber: form.whatsappNumber.replace(/\D/g, ""), email: form.email.trim(), instagram: form.instagram.trim(), tiktok: form.tiktok.trim(), logo: form.logo.trim() };
     const e = validateSettings(clean);
     setErrors(e);
@@ -36,8 +37,8 @@ export function SettingsPage() {
         <h2 className={s.h2}>Loja</h2>
         <div className={s.formGrid}>
           <Input label="Nome da loja" value={form.name} error={errors.name} onChange={(e) => set({ name: e.target.value })} />
-          <Input label="Logotipo (caminho ou https://)" placeholder="/images/logo.svg" value={form.logo} error={errors.logo} onChange={(e) => set({ logo: e.target.value })} hint="Opcional; reservado para a logo oficial." />
-          <Input className={s.full} label="Endereço (quando aplicável)" value={form.address} onChange={(e) => set({ address: e.target.value })} />
+          <Input label="Logotipo (caminho ou https://)" placeholder="/images/logo.svg" value={form.logo} error={errors.logo} onChange={(e) => set({ logo: e.target.value })} />
+          <Input className={s.full} label="Endereço (quando aplicável)" value={form.address} maxLength={1000} error={errors.address} onChange={(e) => set({ address: e.target.value })} />
         </div>
       </Card>
       <Card>
@@ -52,9 +53,9 @@ export function SettingsPage() {
       <Card>
         <h2 className={s.h2}>Entregas e atendimento</h2>
         <div className={s.formGrid}>
-          <TextareaField className={s.full} label="Informações sobre entregas" value={form.deliveryInfo} maxLength={500} onChange={(e) => set({ deliveryInfo: e.target.value })} />
+          <TextareaField className={s.full} label="Informações sobre entregas" value={form.deliveryInfo} maxLength={500} error={errors.deliveryInfo} onChange={(e) => set({ deliveryInfo: e.target.value })} />
           <Check label="Oferece envio para todo o Brasil (exibe o selo na página inicial)" checked={form.offersNationalShipping} onChange={(v) => set({ offersNationalShipping: v })} />
-          <TextareaField className={s.full} label="Mensagem de atendimento" value={form.serviceMessage} maxLength={500} onChange={(e) => set({ serviceMessage: e.target.value })} />
+          <TextareaField className={s.full} label="Mensagem de atendimento" value={form.serviceMessage} maxLength={500} error={errors.serviceMessage} onChange={(e) => set({ serviceMessage: e.target.value })} />
         </div>
       </Card>
       <Card>

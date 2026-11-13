@@ -19,13 +19,17 @@ export function DashboardPage() {
     <div className={s.stack}>
       <div className={s.stats}>
         <StatCard label="Pedidos do dia" value={m.ordersToday} />
-        <StatCard label="Aguardando contato" value={m.awaitingContact} />
+        <StatCard label="Pedidos pendentes" value={m.pending} hint={`Aguardando contato: ${m.awaitingContact}`} />
         <StatCard label="Pedidos confirmados" value={m.confirmed} />
         <StatCard label="Em produção" value={m.inProduction} />
+        <StatCard label="Pedidos concluídos" value={m.completed} />
+        <StatCard label="Pedidos cancelados" value={m.cancelled} />
         <StatCard label="Produtos ativos" value={m.activeProducts} />
         <StatCard label="Estoque baixo/esgotado" value={m.lowStock} hint="Somente pronta entrega" />
         <StatCard label="Clientes fictícios" value={m.customers} />
-        <StatCard label="Receita confirmada (demo)" value={formatBRL(m.confirmedRevenueCents)} hint={`Recebido: ${formatBRL(m.receivedRevenueCents)} · Pendentes não contam`} />
+        <StatCard label="Vendas confirmadas (demo)" value={formatBRL(m.confirmedRevenueCents)} hint="Pendentes não contam" />
+        <StatCard label="Receita recebida" value={formatBRL(m.receivedRevenueCents)} />
+        <StatCard label="Estimativa pendente" value={formatBRL(m.pendingEstimateCents)} />
       </div>
       <div className={s.twoCol}>
         <Card>

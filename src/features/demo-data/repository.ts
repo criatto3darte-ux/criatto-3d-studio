@@ -3,6 +3,7 @@ import { createSeed } from "./seed";
 import { isDemoData } from "./rules";
 import { DEMO_SCHEMA_VERSION, type DemoData, type DemoEnvelope } from "./model";
 import { recoverDemoData } from "./validation";
+import { validOrderUpdates } from "./order.rules";
 
 /**
  * Repositório central de demonstração (LocalStorage, versionado).
@@ -115,7 +116,7 @@ export const demoRepository: DemoRepository = {
     let next: DemoData;
     try { next = fn(structuredClone(this.get())); }
     catch { status = { ...status, rejected: true }; emit(); return false; }
-    if (!isDemoData(next)) { status = { ...status, rejected: true }; emit(); return false; }
+    if (!isDemoData(next) || !validOrderUpdates(this.get().orders, next.orders)) { status = { ...status, rejected: true }; emit(); return false; }
     current = next;
     const saved = write(next);
     if (saved) recoveryApproved = false;

@@ -1,5 +1,7 @@
 import styles from "./Logo.module.css";
 import { cx } from "@/shared/utils/cx";
+import { useState } from "react";
+import { safeUrl } from "@/shared/utils/safe-url";
 
 /** Isometric gradient cube used as the Criatto 3D mark. Replace with the official SVG when available. */
 export function LogoMark({ className }: { className?: string | undefined }) {
@@ -18,13 +20,15 @@ export function LogoMark({ className }: { className?: string | undefined }) {
   );
 }
 
-export function Logo({ compact, showText = true }: { compact?: boolean; showText?: boolean }) {
+export function Logo({ compact, showText = true, name = "Criatto 3D", logo = "" }: { compact?: boolean; showText?: boolean; name?: string; logo?: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | undefined>();
+  const src = safeUrl(logo);
   return (
     <span className={cx(styles.logo, compact && styles.compact)}>
-      <LogoMark />
+      {src && failedSrc !== src ? <img key={src} src={src} className={styles.customMark} alt={`Logotipo de ${name}`} onError={() => setFailedSrc(src)} /> : <LogoMark />}
       {showText && (
         <span className={styles.text}>
-          <span className={styles.name}>Criatto <span>3D</span></span>
+          <span className={styles.name}>{name === "Criatto 3D" ? <>Criatto <span>3D</span></> : name}</span>
           <span className={styles.sub}>Produtos 3D</span>
         </span>
       )}

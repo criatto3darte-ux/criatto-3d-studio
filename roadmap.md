@@ -4,6 +4,6 @@
 - [x] CR-006B: limites compartilhados, reconciliação, persistência e sincronização corrigidos; 63 testes passaram; navegador validado; relatório entregue.
 - [x] CR-006C: metadados sincronizados com o catálogo público; HTML inicial conservador/noindex; 70 testes passaram; cadastro, edição, navegação e temas validados; relatório entregue para aprovação.
 - [x] CR-006D: validação completa, recuperação explícita e URLs seguras; testes e navegador validados; relatório entregue para aprovação.
-- [ ] CR-006E: pedidos e painel — aguarda autorização.
+- [x] CR-006E: transições/pagamentos protegidos, indicadores unificados, logo aplicada e encomendas revisadas; 122 testes aprovados, compra e painel validados em navegador; relatórios entregues para aprovação.
 
 Sem banco, autenticação ou publicação comercial nesta etapa.

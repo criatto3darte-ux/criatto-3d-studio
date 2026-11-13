@@ -74,8 +74,8 @@ export function ProductsPage() {
     const e = validateProduct(product, data.products, data.categories);
     setErrors(e);
     if (Object.keys(e).length) return;
-    demoRepository.update((d) => ({ ...d, products: draft.isNew ? [...d.products, product] : d.products.map((p) => (p.id === product.id ? product : p)) }));
-    setDraft(null);
+    const persisted = demoRepository.update((d) => ({ ...d, products: draft.isNew ? [...d.products, product] : d.products.map((p) => (p.id === product.id ? product : p)) }));
+    if (persisted) setDraft(null);
   }
 
   return (
@@ -128,8 +128,8 @@ export function ProductsPage() {
             </SelectField>
             <Input label="Preço (R$)" inputMode="decimal" value={draft.price} error={errors.priceCents} onChange={(e) => setDraft((d) => d && { ...d, price: e.target.value })} />
             <Input label="Preço promocional (opcional)" inputMode="decimal" value={draft.promo} error={errors.promoPriceCents} onChange={(e) => setDraft((d) => d && { ...d, promo: e.target.value })} />
-            <Input label="Estoque" type="number" min={0} value={String(draft.product.stock)} error={errors.stock} onChange={(e) => patch({ stock: Number(e.target.value) })} hint={draft.product.availability === "sob-demanda" ? "Sob encomenda: estoque zero não torna o produto indisponível." : undefined} />
-            <Input label="Prazo estimado (dias úteis)" type="number" min={1} value={draft.product.productionDays === undefined ? "" : String(draft.product.productionDays)} error={errors.productionDays} onChange={(e) => patch({ productionDays: e.target.value === "" ? undefined : Number(e.target.value) } as Partial<Product>)} />
+            {draft.product.availability !== "sob-demanda" && <Input label="Estoque" type="number" min={0} value={String(draft.product.stock)} error={errors.stock} onChange={(e) => patch({ stock: Number(e.target.value) })} />}
+            {draft.product.availability === "sob-demanda" && <Input label="Prazo estimado (dias úteis)" type="number" min={1} value={draft.product.productionDays === undefined ? "" : String(draft.product.productionDays)} error={errors.productionDays} onChange={(e) => patch({ productionDays: e.target.value === "" ? undefined : Number(e.target.value) } as Partial<Product>)} />}
             <Input label="Cores (separadas por vírgula)" value={draft.colors} onChange={(e) => setDraft((d) => d && { ...d, colors: e.target.value })} />
             <Input label="Tamanhos (separados por vírgula)" value={draft.sizes} onChange={(e) => setDraft((d) => d && { ...d, sizes: e.target.value })} />
             <TextareaField className={s.full} label="Descrição" value={draft.product.description} error={errors.description} onChange={(e) => patch({ description: e.target.value })} />
@@ -145,7 +145,7 @@ export function ProductsPage() {
 
       <ConfirmDialog open={!!toDelete} danger title="Excluir produto" confirmLabel="Excluir" text={`Excluir "${toDelete?.name ?? ""}"? Pedidos existentes mantêm o nome, o preço e as variações registrados no momento do pedido.`}
         onCancel={() => setToDelete(null)}
-        onConfirm={() => { const id = toDelete!.id; demoRepository.update((d) => ({ ...d, products: d.products.filter((p) => p.id !== id) })); setToDelete(null); }} />
+        onConfirm={() => { if (!toDelete) return; const id = toDelete.id; demoRepository.update((d) => ({ ...d, products: d.products.filter((p) => p.id !== id) })); setToDelete(null); }} />
     </div>
   );
 }

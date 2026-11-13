@@ -4,6 +4,8 @@ import { isValidBusinessNumber } from "@/features/checkout/checkout.logic";
 import type { DemoBanner, DemoCoupon, DemoData, DemoOrder, StoreSettings } from "./model";
 import { isValidDemoData } from "./validation";
 import { safeUrl, safeSocialUrl, safeEmail } from "@/shared/utils/safe-url";
+import { isPendingOrder } from "./order.rules";
+export { changeOrderStatus, changeOrderPayment } from "./order.rules";
 
 export const LOW_STOCK_THRESHOLD = 5;
 export type Errors = Record<string, string>;
@@ -108,9 +110,23 @@ export function orderTotal(o: DemoOrder): number {
   return orderSubtotal(o) + o.shippingCents;
 }
 
-export function changeOrderStatus(o: DemoOrder, to: OrderStatus, at: string, note?: string): DemoOrder {
-  if (o.status === to) return o;
-  return { ...o, status: to, history: [...o.history, { at, from: o.status, to, ...(note ? { note } : {}) }] };
+export function orderMetrics(orders: DemoOrder[]) {
+  const confirmed = orders.filter((o) => isConfirmedSale(o.status));
+  const pending = orders.filter((o) => isPendingOrder(o.status));
+  return {
+    pending: pending.length,
+    confirmed: confirmed.length,
+    completed: orders.filter((o) => o.status === "concluido").length,
+    cancelled: orders.filter((o) => o.status === "cancelado").length,
+    confirmedRevenueCents: confirmed.reduce((s, o) => s + orderTotal(o), 0),
+    receivedRevenueCents: confirmed.filter((o) => o.paymentReceived).reduce((s, o) => s + orderTotal(o), 0),
+    pendingEstimateCents: pending.reduce((s, o) => s + orderTotal(o), 0),
+  };
+}
+
+export function adjustProductStock(p: Product, stock: number): Product {
+  if (p.availability === "sob-demanda" || !Number.isInteger(stock) || stock < 0 || stock > 99999) throw new Error("Ajuste de estoque inválido.");
+  return { ...p, stock };
 }
 
 function sameDay(iso: string, ref: Date): boolean {
@@ -119,6 +135,9 @@ function sameDay(iso: string, ref: Date): boolean {
 }
 
 export interface DashboardMetrics {
+  pending: number;
+  completed: number;
+  cancelled: number;
   ordersToday: number;
   awaitingContact: number;
   confirmed: number;
@@ -137,16 +156,13 @@ export interface DashboardMetrics {
 export function dashboardMetrics(data: DemoData, now = new Date()): DashboardMetrics {
   const o = data.orders;
   return {
+    ...orderMetrics(o),
     ordersToday: o.filter((x) => sameDay(x.createdAt, now)).length,
     awaitingContact: o.filter((x) => x.status === "aguardando-contato").length,
-    confirmed: o.filter((x) => isConfirmedSale(x.status)).length,
     inProduction: o.filter((x) => x.status === "em-producao").length,
-    activeProducts: data.products.filter((p) => p.active).length,
+    activeProducts: publicProducts(data).length,
     lowStock: data.products.filter((p) => ["baixo", "esgotado"].includes(stockState(p))).length,
     customers: data.customers.length,
-    confirmedRevenueCents: o.filter((x) => isConfirmedSale(x.status)).reduce((s, x) => s + orderTotal(x), 0),
-    receivedRevenueCents: o.filter((x) => x.paymentReceived && x.status !== "cancelado").reduce((s, x) => s + orderTotal(x), 0),
-    pendingEstimateCents: o.filter((x) => x.status === "aguardando-contato" || x.status === "em-atendimento").reduce((s, x) => s + orderTotal(x), 0),
   };
 }
 
@@ -162,7 +178,7 @@ export function ordersByDay(orders: DemoOrder[], days: number, now = new Date())
       key: d.toDateString(),
       label: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
       orders: inDay.length,
-      confirmedCents: inDay.filter((o) => isConfirmedSale(o.status)).reduce((s, o) => s + orderTotal(o), 0),
+      confirmedCents: orderMetrics(inDay).confirmedRevenueCents,
     });
   }
   return out;
@@ -240,6 +256,10 @@ export function couponState(c: DemoCoupon, today: string): CouponState {
 export function validateSettings(s: StoreSettings): Errors {
   const e: Errors = {};
   if (s.name.trim().length < 2) e.name = "Informe o nome da loja.";
+  if (s.name.trim().length > 100) e.name = "Use até 100 caracteres.";
+  if (s.address.length > 1000) e.address = "Use até 1000 caracteres.";
+  if (s.deliveryInfo.length > 500) e.deliveryInfo = "Use até 500 caracteres.";
+  if (s.serviceMessage.length > 500) e.serviceMessage = "Use até 500 caracteres.";
   if (s.whatsappNumber && !isValidBusinessNumber(s.whatsappNumber)) e.whatsappNumber = "Use 55 + DDD + número, só dígitos (ex.: 5511912345678).";
   if (s.email && !safeEmail(s.email)) e.email = "E-mail inválido.";
   if (s.instagram && !safeSocialUrl(s.instagram, "instagram")) e.instagram = "Use o endereço completo do perfil (https://instagram.com/...).";

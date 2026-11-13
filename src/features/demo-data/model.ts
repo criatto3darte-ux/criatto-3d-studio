@@ -18,6 +18,7 @@ export interface OrderItemSnapshot {
 
 export interface OrderHistoryEntry {
   at: string;
+  paymentReceived?: boolean;
   from?: OrderStatus;
   to: OrderStatus;
   note?: string;

@@ -9,6 +9,7 @@ import { useCart } from "@/features/cart/CartContext";
 import { storeNav } from "./nav";
 import styles from "./StoreHeader.module.css";
 import { cx } from "@/shared/utils/cx";
+import { useStoreSettings } from "@/features/catalog/catalog.service";
 
 function SearchForm({ onDone, className }: { onDone?: () => void; className?: string | undefined }) {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ function SearchForm({ onDone, className }: { onDone?: () => void; className?: st
 }
 
 export function StoreHeader() {
+  const settings = useStoreSettings();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -41,8 +43,8 @@ export function StoreHeader() {
   return (
     <header className={styles.header}>
       <div className={cx("container", styles.inner)}>
-        <Link to="/" aria-label="Criatto 3D — página inicial" onClick={() => setOpen(false)}>
-          <Logo />
+        <Link to="/" aria-label={`${settings.name} — página inicial`} onClick={() => setOpen(false)}>
+          <Logo name={settings.name} logo={settings.logo} />
         </Link>
         <nav className={styles.nav} aria-label="Principal">
           {storeNav.map((item) => (

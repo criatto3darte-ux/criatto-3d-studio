@@ -34,11 +34,14 @@ function at(base: Date, daysAgo: number, hour: number): string {
   const d = new Date(base);
   d.setDate(d.getDate() - daysAgo);
   d.setHours(hour, 0, 0, 0);
+  // Today's fictitious entries must be actionable even when opened before their display hour.
+  if (daysAgo >= 0 && d.getTime() > base.getTime()) d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
 
 function snapshot(productId: string, quantity: number): OrderItemSnapshot {
-  const p = demoProducts.find((x) => x.id === productId)!;
+  const p = demoProducts.find((x) => x.id === productId);
+  if (!p) throw new Error("Produto demonstrativo ausente.");
   const variants = Object.fromEntries(p.variants.map((g) => [g.name, g.options[0]?.label ?? ""]));
   return { productId, name: p.name, unitPriceCents: p.priceCents, quantity, variants };
 }
@@ -54,11 +57,13 @@ export function createSeed(now: Date = new Date()): DemoData {
 
   const orders: DemoOrder[] = orderSeeds.map(([daysAgo, hour, c, status, items, shippingCents, received], i) => {
     const createdAt = at(now, daysAgo, hour);
+    const customer = customers[c];
+    if (!customer) throw new Error("Cliente demonstrativo ausente.");
     return {
       id: `o${String(i + 1).padStart(2, "0")}`,
       number: `DEMO-${4580 + orderSeeds.length - i}`,
       createdAt,
-      customerId: customers[c]!.id,
+      customerId: customer.id,
       items: items.map(([pid, q]) => snapshot(pid, q)),
       shippingCents,
       status,

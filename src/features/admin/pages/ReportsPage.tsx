@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Card } from "@/shared/ui/Card";
 import { formatBRL } from "@/shared/utils/format";
-import { ORDER_STATUS_LABEL, isConfirmedSale, type OrderStatus } from "@/shared/types/order";
+import { ORDER_STATUS_LABEL, type OrderStatus } from "@/shared/types/order";
 import { useDemoData } from "@/features/demo-data/repository";
-import { orderTotal, ordersByDay, ordersByStatus, stockState, topProducts } from "@/features/demo-data/rules";
+import { orderMetrics, ordersByDay, ordersByStatus, stockState, topProducts } from "@/features/demo-data/rules";
 import { BarChart, DataTable, HBarList, SelectField, StatCard, adminStyles as s } from "../ui/AdminUI";
 
 export function ReportsPage() {
@@ -11,10 +11,7 @@ export function ReportsPage() {
   const [days, setDays] = useState(30);
   const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - (days - 1));
   const orders = data.orders.filter((o) => new Date(o.createdAt) >= since);
-  const notCancelled = orders.filter((o) => o.status !== "cancelado");
-  const estimated = notCancelled.reduce((t, o) => t + orderTotal(o), 0);
-  const confirmed = orders.filter((o) => isConfirmedSale(o.status)).reduce((t, o) => t + orderTotal(o), 0);
-  const received = notCancelled.filter((o) => o.paymentReceived).reduce((t, o) => t + orderTotal(o), 0);
+  const m = orderMetrics(orders);
   const byStatus = ordersByStatus(orders);
   const series = ordersByDay(data.orders, days);
   const low = data.products.filter((p) => ["baixo", "esgotado"].includes(stockState(p)));
@@ -31,9 +28,9 @@ export function ReportsPage() {
       </div>
       <div className={s.stats}>
         <StatCard label="Pedidos no período" value={orders.length} />
-        <StatCard label="Valor estimado" value={formatBRL(estimated)} hint="Pedidos não cancelados (inclui pendentes)" />
-        <StatCard label="Vendas confirmadas" value={formatBRL(confirmed)} hint="Somente status confirmados" />
-        <StatCard label="Receita recebida" value={formatBRL(received)} hint="Pagamento marcado como recebido" />
+        <StatCard label="Estimativa pendente" value={formatBRL(m.pendingEstimateCents)} hint={`${m.pending} pedidos ainda não confirmados`} />
+        <StatCard label="Vendas confirmadas" value={formatBRL(m.confirmedRevenueCents)} hint="Somente status confirmados" />
+        <StatCard label="Receita recebida" value={formatBRL(m.receivedRevenueCents)} hint="Pagamento recebido em pedidos confirmados" />
       </div>
       <div className={s.twoCol}>
         <Card><h2 className={s.h2}>Pedidos por período</h2><BarChart data={series.map((d) => ({ label: d.label, value: d.orders }))} /></Card>

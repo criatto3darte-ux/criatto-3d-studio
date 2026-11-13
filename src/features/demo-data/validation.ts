@@ -2,6 +2,8 @@ import { z } from "zod";
 import { safeEmail, safeSocialUrl, safeUrl } from "@/shared/utils/safe-url";
 import { isValidBusinessNumber } from "@/features/checkout/checkout.logic";
 import type { DemoData } from "./model";
+import { isConfirmedSale } from "@/shared/types/order";
+import { isHistoricalTransition } from "./order.rules";
 
 const text = z.string().max(1000);
 const id = z.string().min(1).max(100);
@@ -26,11 +28,18 @@ const product = z.object({
   .refine((p) => p.availability !== "sob-demanda" || p.productionDays !== undefined);
 const category = z.object({ slug, name: z.string().trim().min(2).max(100), description: text, image: media.optional(), active: z.boolean(), order: integer });
 const customer = z.object({ id, name: z.string().trim().min(2).max(100), phone: z.string().regex(/^\d{10,13}$/), createdAt: date, notes: text });
-const item = z.object({ productId: id, name: id, unitPriceCents: integer, quantity: positive, variants: z.record(id, id).refine((v) => Object.keys(v).length <= 10) });
+const item = z.object({ productId: id, name: id, unitPriceCents: positive, quantity: positive, variants: z.record(id, id).refine((v) => Object.keys(v).length <= 10) });
 const order = z.object({ id, number: id, createdAt: date, customerId: id, items: z.array(item).min(1).max(1000), shippingCents: integer, status, notes: text, paymentReceived: z.boolean(),
-  history: z.array(z.object({ at: date, from: status.optional(), to: status, note: text.optional() })).min(1).max(1000),
+  history: z.array(z.object({ at: date, from: status.optional(), to: status, note: text.optional(), paymentReceived: z.boolean().optional() })).min(1).max(1000),
 }).refine((o) => o.history.at(-1)?.to === o.status && Number.isSafeInteger(o.items.reduce((s, i) => s + i.unitPriceCents * i.quantity, o.shippingCents)))
-  .refine((o) => o.history.every((h, i) => i === 0 || (h.from === o.history[i - 1]?.to && h.at >= (o.history[i - 1]?.at ?? ""))));
+  .refine((o) => o.history.every((h, i) => {
+    if (i === 0) return h.from === undefined && Date.parse(h.at) >= Date.parse(o.createdAt) && h.paymentReceived === undefined;
+    const previous = o.history[i - 1];
+    if (!previous || h.from !== previous.to || Date.parse(h.at) < Date.parse(previous.at)) return false;
+    return h.paymentReceived !== undefined ? h.to === h.from && isConfirmedSale(h.to) : isHistoricalTransition(previous.to, h.to);
+  }))
+  .refine((o) => !o.paymentReceived || isConfirmedSale(o.status) || (o.status === "cancelado" && o.history.some((h) => isConfirmedSale(h.to))))
+  .refine((o) => { const payment = o.history.filter((h) => h.paymentReceived !== undefined).at(-1); return !payment || payment.paymentReceived === o.paymentReceived; });
 const request = z.object({ id, createdAt: date, customerName: id, productName: id, description: text, color: text, dimensions: text, quantity: positive, referenceImage: media,
   status: z.enum(["recebida", "em-analise", "orcamento-enviado", "aprovado", "em-producao", "concluido", "cancelado"]), quoteCents: integer.nullable() });
 const banner = z.object({ id, title: z.string().trim().min(2), highlight: text, subtitle: z.string().max(160), image: media, buttonText: z.string().trim().min(1).max(100), buttonUrl: z.string().refine((v) => !!safeUrl(v)), order: integer, active: z.boolean() })

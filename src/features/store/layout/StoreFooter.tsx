@@ -7,14 +7,14 @@ import styles from "./StoreFooter.module.css";
 import { safeEmail, safeSocialUrl } from "@/shared/utils/safe-url";
 
 export function StoreFooter() {
-  const { whatsappNumber, email, instagram, tiktok } = useStoreSettings();
+  const { name, logo, whatsappNumber, email, instagram, tiktok } = useStoreSettings();
   const { categories } = useStoreCatalog();
   return (
     <footer className={styles.footer}>
       <div className="container">
         <div className={styles.grid}>
           <div>
-            <Logo compact />
+            <Logo compact name={name} logo={logo} />
             <p className={styles.about}>Produtos criativos fabricados por impressão 3D, com qualidade, precisão e atendimento personalizado.</p>
           </div>
           <nav aria-label="Rodapé">
@@ -44,7 +44,7 @@ export function StoreFooter() {
           </div>
         </div>
         <div className={styles.bottom}>
-          <span>© {new Date().getFullYear()} Criatto 3D. Todos os direitos reservados.</span>
+          <span>© {new Date().getFullYear()} {name}. Todos os direitos reservados.</span>
           <span>Pedidos finalizados pelo WhatsApp, sem cadastro.</span>
         </div>
       </div>

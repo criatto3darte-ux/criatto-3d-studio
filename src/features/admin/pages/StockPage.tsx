@@ -3,13 +3,12 @@ import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { demoRepository, useDemoData } from "@/features/demo-data/repository";
-import { LOW_STOCK_THRESHOLD, stockState, type StockState } from "@/features/demo-data/rules";
+import { adjustProductStock, LOW_STOCK_THRESHOLD, stockState, type StockState } from "@/features/demo-data/rules";
 import { DataTable, SelectField, adminStyles as s } from "../ui/AdminUI";
 import { STOCK_LABEL, STOCK_TONE } from "../ui/labels";
 
 function setStock(id: string, stock: number) {
-  const v = Math.max(0, Math.min(99999, Math.floor(stock)));
-  demoRepository.update((d) => ({ ...d, products: d.products.map((p) => (p.id === id ? { ...p, stock: v } : p)) }));
+  demoRepository.update((d) => ({ ...d, products: d.products.map((p) => (p.id === id ? adjustProductStock(p, stock) : p)) }));
 }
 
 export function StockPage() {
@@ -32,15 +31,15 @@ export function StockPage() {
             <tr key={p.id}>
               <td><strong>{p.name}</strong>{!p.active && <div className={s.muted}>Não publicado</div>}</td>
               <td><Badge tone={STOCK_TONE[st]}>{STOCK_LABEL[st]}</Badge>{st === "sob-demanda" && <div className={s.muted}>Produção: {p.productionDays ?? "—"} dias</div>}</td>
-              <td className={s.num}>{p.stock}</td>
+              <td className={s.num}>{st === "sob-demanda" ? "Não se aplica" : p.stock}</td>
               <td className={s.num}>
-                <div className={s.actions} style={{ alignItems: "center" }}>
+                {st === "sob-demanda" ? <span className={s.muted}>Sob encomenda</span> : <div className={s.actions} style={{ alignItems: "center" }}>
                   <Button size="sm" variant="outline" aria-label={`Diminuir estoque de ${p.name}`} onClick={() => setStock(p.id, p.stock - 1)} disabled={p.stock <= 0}>−1</Button>
                   <Button size="sm" variant="outline" aria-label={`Aumentar estoque de ${p.name}`} onClick={() => setStock(p.id, p.stock + 1)}>+1</Button>
                   <Input aria-label={`Definir estoque de ${p.name}`} type="number" min={0} style={{ width: 90 }} defaultValue={p.stock} key={p.stock}
                     onBlur={(e) => { const n = Number(e.target.value); if (Number.isFinite(n) && n !== p.stock) setStock(p.id, n); }}
                     onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-                </div>
+                </div>}
               </td>
             </tr>
           );

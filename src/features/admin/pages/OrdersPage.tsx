@@ -7,7 +7,8 @@ import { formatBRL, maskPhone } from "@/shared/utils/format";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/shared/types/order";
 import { buildWhatsAppUrl, isValidCustomerPhone } from "@/features/checkout/checkout.logic";
 import { demoRepository, useDemoData } from "@/features/demo-data/repository";
-import { changeOrderStatus, orderSubtotal, orderTotal } from "@/features/demo-data/rules";
+import { changeOrderPayment, changeOrderStatus, orderSubtotal, orderTotal } from "@/features/demo-data/rules";
+import { allowedOrderStatuses, canEditPayment } from "@/features/demo-data/order.rules";
 import type { DemoOrder } from "@/features/demo-data/model";
 import { Check, ConfirmDialog, DataTable, Modal, SelectField, TextareaField, adminStyles as s, formatDate } from "../ui/AdminUI";
 import { ORDER_STATUS_TONE } from "../ui/labels";
@@ -68,7 +69,7 @@ export function OrdersPage() {
               <div><div className={s.label}>Cliente fictício</div>{c?.name ?? "Cliente removido"}<div className={s.muted}>{c ? maskPhone(c.phone) : ""}</div></div>
               <div><div className={s.label}>Data</div>{formatDate(open.createdAt, true)}</div>
               <SelectField label="Status" value={open.status} onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}>
-                {STATUSES.map((st) => <option key={st} value={st}>{ORDER_STATUS_LABEL[st]}</option>)}
+                {[open.status, ...allowedOrderStatuses(open.status)].map((st) => <option key={st} value={st}>{ORDER_STATUS_LABEL[st]}</option>)}
               </SelectField>
             </div>
             <DataTable label="Itens do pedido" head={<><th>Produto</th><th className={s.num}>Qtd.</th><th className={s.num}>Unitário</th><th className={s.num}>Total</th></>}>
@@ -82,7 +83,9 @@ export function OrdersPage() {
               ))}
             </DataTable>
             <div className={s.muted}>Subtotal {formatBRL(orderSubtotal(open))} · Frete {formatBRL(open.shippingCents)} · <strong>Valor estimado {formatBRL(orderTotal(open))}</strong></div>
-            <Check label="Pagamento recebido (demonstração)" checked={open.paymentReceived} onChange={(v) => updateOrder(open.id, (o) => ({ ...o, paymentReceived: v }))} />
+            {canEditPayment(open)
+              ? <Check label="Pagamento recebido (demonstração)" checked={open.paymentReceived} onChange={(v) => updateOrder(open.id, (o) => changeOrderPayment(o, v, new Date().toISOString()))} />
+              : <p className={s.muted}>{open.status === "cancelado" ? (open.paymentReceived ? "Pagamento registrado antes do cancelamento; não incluído na receita recebida. Estorno não controlado nesta demonstração." : "Pedido cancelado, sem pagamento recebido.") : "Confirme o pedido antes de registrar o pagamento."}</p>}
             <TextareaField label="Observações" defaultValue={open.notes} key={open.id} maxLength={500} onBlur={(e) => { const notes = e.target.value; if (notes !== open.notes) updateOrder(open.id, (o) => ({ ...o, notes })); }} />
             <div>
               <div className={s.label} style={{ marginBottom: 8 }}>Histórico</div>
