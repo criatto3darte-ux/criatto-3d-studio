@@ -3,6 +3,8 @@
 Data: 13/11/2026.
 Branch: `feature/cr-007b-supabase-foundation`.
 Base: `main @ d922aeffe0f3bb7d7629ff3e8c3f76203a5b129f`.
+HEAD final após push: `3e6af67729e40ef5c69e625981cbba8c7b400dc0`.
+PR #1: https://github.com/criatto3darte-ux/criatto-3d-studio/pull/1 (OPEN, MERGEABLE, CLEAN).
 
 ## 1. Problemas corrigidos
 
