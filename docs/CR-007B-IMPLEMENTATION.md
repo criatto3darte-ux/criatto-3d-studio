@@ -1,5 +1,7 @@
 # CR-007B — Implementação da fundação de dados
 
+> **Atualização CR-007B.5:** este documento registra a entrega histórica de oito migrations/592 asserções. A revisão posterior encontrou e corrigiu excesso de privilégio de mídia, com nona migration incremental e 614 asserções. Consulte `CR-007B-GITHUB-INTEGRATION.md`; para integração use o bundle CR-007B5, não o bundle original isoladamente. Nenhum remoto foi escrito.
+
 Data: 13/11/2026. Escopo: loja única, implementação local, sem implantação.
 Base: `d922aeffe0f3bb7d7629ff3e8c3f76203a5b129f`.
 Branch: `feature/cr-007b-supabase-foundation`.

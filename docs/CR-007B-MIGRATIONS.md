@@ -1,5 +1,7 @@
 # CR-007B — Migrations e procedimento de revisão
 
+> **Atualização CR-007B.5:** este documento registra a entrega histórica de oito migrations/592 asserções. A revisão posterior encontrou e corrigiu excesso de privilégio de mídia, com nona migration incremental e 614 asserções. Consulte `CR-007B-GITHUB-INTEGRATION.md`; para integração use o bundle CR-007B5, não o bundle original isoladamente. Nenhum remoto foi escrito.
+
 **Não executar em Supabase remoto nesta entrega.** Versões são identificadores de ordenação, não histórico de aplicação remota. Cada arquivo tem BEGIN/COMMIT. Modelo de referência: CR-007A-DATA-MODEL.md; matriz de segurança: CR-007A-SECURITY.md.
 
 | Versão / sufixo `cr007b_*.sql` | Tabelas | Responsabilidade |

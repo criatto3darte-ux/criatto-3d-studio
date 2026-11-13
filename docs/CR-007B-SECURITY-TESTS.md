@@ -1,5 +1,7 @@
 # CR-007B — Evidências de testes e segurança
 
+> **Atualização CR-007B.5:** este documento registra a entrega histórica de oito migrations/592 asserções. A revisão posterior encontrou e corrigiu excesso de privilégio de mídia, com nona migration incremental e 614 asserções. Consulte `CR-007B-GITHUB-INTEGRATION.md`; para integração use o bundle CR-007B5, não o bundle original isoladamente. Nenhum remoto foi escrito.
+
 Execução local em 13/11/2026. Engine: PostgreSQL **17.12**, Debian 17.12-0+deb13u1. Não confundir testes locais do PostgreSQL com auditoria de produção Supabase.
 
 ## Resultado executado

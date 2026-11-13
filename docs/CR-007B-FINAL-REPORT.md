@@ -1,5 +1,7 @@
 # CR-007B — RELATÓRIO FINAL
 
+> **Atualização CR-007B.5:** este documento registra a entrega histórica de oito migrations/592 asserções. A revisão posterior encontrou e corrigiu excesso de privilégio de mídia, com nona migration incremental e 614 asserções. Consulte `CR-007B-GITHUB-INTEGRATION.md`; para integração use o bundle CR-007B5, não o bundle original isoladamente. Nenhum remoto foi escrito.
+
 **Data:** 13/11/2026 · **Situação:** fundação local entregue para revisão; aguardando aprovação explícita.
 **Repositório:** https://github.com/criatto3darte-ux/criatto-3d-studio
 **Branch:** `feature/cr-007b-supabase-foundation`
