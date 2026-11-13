@@ -5,13 +5,14 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Input } from "@/shared/ui/Input";
 import { ThemeSegmented } from "@/shared/ui/ThemeToggle";
-import { demoRepository, useDemoData } from "@/features/demo-data/repository";
+import { demoRepository, useDemoData, useDemoStorageStatus } from "@/features/demo-data/repository";
 import { validateSettings, type Errors } from "@/features/demo-data/rules";
 import type { StoreSettings } from "@/features/demo-data/model";
 import { Check, ConfirmDialog, TextareaField, adminStyles as s } from "../ui/AdminUI";
 
 export function SettingsPage() {
   const data = useDemoData();
+  const storageStatus = useDemoStorageStatus();
   const [form, setForm] = useState<StoreSettings>(data.settings);
   const [errors, setErrors] = useState<Errors>({});
   const [saved, setSaved] = useState(false);
@@ -23,9 +24,9 @@ export function SettingsPage() {
     const e = validateSettings(clean);
     setErrors(e);
     if (Object.keys(e).length) return;
-    demoRepository.update((d) => ({ ...d, settings: clean }));
+    const persisted = demoRepository.update((d) => ({ ...d, settings: clean }));
     setForm(clean);
-    setSaved(true);
+    setSaved(persisted);
   }
 
   return (
@@ -64,7 +65,7 @@ export function SettingsPage() {
       <div className={s.toolbar}>
         <Button onClick={save}><Save size={18} /> Salvar configurações</Button>
         <Button variant="outline" onClick={() => setConfirmReset(true)}><RotateCcw size={18} /> Restaurar dados fictícios</Button>
-        <span role="status" className={s.muted}>{saved ? "Configurações salvas (demonstração local)." : ""}</span>
+        <span role="status" className={s.muted}>{saved && !storageStatus.writeError && !storageStatus.recoveryRequired ? "Configurações salvas (demonstração local)." : ""}</span>
       </div>
       <ConfirmDialog open={confirmReset} danger title="Restaurar dados fictícios" confirmLabel="Restaurar" text="Todos os produtos, categorias, pedidos, clientes, banners, cupons e configurações voltarão ao estado inicial da demonstração. O carrinho e o tema não são afetados."
         onCancel={() => setConfirmReset(false)}

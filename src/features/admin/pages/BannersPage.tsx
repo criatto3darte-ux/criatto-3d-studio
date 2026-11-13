@@ -7,6 +7,7 @@ import { activeBanner, newId, validateBanner, type Errors } from "@/features/dem
 import type { DemoBanner } from "@/features/demo-data/model";
 import { Check, ConfirmDialog, DataTable, Modal, adminStyles as s } from "../ui/AdminUI";
 import { cx } from "@/shared/utils/cx";
+import { safeUrl } from "@/shared/utils/safe-url";
 
 function Preview({ b, mobile }: { b: DemoBanner; mobile?: boolean }) {
   return (
@@ -15,7 +16,7 @@ function Preview({ b, mobile }: { b: DemoBanner; mobile?: boolean }) {
       <div className={s.previewTitle}>{b.title} {b.highlight && <span className="text-gradient">{b.highlight}</span>}</div>
       {b.subtitle && <p className={s.muted}>{b.subtitle}</p>}
       <span className={s.thumbTag} style={{ position: "static", display: "inline-block", fontSize: 12, padding: "4px 10px" }}>{b.buttonText || "Botão"}</span>
-      {b.image ? <img className={s.previewImg} src={b.image} alt="" /> : <div className={s.muted} style={{ marginTop: 8 }}>Sem imagem (o cubo animado é exibido).</div>}
+      {safeUrl(b.image) ? <img className={s.previewImg} src={safeUrl(b.image)} alt="" /> : <div className={s.muted} style={{ marginTop: 8 }}>Sem imagem (o cubo animado é exibido).</div>}
     </div>
   );
 }

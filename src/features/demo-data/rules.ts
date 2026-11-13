@@ -2,6 +2,8 @@ import type { Category, Product, ProductAvailability } from "@/shared/types/cata
 import { isConfirmedSale, type OrderStatus } from "@/shared/types/order";
 import { isValidBusinessNumber } from "@/features/checkout/checkout.logic";
 import type { DemoBanner, DemoCoupon, DemoData, DemoOrder, StoreSettings } from "./model";
+import { isValidDemoData } from "./validation";
+import { safeUrl, safeSocialUrl, safeEmail } from "@/shared/utils/safe-url";
 
 export const LOW_STOCK_THRESHOLD = 5;
 export type Errors = Record<string, string>;
@@ -52,7 +54,7 @@ export function validateProduct(p: Product, all: Product[], categories: Category
   if (p.availability === "sob-demanda" && (!p.productionDays || p.productionDays < 1 || !Number.isInteger(p.productionDays)))
     e.productionDays = "Produtos sob encomenda precisam de prazo de produção (dias úteis).";
   if (p.description.length > 1000) e.description = "Use até 1000 caracteres.";
-  if (p.images.some((src) => src.startsWith("blob:") || src.startsWith("data:"))) e.images = "Imagens locais temporárias não podem ser salvas.";
+  if (p.images.some((src) => src !== "" && !safeUrl(src))) e.images = "Use apenas caminhos internos ou https://; imagens temporárias não podem ser salvas.";
   return e;
 }
 
@@ -64,6 +66,7 @@ export function validateCategory(c: Category, all: Category[], originalSlug?: st
   if (!SLUG_RE.test(c.slug)) e.slug = "Use letras minúsculas, números e hífens.";
   else if (all.some((o) => o.slug === c.slug && o.slug !== originalSlug)) e.slug = "Já existe uma categoria com este slug.";
   if (!Number.isInteger(c.order) || c.order < 0) e.order = "Ordem deve ser um inteiro positivo.";
+  if (c.image && !safeUrl(c.image)) e.image = "Use um caminho interno ou https://.";
   return e;
 }
 
@@ -197,17 +200,14 @@ export function customerStats(data: DemoData, customerId: string) {
 
 /* ---------- Banners, cupons e configurações ---------- */
 
-const URL_RE = /^(\/[\w\-./?=&%#]*|https:\/\/[^\s]+)$/;
-const IMG_RE = /^(\/[\w\-./%]+|https:\/\/[^\s]+)$/;
-
 export function validateBanner(b: DemoBanner): Errors {
   const e: Errors = {};
   if (b.title.trim().length < 2) e.title = "Informe o título.";
   if (b.title.length + b.highlight.length > 80) e.title = "Título muito longo (até 80 caracteres).";
   if (b.subtitle.length > 160) e.subtitle = "Use até 160 caracteres.";
   if (!b.buttonText.trim()) e.buttonText = "Informe o texto do botão.";
-  if (!URL_RE.test(b.buttonUrl)) e.buttonUrl = "Use um caminho interno (/produtos) ou um endereço https://.";
-  if (b.image && !IMG_RE.test(b.image)) e.image = "Use um caminho local (/images/...) ou um endereço https://.";
+  if (!safeUrl(b.buttonUrl)) e.buttonUrl = "Use um caminho interno (/produtos) ou um endereço https://.";
+  if (b.image && !safeUrl(b.image)) e.image = "Use um caminho local (/images/...) ou um endereço https://.";
   if (!Number.isInteger(b.order) || b.order < 0) e.order = "Ordem inválida.";
   return e;
 }
@@ -241,21 +241,15 @@ export function validateSettings(s: StoreSettings): Errors {
   const e: Errors = {};
   if (s.name.trim().length < 2) e.name = "Informe o nome da loja.";
   if (s.whatsappNumber && !isValidBusinessNumber(s.whatsappNumber)) e.whatsappNumber = "Use 55 + DDD + número, só dígitos (ex.: 5511912345678).";
-  if (s.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "E-mail inválido.";
-  if (s.instagram && !/^https:\/\/(www\.)?instagram\.com\/[\w.]+\/?$/.test(s.instagram)) e.instagram = "Use o endereço completo do perfil (https://instagram.com/...).";
-  if (s.tiktok && !/^https:\/\/(www\.)?tiktok\.com\/@[\w.]+\/?$/.test(s.tiktok)) e.tiktok = "Use o endereço completo do perfil (https://tiktok.com/@...).";
-  if (s.logo && !IMG_RE.test(s.logo)) e.logo = "Use um caminho local (/images/...) ou https://.";
+  if (s.email && !safeEmail(s.email)) e.email = "E-mail inválido.";
+  if (s.instagram && !safeSocialUrl(s.instagram, "instagram")) e.instagram = "Use o endereço completo do perfil (https://instagram.com/...).";
+  if (s.tiktok && !safeSocialUrl(s.tiktok, "tiktok")) e.tiktok = "Use o endereço completo do perfil (https://tiktok.com/@...).";
+  if (s.logo && !safeUrl(s.logo)) e.logo = "Use um caminho local (/images/...) ou https://.";
   return e;
 }
 
 /* ---------- Validação estrutural ao carregar ---------- */
 
 export function isDemoData(v: unknown): v is DemoData {
-  if (!v || typeof v !== "object") return false;
-  const d = v as Record<string, unknown>;
-  const arrays = ["products", "categories", "orders", "customers", "customRequests", "banners", "coupons"];
-  if (!arrays.every((k) => Array.isArray(d[k]))) return false;
-  if (!d.settings || typeof d.settings !== "object") return false;
-  const products = d.products as unknown[];
-  return products.every((p) => !!p && typeof p === "object" && typeof (p as Product).id === "string" && typeof (p as Product).slug === "string" && typeof (p as Product).priceCents === "number");
+  return isValidDemoData(v);
 }

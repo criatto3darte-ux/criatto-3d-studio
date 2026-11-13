@@ -9,6 +9,7 @@ import { DemoNotice } from "@/shared/ui/DemoNotice";
 import { adminNav, findAdminNav } from "./nav";
 import styles from "./AdminLayout.module.css";
 import { cx } from "@/shared/utils/cx";
+import { StorageNotice } from "@/features/demo-data/StorageNotice";
 
 const demoNotifications = [
   { title: "Novo pedido iniciado (#4588)", time: "há 5 min" },
@@ -104,6 +105,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </header>
         <div className={styles.content}>
           <DemoNotice />
+          <StorageNotice admin />
           {/* Demo data lives in this browser (LocalStorage): render admin screens only after hydration. */}
           <div style={{ marginTop: 24 }}>{hydrated ? children : <p aria-busy="true">Carregando dados de demonstração…</p>}</div>
         </div>

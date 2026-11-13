@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import styles from "./MediaImage.module.css";
 import { cx } from "@/shared/utils/cx";
+import { safeUrl } from "@/shared/utils/safe-url";
 
 export interface MediaImageProps {
   src?: string | undefined;
@@ -20,8 +21,8 @@ export function MediaImage({ src, alt, ratio = "1 / 1", fallbackIcon, accent, sh
   const style = { aspectRatio: ratio, ...(accent ? { "--accent": accent } : {}) } as CSSProperties;
   return (
     <div className={cx(styles.frame, className)} style={style}>
-      {src ? (
-        <img className={styles.img} src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" />
+      {safeUrl(src) ? (
+        <img className={styles.img} src={safeUrl(src)} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" />
       ) : (
         <div className={styles.placeholder} role="img" aria-label={`${alt} (imagem ilustrativa)`}>
           {fallbackIcon}

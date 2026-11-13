@@ -4,6 +4,7 @@ import { Logo } from "@/shared/ui/Logo";
 import { useStoreCatalog, useStoreSettings } from "@/features/catalog/catalog.service";
 import { storeNav } from "./nav";
 import styles from "./StoreFooter.module.css";
+import { safeEmail, safeSocialUrl } from "@/shared/utils/safe-url";
 
 export function StoreFooter() {
   const { whatsappNumber, email, instagram, tiktok } = useStoreSettings();
@@ -36,9 +37,9 @@ export function StoreFooter() {
               <li><Link to="/contato">Fale conosco</Link></li>
               <li><Link to="/privacidade">Política de Privacidade</Link></li>
               {isValidBusinessNumber(whatsappNumber) && <li><a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></li>}
-              {email && <li><a href={`mailto:${email}`}>{email}</a></li>}
-              {instagram && <li><a href={instagram} target="_blank" rel="noopener noreferrer">Instagram</a></li>}
-              {tiktok && <li><a href={tiktok} target="_blank" rel="noopener noreferrer">TikTok</a></li>}
+              {safeEmail(email) && <li><a href={`mailto:${email}`}>{email}</a></li>}
+              {safeSocialUrl(instagram, "instagram") && <li><a href={safeSocialUrl(instagram, "instagram")} target="_blank" rel="noopener noreferrer">Instagram</a></li>}
+              {safeSocialUrl(tiktok, "tiktok") && <li><a href={safeSocialUrl(tiktok, "tiktok")} target="_blank" rel="noopener noreferrer">TikTok</a></li>}
             </ul>
           </div>
         </div>

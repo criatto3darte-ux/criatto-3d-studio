@@ -5,15 +5,16 @@ import type { StoreSettings } from "@/features/demo-data/model";
 import { isValidBusinessNumber } from "@/features/checkout/checkout.logic";
 import { PageHeader } from "../components/Section";
 import styles from "./InfoPages.module.css";
+import { safeEmail, safeSocialUrl } from "@/shared/utils/safe-url";
 
 interface Channel { name: string; icon: ReactNode; value: string; href: string }
 
 function channels(c: StoreSettings): Channel[] {
   return [
     { name: "WhatsApp", icon: <MessageCircle size={28} />, value: isValidBusinessNumber(c.whatsappNumber) ? c.whatsappNumber : "", href: isValidBusinessNumber(c.whatsappNumber) ? `https://wa.me/${c.whatsappNumber}` : "" },
-    { name: "E-mail", icon: <Mail size={28} />, value: c.email, href: c.email ? `mailto:${c.email}` : "" },
-    { name: "Instagram", icon: <AtSign size={28} />, value: c.instagram, href: c.instagram },
-    { name: "TikTok", icon: <Music2 size={28} />, value: c.tiktok, href: c.tiktok },
+    { name: "E-mail", icon: <Mail size={28} />, value: c.email, href: safeEmail(c.email) ? `mailto:${c.email}` : "" },
+    { name: "Instagram", icon: <AtSign size={28} />, value: c.instagram, href: safeSocialUrl(c.instagram, "instagram") ?? "" },
+    { name: "TikTok", icon: <Music2 size={28} />, value: c.tiktok, href: safeSocialUrl(c.tiktok, "tiktok") ?? "" },
   ];
 }
 

@@ -4,6 +4,7 @@ import { LogoMark } from "@/shared/ui/Logo";
 import { useHeroBanner, useStoreSettings } from "@/features/catalog/catalog.service";
 import styles from "./Hero.module.css";
 import { cx } from "@/shared/utils/cx";
+import { safeUrl } from "@/shared/utils/safe-url";
 
 export function Hero() {
   const settings = useStoreSettings();
@@ -18,8 +19,8 @@ export function Hero() {
   const highlight = banner ? banner.highlight : "ganham forma.";
   const subtitle = banner?.subtitle ?? "Produtos 3D criativos para transformar seu dia a dia.";
   const cta = banner?.buttonText ?? "Explorar produtos";
-  const href = banner?.buttonUrl ?? "/produtos";
-  const image = banner?.image ?? "";
+  const href = safeUrl(banner?.buttonUrl) ?? "/produtos";
+  const image = safeUrl(banner?.image);
   const external = /^https:\/\//.test(href);
   return (
     <section className={styles.hero} aria-labelledby="hero-title">

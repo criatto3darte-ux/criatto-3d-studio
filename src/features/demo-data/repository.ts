@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { createSeed } from "./seed";
 import { isDemoData } from "./rules";
 import { DEMO_SCHEMA_VERSION, type DemoData, type DemoEnvelope } from "./model";
+import { recoverDemoData } from "./validation";
 
 /**
  * Repositório central de demonstração (LocalStorage, versionado).
@@ -12,8 +13,8 @@ export const DEMO_STORAGE_KEY = "criatto3d:demo-data";
 
 export interface DemoRepository {
   get(): DemoData;
-  update(fn: (d: DemoData) => DemoData): void;
-  reset(): void;
+  update(fn: (d: DemoData) => DemoData): boolean;
+  reset(): boolean;
   subscribe(listener: () => void): () => void;
 }
 
@@ -25,26 +26,57 @@ export function getServerSnapshot(): DemoData {
 let current: DemoData | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
+export interface DemoStorageStatus {
+  readError: boolean;
+  writeError: boolean;
+  recoveryRequired: boolean;
+  issues: string[];
+  rejected: boolean;
+}
+const clearStatus: DemoStorageStatus = { readError: false, writeError: false, recoveryRequired: false, issues: [], rejected: false };
+let status = clearStatus;
+let recoveryApproved = false;
+
+export function getDemoStorageStatus() { return status; }
+export function useDemoStorageStatus() {
+  // Initialize data and status together, without exposing browser-only state during SSR.
+  useDemoData();
+  return useSyncExternalStore(demoRepository.subscribe, getDemoStorageStatus, () => clearStatus);
+}
+export function acceptRecoveredDemoData() {
+  recoveryApproved = true;
+  status = { ...status, recoveryRequired: false };
+  emit();
+}
 
 function read(): DemoData {
   try {
     const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
-    if (raw) {
-      const env = JSON.parse(raw) as Partial<DemoEnvelope>;
-      if (env.schemaVersion === DEMO_SCHEMA_VERSION && isDemoData(env.data)) return env.data;
-    }
+    if (!raw) { status = clearStatus; return createSeed(); }
+    const env: unknown = JSON.parse(raw);
+    if (!env || typeof env !== "object" || Array.isArray(env)) throw new Error("invalid envelope");
+    const envelope = env as Record<string, unknown>;
+    if (envelope.schemaVersion !== DEMO_SCHEMA_VERSION || typeof envelope.savedAt !== "string" || !Number.isFinite(Date.parse(envelope.savedAt))) throw new Error("invalid version/date");
+    const recovered = recoverDemoData(envelope.data, createSeed());
+    status = { ...clearStatus, recoveryRequired: recovered.issues.length > 0, issues: recovered.issues };
+    return recovered.data;
   } catch {
-    /* corrupted or unavailable storage → fall back to seed */
+    let readError = false;
+    try { window.localStorage.getItem(DEMO_STORAGE_KEY); } catch { readError = true; }
+    status = { ...clearStatus, readError, recoveryRequired: !readError, issues: [readError ? "Não foi possível ler o armazenamento." : "JSON, versão ou envelope inválido; conteúdo original preservado."] };
+    return current ?? createSeed();
   }
-  return createSeed();
 }
 
 function write(data: DemoData) {
   try {
     const env: DemoEnvelope = { schemaVersion: DEMO_SCHEMA_VERSION, savedAt: new Date().toISOString(), data };
     window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(env));
+    status = { ...clearStatus };
+    return true;
   } catch {
-    /* quota or private mode: keep in memory only */
+    status = { ...status, writeError: true };
+    return false;
   }
 }
 
@@ -54,6 +86,12 @@ function bindStorage() {
   storageBound = true;
   window.addEventListener("storage", (e) => {
     if (e.key !== DEMO_STORAGE_KEY && e.key !== null) return;
+    recoveryApproved = false;
+    if (status.writeError) {
+      status = { ...status, recoveryRequired: true, issues: [...status.issues, "Outra aba alterou os dados; o rascunho não salvo foi preservado na memória."] };
+      emit();
+      return;
+    }
     current = read();
     emit();
   });
@@ -66,17 +104,29 @@ export const demoRepository: DemoRepository = {
     return (current ??= read());
   },
   update(fn) {
-    const next = fn(this.get());
-    if (!isDemoData(next)) throw new Error("Dados inválidos; alteração descartada.");
+    this.get();
+    // A failed write is an in-memory draft: do not replace it with older storage.
+    if (!status.writeError && !status.recoveryRequired && !recoveryApproved) {
+      const previous = current;
+      const latest = read();
+      current = JSON.stringify(previous) === JSON.stringify(latest) ? previous : latest;
+    }
+    if (status.recoveryRequired) { emit(); return false; }
+    let next: DemoData;
+    try { next = fn(structuredClone(this.get())); }
+    catch { status = { ...status, rejected: true }; emit(); return false; }
+    if (!isDemoData(next)) { status = { ...status, rejected: true }; emit(); return false; }
     current = next;
-    write(next);
+    const saved = write(next);
+    if (saved) recoveryApproved = false;
     emit();
+    return saved;
   },
   reset() {
     current = createSeed();
-    try { window.localStorage.removeItem(DEMO_STORAGE_KEY); } catch { /* ignore */ }
-    write(current);
+    const saved = write(current);
     emit();
+    return saved;
   },
   subscribe(listener) {
     bindStorage();
@@ -88,6 +138,8 @@ export const demoRepository: DemoRepository = {
 /** Test helper: forget the in-memory cache. */
 export function __resetDemoCache() {
   current = null;
+  status = clearStatus;
+  recoveryApproved = false;
 }
 
 export function useDemoData(): DemoData {
