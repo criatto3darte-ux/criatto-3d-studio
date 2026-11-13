@@ -18,7 +18,7 @@ export interface DemoRepository {
 }
 
 let serverSnapshot: DemoData | null = null;
-function getServerSnapshot(): DemoData {
+export function getServerSnapshot(): DemoData {
   return (serverSnapshot ??= createSeed());
 }
 

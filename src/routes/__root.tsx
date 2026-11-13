@@ -16,6 +16,7 @@ import { ThemeProvider, themeBootScript } from "@/shared/theme/ThemeProvider";
 import { CartProvider } from "@/features/cart/CartContext";
 import { SystemPage } from "@/shared/ui/SystemPage";
 import { Button, buttonClass } from "@/shared/ui/Button";
+import type { DemoData } from "@/features/demo-data/model";
 
 function NotFoundComponent() {
   return (
@@ -49,7 +50,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient; productMetadataCatalog?: DemoData }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
