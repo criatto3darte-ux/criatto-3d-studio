@@ -25,6 +25,14 @@ DROP TRIGGER IF EXISTS private_attachment ON public.media_assets;
 DROP TRIGGER IF EXISTS private_attachment ON public.custom_request_images;
 DROP TRIGGER IF EXISTS private_attachment ON public.payments;
 
+-- Stable int8 derivation from uuid: use the last 16 hex characters of the
+-- uuid (i.e., its lower 64 bits in standard UUID ordering) parsed as a signed
+-- bigint. Deterministic, well-distributed, no hex-to-bit casts needed.
+CREATE OR REPLACE FUNCTION public._media_lock_key(asset uuid) RETURNS bigint
+LANGUAGE sql STABLE SET search_path = public, pg_temp AS $$
+  SELECT ('x' || right(replace(asset::text,'-',''), 16))::bit(64)::bigint;
+$$;
+
 CREATE OR REPLACE FUNCTION public.check_private_media()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
@@ -43,22 +51,19 @@ BEGIN
     END IF;
     -- Serialize against concurrent linking of THIS media to a private
     -- attachment. A lock per media id keeps unrelated publishes independent.
-    -- uuid cannot be cast directly to bigint (128-bit vs 64-bit); derive a
-    -- stable non-negative bigint from the uuid's first 16 hex chars so the
-    -- advisory lock key fits int8.
-    PERFORM pg_advisory_xact_lock(7007, ('x'||replace(target_media::text,'-','')::bit(64)::bigint));
+    PERFORM pg_advisory_xact_lock(7007, public._media_lock_key(target_media));
   ELSIF TG_TABLE_NAME = 'custom_request_images' THEN
     target_media := NEW.media_id;
     -- Lock the same key so a concurrent UPDATE media_assets SET state='published'
     -- for this asset cannot slip past us between our read and commit.
-    PERFORM pg_advisory_xact_lock(7007, ('x'||replace(target_media::text,'-','')::bit(64)::bigint));
+    PERFORM pg_advisory_xact_lock(7007, public._media_lock_key(target_media));
     SELECT m.state INTO new_state FROM public.media_assets m WHERE m.id = target_media;
   ELSIF TG_TABLE_NAME = 'payments' THEN
     target_media := NEW.evidence_media_id;
     IF target_media IS NULL THEN
       RETURN NEW;
     END IF;
-    PERFORM pg_advisory_xact_lock(7007, ('x'||replace(target_media::text,'-','')::bit(64)::bigint));
+    PERFORM pg_advisory_xact_lock(7007, public._media_lock_key(target_media));
     SELECT m.state INTO new_state FROM public.media_assets m WHERE m.id = target_media;
   END IF;
 

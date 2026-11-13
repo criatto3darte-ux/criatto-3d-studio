@@ -36,7 +36,10 @@ def _out(s):
 def execute(db, sql):
     r = psql(db, sql)
     if r.returncode:
-        sys.stderr.write(r.stderr or '')
+        sys.stderr.write('=== PSQL FAILED ===\n')
+        sys.stderr.write('SQL: ' + sql[:2000] + '\n')
+        sys.stderr.write('STDOUT: ' + (r.stdout or '') + '\n')
+        sys.stderr.write('STDERR: ' + (r.stderr or '') + '\n')
         raise RuntimeError(r.stderr or 'psql failed')
     return _out(r.stdout)
 

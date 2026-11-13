@@ -129,4 +129,6 @@ jobs:
         env:
           PGHOST: 127.0.0.1
           PGUSER: postgres
-        run: python3 tests/postgres/run.py
+          PYTHONUNBUFFERED: 1
+        run: |
+          python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log
