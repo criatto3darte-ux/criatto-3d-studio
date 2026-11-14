@@ -28,7 +28,7 @@ LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT COALESCE(
-    array_agg(r.role ORDER BY r.role) FILTER (WHERE p.active),
+    array_agg(r.role::text ORDER BY r.role::text) FILTER (WHERE p.active),
     ARRAY[]::text[]
   )
   FROM public.admin_profiles p
@@ -70,7 +70,7 @@ BEGIN
 
   -- Roles efetivas. Se for proprietário/editor/operador/financeiro, listamos
   -- todas as roles ativas. Se não houver, retornamos array vazio.
-  SELECT COALESCE(array_agg(r.role) FILTER (WHERE p.active), ARRAY[]::text[])
+  SELECT COALESCE(array_agg(r.role::text) FILTER (WHERE p.active), ARRAY[]::text[])
     INTO roles
     FROM public.admin_profiles p
     LEFT JOIN public.user_roles r ON r.user_id = p.user_id
@@ -101,10 +101,13 @@ GRANT EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) TO service_role
 -- -----------------------------------------------------------------------------
 -- 3. Helper RLS que exige AAL2 (MFA verificado) para qualquer acesso.
 --    Usado em POLICYs nas tabelas administrativas quando não forem públicas.
+--    É SECURITY INVOKER porque apenas lê um GUC da sessão e é executada no
+--    contexto da policy (authenticated). NUNCA deve ser SECURITY DEFINER —
+--    não há necessidade de privilégios elevados.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.require_aal2()
 RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER
+LANGUAGE sql STABLE
 SET search_path = public, pg_temp
 AS $$
   SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb->>'aal', 'aal1') = 'aal2';
@@ -159,8 +162,11 @@ BEGIN
          'inventory','inventory_movements','coupons','banners',
          'custom_requests','custom_request_images','store_settings'
        )
-       AND pol.polname IN ('admin_read','admin_write','coupon_rw','coupon_read_operador',
-                           'banner_rw','payments_owner','payments_finance')
+       AND pol.polname IN ('admin_read','admin_write',
+                           'coupon_rw','coupon_read_operador','coupon_editor',
+                           'banner_rw','banner_editor',
+                           'payments_owner','payments_finance','finance_read',
+                           'settings_owner','own_profile','own_roles')
   LOOP
     -- Recreia cada policy adicionando AND public.require_aal2()
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', r.policy, r.table);

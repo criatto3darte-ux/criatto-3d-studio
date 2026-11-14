@@ -36,3 +36,5 @@ node_modules/
 .pgdata-*/
 .venv*/
 .tools/
+scripts/vendor/node_modules/
+scripts/vendor/package-lock.json
