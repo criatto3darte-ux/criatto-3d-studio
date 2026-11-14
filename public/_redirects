@@ -1,0 +1,6 @@
+# Locaweb / Netlify-style SPA fallback.
+# Qualquer caminho que não corresponda a um arquivo físico retorna o
+# index.html para que o TanStack Router resolva a rota no cliente.
+# Os assets estáticos (JS/CSS/imagens/robots.txt/favicon.ico) são servidos
+# diretamente pelo servidor de arquivos e nunca caem nesta regra.
+/*    /index.html   200

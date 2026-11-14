@@ -1,0 +1,22 @@
+$ vitest run
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/user/criatto-3d-studio[39m
+
+ [32m✓[39m src/test/cr006e-orders.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[32m 117[2mms[22m[39m
+ [32m✓[39m src/test/cr006d-persistence.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 304[2mms[22m[39m
+ [32m✓[39m src/test/cr006b-cart.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m src/test/cr005-integration.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m src/test/demo-data.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/test/cr006a-catalog.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 774[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the latest typed query together with rapid category, availability and sort changes [33m 579[2mms[22m[39m
+ [32m✓[39m src/test/checkout.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/test/cr006c-product-seo.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/test/catalog.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/test/foundation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/test/app-routing.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m      Tests [22m [1m[32m122 passed[39m[22m[90m (122)[39m
+[2m   Start at [22m 16:25:49
+[2m   Duration [22m 10.26s[2m (transform 855ms, setup 1.35s, import 2.17s, tests 1.41s, environment 3.75s)[22m
+
