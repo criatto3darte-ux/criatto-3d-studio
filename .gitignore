@@ -38,3 +38,4 @@ node_modules/
 .tools/
 scripts/vendor/node_modules/
 scripts/vendor/package-lock.json
+package-lock.json

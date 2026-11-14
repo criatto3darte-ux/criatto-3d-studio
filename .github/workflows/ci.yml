@@ -50,19 +50,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Exclui o próprio workflow e diretórios de documentação/scripts
-          # para evitar auto-detecção dos próprios padrões de varredura.
-          if grep -RInE \
-            "(SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|sk_live_[A-Za-z0-9]{20,}|rk_live_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY)" \
-            --include='*.ts' --include='*.tsx' --include='*.sql' --include='*.json' \
-            --include='*.env' --include='*.env.*' \
-            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.output \
-            --exclude-dir=.github --exclude-dir=docs --exclude-dir=ops \
-            . ; then
-            echo "::error::Possible secret/credential pattern found in versioned files."
-            exit 1
-          fi
-          echo "Credential scan: no obvious secrets."
+          # Scanner dedicado (scripts/credential-scan.sh) — diferencia NOMES de
+          # variáveis (permitidos em comentários, tipos TS, .env.example com
+          # valor vazio) de VALORES de segredos reais (JWTs, chaves privadas,
+          # tokens GitHub, chaves Stripe, connection strings com senha).
+          # Ver scripts/credential-scan.test.sh para testes positivos/negativos.
+          chmod +x scripts/credential-scan.sh
+          bash scripts/credential-scan.sh
+
+      - name: Credential scan self-test (positivos + negativos)
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/credential-scan.test.sh
+          bash scripts/credential-scan.test.sh
 
   postgres-local:
     name: PostgreSQL 17 local (RLS + migration integrity)

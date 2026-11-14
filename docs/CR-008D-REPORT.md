@@ -319,18 +319,15 @@ Verificação de rotas públicas via `vite preview` (porta 4182):
 | Vitest (187 testes) | ✅ PASS | |
 | Build (vite) | ✅ PASS | |
 | Targeted ESLint | ✅ PASS | 0 erros/warnings |
-| Credential scan (heurístico) | ⚠️ FALSO POSITIVO (detalhes abaixo) | Não bloqueia homologação |
+| Credential scan (heurístico) | ✅ PASS (corrigido em CR-008D.1) | |
+| Credential scan self-test (positivos + negativos) | ✅ PASS (23/23) | |
 | PostgreSQL 17 local (RLS + migration integrity) | ✅ PASS | 36s |
 
-**Falha do credential scan (falso positivo pré-existente)**: O passo de varredura heurística detecta os NOMES de variáveis de ambiente (`VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) em arquivos legítimos do projeto (`.env.example`, `src/lib/supabase/client.ts`, `src/vite-env.d.ts`). Nenhum valor de chave/segredo real está presente no repositório:
-- `.env.example`: contém apenas o URL público `https://ugwuxczcqlrdjkpjsdqb.supabase.co` (público, usado no frontend) e `VITE_SUPABASE_ANON_KEY=` (placeholder VAZIO);
-- `client.ts`: referência a `import.meta.env.VITE_SUPABASE_ANON_KEY` (leitura de variável de ambiente no código — é a forma correta);
-- Há um comentário `NUNCA adicione a SUPABASE_SERVICE_ROLE_KEY aqui.` que também corresponde ao regex.
+**Correção do credential scan (CR-008D.1)**: O regex ingênuo do workflow detectava nomes de variáveis em vez de valores de segredos reais. A CR-008D.1 substituiu o grep por um scanner dedicado (`scripts/credential-scan.sh`) que diferencia comentários/referências de runtime/declarações de tipos/.env.example com valores vazios de JWTs/chaves privadas/tokens reais. Foram adicionados 23 testes automatizados (13 negativos + 10 positivos) que rodam no CI. Ver `docs/CR-008D1-REPORT.md` para detalhes.
 
-Esses arquivos foram introduzidos na CR-007E.4 (commit `0dcc34d`), não por esta CR-008D. O regex do workflow é excessivamente abrangente (detecta nomes de variáveis, não valores de segredos). Não há vazamento real de credenciais. O job PostgreSQL 17 real, que é o mais relevante para esta auditoria, passou em ambas as execuções.
-
-Histórico de correções de CI nesta CR:
-1. O job "Install (--frozen-lockfile)" falhou inicialmente porque `@electric-sql/pglite` foi instalado como devDependency do projeto. Corrigido movendo pglite para `scripts/vendor/` com package.json isolado e regenerando o bun.lock (commit `5f372da`). Install/tsc/vitest/build/eslint agora todos passam.
+Histórico de correções de CI:
+1. **Install (--frozen-lockfile)** falhou inicialmente por `@electric-sql/pglite` no package.json principal → corrigido movendo para `scripts/vendor/` e regenerando bun.lock (commit `5f372da`).
+2. **Credential scan** falso positivo por regex abrangente → corrigido na CR-008D.1 com scanner inteligente e testes.
 
 ---
 
