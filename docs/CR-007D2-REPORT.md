@@ -3,7 +3,7 @@
 **Projeto:** criatto3d-homolog (`ugwuxczcqlrdjkpjsdqb`, sa-east-1, PG 17.11, free, healthy)
 **Branch:** `feature/cr-007b-supabase-foundation`
 **Base aprovada:** `b53ac36cfa07c116582442b01f0c772f9fd29902`
-**Novo HEAD (deste CR):** `3c95f6d2f94da4d1325b3104c49460c269223b80`
+**Novo HEAD (deste CR):** `8cb245cbbcc6370482c711418406137618a61136`
 **Data:** 2026-11-13 (UTC)
 
 ---
@@ -240,7 +240,7 @@ Após o push do commit `ec3387d`, o PR #1 reporta **2/2 checks passando**:
 | `static` (bun install --frozen-lockfile / tsc --noEmit / vitest / vite build / ESLint direcionado / credential scan) | ✅ **pass** | 20s | [runs/43537574486/job/132270186436](https://github.com/criatto3darte-ux/criatto-3d-studio/actions/runs/43537574486/job/132270186436) |
 | `postgres-local` (postgres:17, hash-lock, 2 rebuilds limpos + cenário de retomada + ~155 asserts de RLS/privilégios/mídia privada/matriz de papéis) | ✅ **pass** | 28s | [runs/43537574486/job/132270186810](https://github.com/criatto3darte-ux/criatto-3d-studio/actions/runs/43537574486/job/132270186810) |
 
-Novo HEAD: `3c95f6d2f94da4d1325b3104c49460c269223b80`.
+Novo HEAD: `8cb245cbbcc6370482c711418406137618a61136`.
 
 ## 6. Plano de retomada (PREPARADO, NÃO EXECUTADO)
 
