@@ -31,3 +31,8 @@ dist-ssr
 *.sln
 *.sw?
 node_modules/
+
+# Local throwaway Postgres clusters + virtualenv created by scripts/
+.pgdata-*/
+.venv*/
+.tools/

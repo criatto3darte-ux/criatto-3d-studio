@@ -4,6 +4,7 @@ Runs locally (sudo -u postgres over unix socket) by default.
 In CI (PGHOST/PGUSER env present without SUDO_PG) uses TCP/PGPASSWORD.
 Connects ONLY to a local/cluster-local database; never to a remote host.
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -120,18 +121,74 @@ def dropdb(name):
                         f'DROP DATABASE IF EXISTS {name} WITH (FORCE);'],
                        check=True)
 
+def all_migrations():
+    """All CR-007* migrations in lexical (timestamp) order. Currently only
+    cr007b_* foundation migrations exist; this glob also picks up any
+    future cr007d_* incremental fixes / guards."""
+    return sorted((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
+
+# SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
+# The CI HARD-FAILS if any on-disk migration drifts from its pinned hash,
+# closing the CR-007D root cause (SQL body reconstructed/edited manually
+# instead of sent verbatim). Add new entries here ONLY after CR review.
+APPROVED_MIGRATION_SHA256 = {
+    '20261113120100_cr007b_identity.sql': '6185d0f397ab576c1d8ea6a7b85544baa531f9182285bca606d8c88c66b8ab88',
+    '20261113120200_cr007b_catalog.sql':  'd9cb31233b8f8760e31ae7b02f6d9e37a3dd82516c35db3f88535418df3dcb5c',
+    '20261113120300_cr007b_media.sql':    'a644c6a3b4f89b2db4f6aa6aaa6f07d298b007e7c0baeb66995aef6a4ec80412',
+    '20261113120400_cr007b_orders.sql':   '9583c1c18d68215b094978a1ad3720a40913be0ffd79a243e8741ffdbf688d0a',
+    '20261113120500_cr007b_inventory.sql':'979fe4ba651a56c1f13ab679841f4d0c867dbf25fd1dc0eaeafa4e760e745c34',
+    '20261113120600_cr007b_coupons_requests.sql':'d6ec0dd8b5e062919636e2955adb45b643f597ac1dbcb3b8cbc1cf797367a184',
+    '20261113120700_cr007b_content_audit.sql':'741093f9ea66a7880ec2a0541c57825b9d60cf9f8fac586ea6daeb4a809765df',
+    '20261113120800_cr007b_access_invariants.sql':'de9f7e5e2c5b672692eeafeade78dd07b62b694c5649dfa36ea9ef7ace40f1b8',
+    '20261113120900_cr007b_media_privilege_hardening.sql':'683ffe938b3e88ee4eff88e65351770af87d42a9e984d44d3d6bd957c69d8ac7',
+    '20261113121000_cr007b7_private_media_and_role_matrix.sql':'e22fdd131f09f860e21a4d22e51cdc9c9baa5e4584b06e8dbc6eb686686eb2c9',
+}
+
+def verify_migration_integrity():
+    """Fail fast if any on-disk migration differs from its approved hash,
+    or if a new migration exists without a pinned hash entry."""
+    for mig in all_migrations():
+        expected = APPROVED_MIGRATION_SHA256.get(mig.name)
+        if expected is None:
+            sys.stderr.write(
+                f'UNPINNED MIGRATION: {mig.name} -- add its sha256 '
+                f'to APPROVED_MIGRATION_SHA256 after CR review\n')
+            sys.exit(3)
+        actual = hashlib.sha256(mig.read_bytes()).hexdigest()
+        if actual != expected:
+            sys.stderr.write(
+                f'MIGRATION TAMPERED: {mig.name}\n'
+                f'  expected {expected}\n'
+                f'  actual   {actual}\n')
+            sys.exit(3)
+
+verify_migration_integrity()
+
+def structural_fingerprint(db):
+    """Return a single string that uniquely identifies the CR-007B public
+    schema: tables, columns, constraints, indexes, policies, triggers and
+    grants aggregated in canonical order. Used to compare the resume
+    scenario with a clean rebuild."""
+    cols = execute(db, "SELECT string_agg(table_name||'.'||column_name||':'||data_type,',' ORDER BY table_name,ordinal_position) FROM information_schema.columns WHERE table_schema='public'")
+    cons = execute(db, "SELECT string_agg(conname||':'||contype||':'||pg_get_constraintdef(c.oid),',' ORDER BY conname) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public'")
+    idx = execute(db, "SELECT string_agg(indexrelname,',' ORDER BY indexrelname) FROM pg_stat_user_indexes WHERE schemaname='public'")
+    pol = execute(db, "SELECT string_agg(tablename||'.'||policyname||':'||cmd,',' ORDER BY tablename,policyname) FROM pg_policies WHERE schemaname='public'")
+    trig = execute(db, "SELECT string_agg(event_object_table||'.'||trigger_name,',' ORDER BY event_object_table,trigger_name) FROM information_schema.triggers WHERE event_object_schema='public'")
+    views = execute(db, "SELECT string_agg(table_name,',' ORDER BY table_name) FROM information_schema.views WHERE table_schema='public'")
+    return '|'.join([cols, cons, idx, pol, trig, views])
+
 fingerprint = None
 try:
     for iteration in range(2):
         db = 'cr007b_test_' + uuid.uuid4().hex[:12]
         createdb(db)
         execute(db, setup)
-        for migration in sorted((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')):
+        for migration in all_migrations():
             execute(db, migration.read_text())
         check(db,'27 RLS/FORCE tables',
               "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",
               str(27))
-        expected_migs = len(list((ROOT/'supabase/migrations').glob('*_cr007b_*.sql')))
+        expected_migs = len(all_migrations())
         check(db,'source migration count', f'SELECT {expected_migs}', str(expected_migs))
         check(db,'all table PKs',
               "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='p'",'27')
@@ -334,11 +391,46 @@ COMMIT;
         else:
             assert schema == fingerprint, 'schema differs between clean rebuilds'
         print('CLEAN REBUILD', iteration+1, 'OK')
+        schema = structural_fingerprint(db)
+        if iteration == 0:
+            fingerprint = schema
+        else:
+            assert schema == fingerprint, 'schema differs between clean rebuilds'
+        print('CLEAN REBUILD', iteration+1, 'OK')
         try:
             dropdb(db)
         except Exception as ex:
             sys.stderr.write(f'warning: failed to drop {db}: {ex}\n')
-    print(json.dumps({'postgres':'17','assertions_passed':passed,'clean_rebuilds':2,'remote_connections':0}))
+
+    # ---- Resume simulation (mirrors CR-007D remote state) ----
+    # Pre-apply the first five foundation migrations (0001..0005), then
+    # apply the remaining migrations (0006..N) in lexical order. This
+    # mirrors the homolog project state after the interrupted CR-007D run.
+    db = 'cr007d_resume_' + uuid.uuid4().hex[:12]
+    createdb(db)
+    execute(db, setup)
+    all_migs = all_migrations()
+    pre = [m for m in all_migs if m.name <= '20261113120500_cr007b_inventory.sql']
+    rest = [m for m in all_migs if m.name >  '20261113120500_cr007b_inventory.sql']
+    assert any('inventory' in m.name for m in pre), 'pre list must include 0005 inventory'
+    assert any('cr007b_coupons_requests' in m.name for m in rest), 'rest list must include 0006 coupons'
+    for migration in pre:
+        execute(db, migration.read_text())
+    check(db,'pre-resume: 19 tables applied by 0001-0005',
+          "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",'19')
+    for migration in rest:
+        execute(db, migration.read_text())
+    check(db,'resume: 27 RLS/FORCE base tables',
+          "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",str(27))
+    resume_schema = structural_fingerprint(db)
+    assert resume_schema == fingerprint, 'resume schema differs from clean rebuild'
+    passed += 1; print('PASS resume apply produces byte-identical schema to clean rebuild')
+    try:
+        dropdb(db)
+    except Exception as ex:
+        sys.stderr.write(f'warning: failed to drop {db}: {ex}\n')
+
+    print(json.dumps({'postgres':'17','assertions_passed':passed,'clean_rebuilds':2,'resume_simulations':1,'remote_connections':0}))
 except Exception:
     import traceback
     traceback.print_exc()
