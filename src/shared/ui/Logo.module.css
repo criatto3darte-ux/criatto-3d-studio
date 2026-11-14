@@ -1,10 +1,81 @@
-.logo { display: inline-flex; align-items: center; gap: 10px; max-width: 260px; }
-.customMark { width: 46px; height: 46px; flex-shrink: 0; object-fit: contain; }
-.compact .customMark { width: 38px; height: 38px; }
-.mark { width: 46px; height: 46px; flex-shrink: 0; filter: drop-shadow(0 0 10px rgb(0 229 240 / 0.35)); }
-.text { display: flex; flex-direction: column; line-height: 1; min-width: 0; }
-.name { font-family: var(--font-display); font-weight: 700; font-size: 25px; letter-spacing: 0; color: var(--color-text); overflow-wrap: anywhere; }
-.name span { color: var(--color-primary); }
-.sub { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-text-muted); margin-top: 4px; }
-.compact .mark { width: 38px; height: 38px; }
-@media (max-width: 480px) { .logo { max-width: 175px; } }
+/* Logo oficial da Criatto 3D.
+ *
+ * O asset PNG/WEBP contém o símbolo + tipografia "Criatto 3D" + "PRODUTOS 3D"
+ * sobre fundo preto (preserva neon glow do gradiente do arquivo oficial).
+ * Um backdrop preto sutil garante que o brilho neon não fique "cortado" quando
+ * o logo é exibido em fundos claros do tema claro.
+ */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  padding: 4px 6px;
+  /* Backdrop escuro para preservar o brilho em qualquer tema. */
+  background: #080b14;
+  box-shadow: 0 0 24px rgb(22 139 255 / 0.0);
+  transition: box-shadow 160ms ease;
+}
+
+.logo:hover {
+  box-shadow: 0 0 22px rgb(0 229 240 / 0.18), 0 0 36px rgb(255 77 109 / 0.12);
+}
+
+.full .image {
+  height: 40px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+  display: block;
+}
+
+.markOnly .image {
+  height: 42px;
+  width: 42px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Header mobile / footer compacto */
+.compact.full .image {
+  height: 32px;
+  max-width: 180px;
+}
+
+.compact.markOnly .image {
+  height: 34px;
+  width: 34px;
+}
+
+@media (max-width: 480px) {
+  .full .image {
+    height: 34px;
+    max-width: 180px;
+  }
+  .markOnly .image {
+    height: 36px;
+    width: 36px;
+  }
+}
+
+/* Modo de alto contraste / forçar redução de movimento: sem sombra animada */
+@media (prefers-reduced-motion: reduce) {
+  .logo { transition: none; }
+}
+
+/* Hero da landing — cubo grande decorativo com glow intenso */
+.logoMark {
+  width: 180px;
+  height: 180px;
+  padding: 12px;
+  border-radius: 1.5rem;
+}
+.logoMark .image {
+  width: 156px;
+  height: 156px;
+}
+.logoMark:hover {
+  box-shadow: 0 0 48px rgb(0 229 240 / 0.25), 0 0 80px rgb(255 77 109 / 0.18);
+}

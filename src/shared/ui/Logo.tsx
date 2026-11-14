@@ -1,37 +1,126 @@
+// Logo oficial da Criatto 3D.
+//
+// Variantes de imagem (em /branding/) geradas a partir do logotipo aprovado
+// (PNG 1536×1024, fundo preto com glow neon). As imagens mantêm o fundo preto
+// original, preserva gradientes e brilhos e é apresentada sempre sobre uma
+// superfície escura (header/footer/auth/admin no tema escuro) ou sobre uma
+// moldura preta fina quando o tema for claro (para não "cortar" o brilho).
+//
+//  - logo-full-dark.png / .webp  : logotipo completo (símbolo + "Criatto 3D" + tagline).
+//  - logo-mark-dark.png / .webp  : apenas o cubo/símbolo (mobile, sidebar colapsada, fav-like usos).
+//
+// Um logo customizado (definido em store settings) substitui o mark oficial
+// se fornecido; caso contrário usamos os assets aprovados.
+
+import { useEffect, useState } from "react";
 import styles from "./Logo.module.css";
 import { cx } from "@/shared/utils/cx";
-import { useState } from "react";
 import { safeUrl } from "@/shared/utils/safe-url";
 
-/** Isometric gradient cube used as the Criatto 3D mark. Replace with the official SVG when available. */
+const FULL_WEBP = "/branding/logo-full-dark.webp";
+const FULL_PNG = "/branding/logo-full-dark.png";
+const MARK_WEBP = "/branding/logo-mark-dark.webp";
+const MARK_PNG = "/branding/logo-mark-dark.png";
+
+function supportsWebP(): boolean {
+  if (typeof document === "undefined") return false;
+  const cached = (supportsWebP as { _c?: boolean })._c;
+  if (cached !== undefined) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const ok = canvas.toDataURL("image/webp").startsWith("data:image/webp");
+  (supportsWebP as { _c?: boolean })._c = ok;
+  return ok;
+}
+
+type LogoVariant = "full" | "mark";
+
+interface LogoProps {
+  /** Usa só o símbolo (header mobile, sidebar colapsada, menu admin). */
+  compact?: boolean;
+  /** Exibe o texto ao lado do símbolo (default: true). */
+  showText?: boolean;
+  /** Nome da loja (default: "Criatto 3D"). */
+  name?: string;
+  /** URL de logo customizado vindo de store settings — substitui o mark oficial. */
+  logo?: string;
+  /** Variante visual. Se omitido, `compact ⇒ mark`, senão `full`. */
+  variant?: LogoVariant;
+  /** Classe extra aplicada ao <span> raiz. */
+  className?: string | undefined;
+  /** Atributo alt (acessibilidade). Default depende de `name`. */
+  alt?: string | undefined;
+}
+
+/** Alias legado: o Hero da landing renderiza o cubo grande decorativo. */
 export function LogoMark({ className }: { className?: string | undefined }) {
   return (
-    <svg viewBox="0 0 64 64" className={cx(styles.mark, className)} aria-hidden="true">
-      <defs>
-        <linearGradient id="cr-top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFBF00" /><stop offset="1" stopColor="#FF4D6D" /></linearGradient>
-        <linearGradient id="cr-left" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E900D6" /><stop offset="1" stopColor="#A855F7" /></linearGradient>
-        <linearGradient id="cr-right" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#00E5F0" /><stop offset="1" stopColor="#168BFF" /></linearGradient>
-      </defs>
-      <path d="M32 6 56 19 32 32 8 19Z" fill="url(#cr-top)" />
-      <path d="M8 19 32 32v26L8 45Z" fill="url(#cr-left)" />
-      <path d="M56 19 32 32v26l24-13Z" fill="url(#cr-right)" />
-      <path d="M32 18 44 24.5 32 31 20 24.5Z" fill="#080B14" opacity=".55" />
-    </svg>
+    <span className={cx(styles.logo, styles.markOnly, styles.logoMark, className)}>
+      <img
+        src={MARK_PNG}
+        className={styles.image}
+        alt=""
+        aria-hidden
+        width={120}
+        height={120}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+      />
+    </span>
   );
 }
 
-export function Logo({ compact, showText = true, name = "Criatto 3D", logo = "" }: { compact?: boolean; showText?: boolean; name?: string; logo?: string }) {
-  const [failedSrc, setFailedSrc] = useState<string | undefined>();
-  const src = safeUrl(logo);
+export function Logo({
+  compact = false,
+  showText = true,
+  name = "Criatto 3D",
+  logo = "",
+  variant,
+  className,
+  alt,
+}: LogoProps) {
+  // Hidrata no cliente para escolher WebP ou PNG; em SSR renderiza PNG (seguro).
+  const [webp, setWebp] = useState(false);
+  useEffect(() => {
+    setWebp(supportsWebP());
+  }, []);
+
+  const effectiveVariant: LogoVariant = variant ?? (compact ? "mark" : showText ? "full" : "mark");
+  const customSrc = safeUrl(logo);
+  const src =
+    customSrc ||
+    (webp
+      ? effectiveVariant === "full"
+        ? FULL_WEBP
+        : MARK_WEBP
+      : effectiveVariant === "full"
+        ? FULL_PNG
+        : MARK_PNG);
+
+  const isFull = effectiveVariant === "full";
+
   return (
-    <span className={cx(styles.logo, compact && styles.compact)}>
-      {src && failedSrc !== src ? <img key={src} src={src} className={styles.customMark} alt={`Logotipo de ${name}`} onError={() => setFailedSrc(src)} /> : <LogoMark />}
-      {showText && (
-        <span className={styles.text}>
-          <span className={styles.name}>{name === "Criatto 3D" ? <>Criatto <span>3D</span></> : name}</span>
-          <span className={styles.sub}>Produtos 3D</span>
-        </span>
+    <span
+      className={cx(
+        styles.logo,
+        compact && styles.compact,
+        isFull ? styles.full : styles.markOnly,
+        className,
       )}
+    >
+      <img
+        key={src}
+        src={src}
+        className={styles.image}
+        alt={alt ?? (customSrc ? `Logotipo de ${name}` : `${name} — logotipo oficial`)}
+        loading="eager"
+        decoding="async"
+        width={isFull ? 220 : 46}
+        height={isFull ? 64 : 46}
+        draggable={false}
+      />
     </span>
   );
 }

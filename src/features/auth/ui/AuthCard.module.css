@@ -28,15 +28,16 @@
 }
 
 .logo {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.65rem;
-  background: linear-gradient(135deg, #ffbf00, #ff6a00 30%, #e900d6 60%, #a855f7 80%, #168bff);
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 800;
-  font-family: "Sora", system-ui, sans-serif;
+  /* antigo placeholder em CSS — substituído por <Logo/>; mantido para não quebrar
+     eventuais referências, mas não é mais usado em AuthCard. */
+  display: none;
+}
+
+.brandMark {
+  width: 46px;
+  height: 46px;
+  padding: 4px;
+  border-radius: 0.75rem;
 }
 
 .brandText h1 {

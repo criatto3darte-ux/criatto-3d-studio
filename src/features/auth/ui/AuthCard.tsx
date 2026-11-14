@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./AuthCard.module.css";
 import { cx } from "@/shared/utils/cx";
+import { Logo } from "@/shared/ui/Logo";
 
 interface AuthCardProps {
   title: string;
@@ -23,9 +24,7 @@ export function AuthCard({ title, subtitle, step, children, footer }: AuthCardPr
     <main className={styles.shell} aria-labelledby="auth-card-title">
       <section className={styles.card} role="region" aria-label="Onboarding de acesso">
         <header className={styles.brand}>
-          <div className={styles.logo} aria-hidden>
-            C
-          </div>
+          <Logo variant="mark" compact className={styles.brandMark} alt="" aria-hidden />
           <div className={styles.brandText}>
             <h1>Criatto 3D</h1>
             <p>Onboarding administrativo · homologação</p>
