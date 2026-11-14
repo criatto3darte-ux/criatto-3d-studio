@@ -1,0 +1,134 @@
+# CR-007B.7 — CI mínimo para PRs contra main.
+# Sem deploy, sem credenciais Supabase, sem migrations remotas.
+# Escopo: install reproduzível (bun + frozen lockfile), typecheck, vitest,
+# build, lint direcionado, varredura de credenciais, e testes PostgreSQL 17
+# locais (service container, sem conexão externa).
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read        # checkout only; sem write, id-token, packages ou PR-comments.
+
+jobs:
+  static:
+    name: Static + unit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun (gerenciador real do projeto, lockfile bun.lock)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Install (--frozen-lockfile = reproduzível)
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript strict
+        run: bun x tsc --noEmit
+
+      - name: Vitest (todas as suítes)
+        run: bun run test
+
+      - name: Build (client + SSR + Nitro)
+        run: bun run build
+
+      # ESLint direcionado aos contratos e tests da CR-007B. Não reformata
+      # código legado para não introduzir diff fora do escopo.
+      - name: Targeted ESLint
+        run: |
+          bun x eslint --max-warnings 0 \
+            src/features/data-contracts/*.ts \
+            src/test/cr007b-contracts.test.ts
+
+      - name: Credential scan (heurístico)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Exclui o próprio workflow e diretórios de documentação/scripts
+          # para evitar auto-detecção dos próprios padrões de varredura.
+          if grep -RInE \
+            "(SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|sk_live_[A-Za-z0-9]{20,}|rk_live_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY)" \
+            --include='*.ts' --include='*.tsx' --include='*.sql' --include='*.json' \
+            --include='*.env' --include='*.env.*' \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.output \
+            --exclude-dir=.github --exclude-dir=docs --exclude-dir=ops \
+            . ; then
+            echo "::error::Possible secret/credential pattern found in versioned files."
+            exit 1
+          fi
+          echo "Credential scan: no obvious secrets."
+
+  postgres-local:
+    name: PostgreSQL 17 local (RLS + migration integrity)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install python3 + postgres-client
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            python3 postgresql-client
+          python3 --version
+          psql --version
+
+      - name: Wait for Postgres
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+        run: |
+          for i in $(seq 1 30); do
+            if psql -c 'select 1' >/dev/null 2>&1; then
+              echo "Postgres ready"; exit 0; fi
+            sleep 1; done
+          echo "Postgres not ready"; exit 1
+
+      - name: Provision harness roles/schema/auth shim
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN
+            IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='anon')         THEN CREATE ROLE anon NOLOGIN; END IF;
+            IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+            IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS SUPERUSER; END IF;
+          END $$;
+          CREATE SCHEMA IF NOT EXISTS auth;
+          GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+            SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+          CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
+            SELECT nullif(current_setting('request.jwt.claim.role',true),'') $$;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$
+            SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
+          GRANT EXECUTE ON FUNCTION auth.uid(),auth.role(),auth.jwt() TO anon,authenticated,service_role;
+          SQL
+
+      - name: Run harness (PGHOST/PGUSER TCP -> run.py auto-detects CI mode)
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PYTHONUNBUFFERED: 1
+        run: |
+          python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log

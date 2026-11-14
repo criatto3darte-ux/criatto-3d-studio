@@ -1,0 +1,7 @@
+SHA256 OK CR-007B-supabase-foundation.bundle 970f994fca0d6ee7c9e5d1dfcbe2491219a5ca5426fd3eb3b2b43ed48831cc66
+SHA256 OK CR-007B-supabase-foundation.patch 1f9f1b50a9dfb0fa41802be5287a8f120b11c8a3c9918ae9113d4d2273b99e26
+SHA256 OK CR-007B-PULL-REQUEST.md 5c94a879c8dbbff160812ed99e2fdf44785bbc80aa5e78d3ecc7f81476ce25ee
+PASS offline clone + fsck
+PASS original base is ancestor
+Original HEAD c6b229c68a3862e4b2e192bab3a47ab4a0c9a15a
+4 original commits preserved; patch not applied

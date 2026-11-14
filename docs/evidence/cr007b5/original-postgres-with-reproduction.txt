@@ -1,0 +1,599 @@
+PASS 27 RLS/FORCE tables
+PASS 8 applied source migrations
+PASS all table PKs
+PASS composite foreign keys
+PASS no anon base grants
+PASS definer restricted search path
+PASS no anon definer execution
+PASS bigint money
+PASS owner full-matrix categories
+PASS owner full-matrix products
+PASS owner full-matrix product_attribute_groups
+PASS owner full-matrix product_attribute_options
+PASS owner full-matrix product_variants
+PASS owner full-matrix variant_option_values
+PASS owner full-matrix media_assets
+PASS owner full-matrix product_images
+PASS owner full-matrix category_images
+PASS owner full-matrix banners
+PASS owner full-matrix customers
+PASS owner full-matrix orders
+PASS owner full-matrix order_items
+PASS owner full-matrix order_status_history
+PASS owner full-matrix inventory
+PASS owner full-matrix inventory_movements
+PASS owner full-matrix order_allocations
+PASS owner full-matrix coupon_redemptions
+PASS owner full-matrix custom_requests
+PASS owner full-matrix custom_request_images
+PASS owner full-matrix custom_request_history
+PASS owner full-matrix payments
+PASS owner full-matrix coupons
+PASS owner full-matrix store_settings
+PASS owner full-matrix admin_audit_events
+PASS owner full-matrix admin_profiles
+PASS owner full-matrix user_roles
+PASS editor full-matrix categories
+PASS editor full-matrix products
+PASS editor full-matrix product_attribute_groups
+PASS editor full-matrix product_attribute_options
+PASS editor full-matrix product_variants
+PASS editor full-matrix variant_option_values
+PASS editor full-matrix media_assets
+PASS editor full-matrix product_images
+PASS editor full-matrix category_images
+PASS editor full-matrix banners
+PASS editor full-matrix customers
+PASS editor full-matrix orders
+PASS editor full-matrix order_items
+PASS editor full-matrix order_status_history
+PASS editor full-matrix inventory
+PASS editor full-matrix inventory_movements
+PASS editor full-matrix order_allocations
+PASS editor full-matrix coupon_redemptions
+PASS editor full-matrix custom_requests
+PASS editor full-matrix custom_request_images
+PASS editor full-matrix custom_request_history
+PASS editor full-matrix payments
+PASS editor full-matrix coupons
+PASS editor full-matrix store_settings
+PASS editor full-matrix admin_audit_events
+PASS editor full-matrix admin_profiles
+PASS editor full-matrix user_roles
+PASS operator full-matrix categories
+PASS operator full-matrix products
+PASS operator full-matrix product_attribute_groups
+PASS operator full-matrix product_attribute_options
+PASS operator full-matrix product_variants
+PASS operator full-matrix variant_option_values
+PASS operator full-matrix media_assets
+PASS operator full-matrix product_images
+PASS operator full-matrix category_images
+PASS operator full-matrix banners
+PASS operator full-matrix customers
+PASS operator full-matrix orders
+PASS operator full-matrix order_items
+PASS operator full-matrix order_status_history
+PASS operator full-matrix inventory
+PASS operator full-matrix inventory_movements
+PASS operator full-matrix order_allocations
+PASS operator full-matrix coupon_redemptions
+PASS operator full-matrix custom_requests
+PASS operator full-matrix custom_request_images
+PASS operator full-matrix custom_request_history
+PASS operator full-matrix payments
+PASS operator full-matrix coupons
+PASS operator full-matrix store_settings
+PASS operator full-matrix admin_audit_events
+PASS operator full-matrix admin_profiles
+PASS operator full-matrix user_roles
+PASS finance full-matrix categories
+PASS finance full-matrix products
+PASS finance full-matrix product_attribute_groups
+PASS finance full-matrix product_attribute_options
+PASS finance full-matrix product_variants
+PASS finance full-matrix variant_option_values
+PASS finance full-matrix media_assets
+PASS finance full-matrix product_images
+PASS finance full-matrix category_images
+PASS finance full-matrix banners
+PASS finance full-matrix customers
+PASS finance full-matrix orders
+PASS finance full-matrix order_items
+PASS finance full-matrix order_status_history
+PASS finance full-matrix inventory
+PASS finance full-matrix inventory_movements
+PASS finance full-matrix order_allocations
+PASS finance full-matrix coupon_redemptions
+PASS finance full-matrix custom_requests
+PASS finance full-matrix custom_request_images
+PASS finance full-matrix custom_request_history
+PASS finance full-matrix payments
+PASS finance full-matrix coupons
+PASS finance full-matrix store_settings
+PASS finance full-matrix admin_audit_events
+PASS finance full-matrix admin_profiles
+PASS finance full-matrix user_roles
+PASS roleless full-matrix categories
+PASS roleless full-matrix products
+PASS roleless full-matrix product_attribute_groups
+PASS roleless full-matrix product_attribute_options
+PASS roleless full-matrix product_variants
+PASS roleless full-matrix variant_option_values
+PASS roleless full-matrix media_assets
+PASS roleless full-matrix product_images
+PASS roleless full-matrix category_images
+PASS roleless full-matrix banners
+PASS roleless full-matrix customers
+PASS roleless full-matrix orders
+PASS roleless full-matrix order_items
+PASS roleless full-matrix order_status_history
+PASS roleless full-matrix inventory
+PASS roleless full-matrix inventory_movements
+PASS roleless full-matrix order_allocations
+PASS roleless full-matrix coupon_redemptions
+PASS roleless full-matrix custom_requests
+PASS roleless full-matrix custom_request_images
+PASS roleless full-matrix custom_request_history
+PASS roleless full-matrix payments
+PASS roleless full-matrix coupons
+PASS roleless full-matrix store_settings
+PASS roleless full-matrix admin_audit_events
+PASS roleless full-matrix admin_profiles
+PASS roleless full-matrix user_roles
+PASS inactive full-matrix categories
+PASS inactive full-matrix products
+PASS inactive full-matrix product_attribute_groups
+PASS inactive full-matrix product_attribute_options
+PASS inactive full-matrix product_variants
+PASS inactive full-matrix variant_option_values
+PASS inactive full-matrix media_assets
+PASS inactive full-matrix product_images
+PASS inactive full-matrix category_images
+PASS inactive full-matrix banners
+PASS inactive full-matrix customers
+PASS inactive full-matrix orders
+PASS inactive full-matrix order_items
+PASS inactive full-matrix order_status_history
+PASS inactive full-matrix inventory
+PASS inactive full-matrix inventory_movements
+PASS inactive full-matrix order_allocations
+PASS inactive full-matrix coupon_redemptions
+PASS inactive full-matrix custom_requests
+PASS inactive full-matrix custom_request_images
+PASS inactive full-matrix custom_request_history
+PASS inactive full-matrix payments
+PASS inactive full-matrix coupons
+PASS inactive full-matrix store_settings
+PASS inactive full-matrix admin_audit_events
+PASS inactive full-matrix admin_profiles
+PASS inactive full-matrix user_roles
+PASS revoked full-matrix categories
+PASS revoked full-matrix products
+PASS revoked full-matrix product_attribute_groups
+PASS revoked full-matrix product_attribute_options
+PASS revoked full-matrix product_variants
+PASS revoked full-matrix variant_option_values
+PASS revoked full-matrix media_assets
+PASS revoked full-matrix product_images
+PASS revoked full-matrix category_images
+PASS revoked full-matrix banners
+PASS revoked full-matrix customers
+PASS revoked full-matrix orders
+PASS revoked full-matrix order_items
+PASS revoked full-matrix order_status_history
+PASS revoked full-matrix inventory
+PASS revoked full-matrix inventory_movements
+PASS revoked full-matrix order_allocations
+PASS revoked full-matrix coupon_redemptions
+PASS revoked full-matrix custom_requests
+PASS revoked full-matrix custom_request_images
+PASS revoked full-matrix custom_request_history
+PASS revoked full-matrix payments
+PASS revoked full-matrix coupons
+PASS revoked full-matrix store_settings
+PASS revoked full-matrix admin_audit_events
+PASS revoked full-matrix admin_profiles
+PASS revoked full-matrix user_roles
+PASS all FK first columns indexed
+PASS all public views have security barriers
+PASS anon cannot execute role helper
+PASS roleless role helper false
+PASS cross-product variant FK
+PASS cross-product option FK
+PASS allocation quantity bound
+PASS payment pending denied
+PASS settings social URL denied
+PASS media not published withheld
+PASS CR007B5 reproduction: editor reads private media object key
+PASS CR007B5 reproduction: editor can self-verify media
+PASS anon narrow product parents
+PASS anon effective price
+PASS anon availability boolean
+PASS anon denied products
+PASS anon denied customers
+PASS anon denied orders
+PASS anon denied user_roles
+PASS anon denied media_assets
+PASS anon denied admin_audit_events
+PASS public hides internal column
+PASS public hides media paths
+PASS owner RLS products
+PASS owner RLS orders
+PASS owner RLS admin_audit_events
+PASS owner cannot self grant
+PASS owner cannot raw order write
+PASS editor RLS products
+PASS editor RLS orders
+PASS editor RLS admin_audit_events
+PASS editor cannot self grant
+PASS editor cannot raw order write
+PASS operator RLS products
+PASS operator RLS orders
+PASS operator RLS admin_audit_events
+PASS operator cannot self grant
+PASS operator cannot raw order write
+PASS finance RLS products
+PASS finance RLS orders
+PASS finance RLS admin_audit_events
+PASS finance cannot self grant
+PASS finance cannot raw order write
+PASS roleless RLS products
+PASS roleless RLS orders
+PASS roleless RLS admin_audit_events
+PASS roleless cannot self grant
+PASS roleless cannot raw order write
+PASS inactive RLS products
+PASS inactive RLS orders
+PASS inactive RLS admin_audit_events
+PASS inactive cannot self grant
+PASS inactive cannot raw order write
+PASS revoked RLS products
+PASS revoked RLS orders
+PASS revoked RLS admin_audit_events
+PASS revoked cannot self grant
+PASS revoked cannot raw order write
+PASS finance sanitized summary
+PASS operator cannot finance summary
+PASS editor update allowed
+PASS roleless write rejected
+PASS append-only DELETE order_items
+PASS append-only UPDATE order_items
+PASS append-only TRUNCATE order_items
+PASS append-only DELETE order_status_history
+PASS append-only UPDATE order_status_history
+PASS append-only TRUNCATE order_status_history
+PASS append-only DELETE payments
+PASS append-only UPDATE payments
+PASS append-only TRUNCATE payments
+PASS append-only DELETE inventory_movements
+PASS append-only UPDATE inventory_movements
+PASS append-only TRUNCATE inventory_movements
+PASS append-only DELETE custom_request_history
+PASS append-only UPDATE custom_request_history
+PASS append-only TRUNCATE custom_request_history
+PASS append-only DELETE admin_audit_events
+PASS append-only UPDATE admin_audit_events
+PASS append-only TRUNCATE admin_audit_events
+PASS negative inventory
+PASS overallocated
+PASS invalid promo
+PASS on demand days
+PASS total invariant
+PASS safe integer money
+PASS unsafe URL
+PASS settings singleton
+PASS coupon percent
+PASS unique primary image
+PASS idempotent key unique
+PASS required variant group deferred
+PASS inactive option cannot remain sellable
+PASS canonical variant key
+PASS last owner deactivation
+PASS last owner paired removal
+PASS last owner revocation
+PASS private evidence blocked
+PASS service cannot mutate snapshots
+PASS concurrent last owner removal: exactly one committed
+PASS one active owner survives concurrent revocation
+CLEAN REBUILD 1 OK
+PASS 27 RLS/FORCE tables
+PASS 8 applied source migrations
+PASS all table PKs
+PASS composite foreign keys
+PASS no anon base grants
+PASS definer restricted search path
+PASS no anon definer execution
+PASS bigint money
+PASS owner full-matrix categories
+PASS owner full-matrix products
+PASS owner full-matrix product_attribute_groups
+PASS owner full-matrix product_attribute_options
+PASS owner full-matrix product_variants
+PASS owner full-matrix variant_option_values
+PASS owner full-matrix media_assets
+PASS owner full-matrix product_images
+PASS owner full-matrix category_images
+PASS owner full-matrix banners
+PASS owner full-matrix customers
+PASS owner full-matrix orders
+PASS owner full-matrix order_items
+PASS owner full-matrix order_status_history
+PASS owner full-matrix inventory
+PASS owner full-matrix inventory_movements
+PASS owner full-matrix order_allocations
+PASS owner full-matrix coupon_redemptions
+PASS owner full-matrix custom_requests
+PASS owner full-matrix custom_request_images
+PASS owner full-matrix custom_request_history
+PASS owner full-matrix payments
+PASS owner full-matrix coupons
+PASS owner full-matrix store_settings
+PASS owner full-matrix admin_audit_events
+PASS owner full-matrix admin_profiles
+PASS owner full-matrix user_roles
+PASS editor full-matrix categories
+PASS editor full-matrix products
+PASS editor full-matrix product_attribute_groups
+PASS editor full-matrix product_attribute_options
+PASS editor full-matrix product_variants
+PASS editor full-matrix variant_option_values
+PASS editor full-matrix media_assets
+PASS editor full-matrix product_images
+PASS editor full-matrix category_images
+PASS editor full-matrix banners
+PASS editor full-matrix customers
+PASS editor full-matrix orders
+PASS editor full-matrix order_items
+PASS editor full-matrix order_status_history
+PASS editor full-matrix inventory
+PASS editor full-matrix inventory_movements
+PASS editor full-matrix order_allocations
+PASS editor full-matrix coupon_redemptions
+PASS editor full-matrix custom_requests
+PASS editor full-matrix custom_request_images
+PASS editor full-matrix custom_request_history
+PASS editor full-matrix payments
+PASS editor full-matrix coupons
+PASS editor full-matrix store_settings
+PASS editor full-matrix admin_audit_events
+PASS editor full-matrix admin_profiles
+PASS editor full-matrix user_roles
+PASS operator full-matrix categories
+PASS operator full-matrix products
+PASS operator full-matrix product_attribute_groups
+PASS operator full-matrix product_attribute_options
+PASS operator full-matrix product_variants
+PASS operator full-matrix variant_option_values
+PASS operator full-matrix media_assets
+PASS operator full-matrix product_images
+PASS operator full-matrix category_images
+PASS operator full-matrix banners
+PASS operator full-matrix customers
+PASS operator full-matrix orders
+PASS operator full-matrix order_items
+PASS operator full-matrix order_status_history
+PASS operator full-matrix inventory
+PASS operator full-matrix inventory_movements
+PASS operator full-matrix order_allocations
+PASS operator full-matrix coupon_redemptions
+PASS operator full-matrix custom_requests
+PASS operator full-matrix custom_request_images
+PASS operator full-matrix custom_request_history
+PASS operator full-matrix payments
+PASS operator full-matrix coupons
+PASS operator full-matrix store_settings
+PASS operator full-matrix admin_audit_events
+PASS operator full-matrix admin_profiles
+PASS operator full-matrix user_roles
+PASS finance full-matrix categories
+PASS finance full-matrix products
+PASS finance full-matrix product_attribute_groups
+PASS finance full-matrix product_attribute_options
+PASS finance full-matrix product_variants
+PASS finance full-matrix variant_option_values
+PASS finance full-matrix media_assets
+PASS finance full-matrix product_images
+PASS finance full-matrix category_images
+PASS finance full-matrix banners
+PASS finance full-matrix customers
+PASS finance full-matrix orders
+PASS finance full-matrix order_items
+PASS finance full-matrix order_status_history
+PASS finance full-matrix inventory
+PASS finance full-matrix inventory_movements
+PASS finance full-matrix order_allocations
+PASS finance full-matrix coupon_redemptions
+PASS finance full-matrix custom_requests
+PASS finance full-matrix custom_request_images
+PASS finance full-matrix custom_request_history
+PASS finance full-matrix payments
+PASS finance full-matrix coupons
+PASS finance full-matrix store_settings
+PASS finance full-matrix admin_audit_events
+PASS finance full-matrix admin_profiles
+PASS finance full-matrix user_roles
+PASS roleless full-matrix categories
+PASS roleless full-matrix products
+PASS roleless full-matrix product_attribute_groups
+PASS roleless full-matrix product_attribute_options
+PASS roleless full-matrix product_variants
+PASS roleless full-matrix variant_option_values
+PASS roleless full-matrix media_assets
+PASS roleless full-matrix product_images
+PASS roleless full-matrix category_images
+PASS roleless full-matrix banners
+PASS roleless full-matrix customers
+PASS roleless full-matrix orders
+PASS roleless full-matrix order_items
+PASS roleless full-matrix order_status_history
+PASS roleless full-matrix inventory
+PASS roleless full-matrix inventory_movements
+PASS roleless full-matrix order_allocations
+PASS roleless full-matrix coupon_redemptions
+PASS roleless full-matrix custom_requests
+PASS roleless full-matrix custom_request_images
+PASS roleless full-matrix custom_request_history
+PASS roleless full-matrix payments
+PASS roleless full-matrix coupons
+PASS roleless full-matrix store_settings
+PASS roleless full-matrix admin_audit_events
+PASS roleless full-matrix admin_profiles
+PASS roleless full-matrix user_roles
+PASS inactive full-matrix categories
+PASS inactive full-matrix products
+PASS inactive full-matrix product_attribute_groups
+PASS inactive full-matrix product_attribute_options
+PASS inactive full-matrix product_variants
+PASS inactive full-matrix variant_option_values
+PASS inactive full-matrix media_assets
+PASS inactive full-matrix product_images
+PASS inactive full-matrix category_images
+PASS inactive full-matrix banners
+PASS inactive full-matrix customers
+PASS inactive full-matrix orders
+PASS inactive full-matrix order_items
+PASS inactive full-matrix order_status_history
+PASS inactive full-matrix inventory
+PASS inactive full-matrix inventory_movements
+PASS inactive full-matrix order_allocations
+PASS inactive full-matrix coupon_redemptions
+PASS inactive full-matrix custom_requests
+PASS inactive full-matrix custom_request_images
+PASS inactive full-matrix custom_request_history
+PASS inactive full-matrix payments
+PASS inactive full-matrix coupons
+PASS inactive full-matrix store_settings
+PASS inactive full-matrix admin_audit_events
+PASS inactive full-matrix admin_profiles
+PASS inactive full-matrix user_roles
+PASS revoked full-matrix categories
+PASS revoked full-matrix products
+PASS revoked full-matrix product_attribute_groups
+PASS revoked full-matrix product_attribute_options
+PASS revoked full-matrix product_variants
+PASS revoked full-matrix variant_option_values
+PASS revoked full-matrix media_assets
+PASS revoked full-matrix product_images
+PASS revoked full-matrix category_images
+PASS revoked full-matrix banners
+PASS revoked full-matrix customers
+PASS revoked full-matrix orders
+PASS revoked full-matrix order_items
+PASS revoked full-matrix order_status_history
+PASS revoked full-matrix inventory
+PASS revoked full-matrix inventory_movements
+PASS revoked full-matrix order_allocations
+PASS revoked full-matrix coupon_redemptions
+PASS revoked full-matrix custom_requests
+PASS revoked full-matrix custom_request_images
+PASS revoked full-matrix custom_request_history
+PASS revoked full-matrix payments
+PASS revoked full-matrix coupons
+PASS revoked full-matrix store_settings
+PASS revoked full-matrix admin_audit_events
+PASS revoked full-matrix admin_profiles
+PASS revoked full-matrix user_roles
+PASS all FK first columns indexed
+PASS all public views have security barriers
+PASS anon cannot execute role helper
+PASS roleless role helper false
+PASS cross-product variant FK
+PASS cross-product option FK
+PASS allocation quantity bound
+PASS payment pending denied
+PASS settings social URL denied
+PASS media not published withheld
+PASS CR007B5 reproduction: editor reads private media object key
+PASS CR007B5 reproduction: editor can self-verify media
+PASS anon narrow product parents
+PASS anon effective price
+PASS anon availability boolean
+PASS anon denied products
+PASS anon denied customers
+PASS anon denied orders
+PASS anon denied user_roles
+PASS anon denied media_assets
+PASS anon denied admin_audit_events
+PASS public hides internal column
+PASS public hides media paths
+PASS owner RLS products
+PASS owner RLS orders
+PASS owner RLS admin_audit_events
+PASS owner cannot self grant
+PASS owner cannot raw order write
+PASS editor RLS products
+PASS editor RLS orders
+PASS editor RLS admin_audit_events
+PASS editor cannot self grant
+PASS editor cannot raw order write
+PASS operator RLS products
+PASS operator RLS orders
+PASS operator RLS admin_audit_events
+PASS operator cannot self grant
+PASS operator cannot raw order write
+PASS finance RLS products
+PASS finance RLS orders
+PASS finance RLS admin_audit_events
+PASS finance cannot self grant
+PASS finance cannot raw order write
+PASS roleless RLS products
+PASS roleless RLS orders
+PASS roleless RLS admin_audit_events
+PASS roleless cannot self grant
+PASS roleless cannot raw order write
+PASS inactive RLS products
+PASS inactive RLS orders
+PASS inactive RLS admin_audit_events
+PASS inactive cannot self grant
+PASS inactive cannot raw order write
+PASS revoked RLS products
+PASS revoked RLS orders
+PASS revoked RLS admin_audit_events
+PASS revoked cannot self grant
+PASS revoked cannot raw order write
+PASS finance sanitized summary
+PASS operator cannot finance summary
+PASS editor update allowed
+PASS roleless write rejected
+PASS append-only DELETE order_items
+PASS append-only UPDATE order_items
+PASS append-only TRUNCATE order_items
+PASS append-only DELETE order_status_history
+PASS append-only UPDATE order_status_history
+PASS append-only TRUNCATE order_status_history
+PASS append-only DELETE payments
+PASS append-only UPDATE payments
+PASS append-only TRUNCATE payments
+PASS append-only DELETE inventory_movements
+PASS append-only UPDATE inventory_movements
+PASS append-only TRUNCATE inventory_movements
+PASS append-only DELETE custom_request_history
+PASS append-only UPDATE custom_request_history
+PASS append-only TRUNCATE custom_request_history
+PASS append-only DELETE admin_audit_events
+PASS append-only UPDATE admin_audit_events
+PASS append-only TRUNCATE admin_audit_events
+PASS negative inventory
+PASS overallocated
+PASS invalid promo
+PASS on demand days
+PASS total invariant
+PASS safe integer money
+PASS unsafe URL
+PASS settings singleton
+PASS coupon percent
+PASS unique primary image
+PASS idempotent key unique
+PASS required variant group deferred
+PASS inactive option cannot remain sellable
+PASS canonical variant key
+PASS last owner deactivation
+PASS last owner paired removal
+PASS last owner revocation
+PASS private evidence blocked
+PASS service cannot mutate snapshots
+PASS concurrent last owner removal: exactly one committed
+PASS one active owner survives concurrent revocation
+CLEAN REBUILD 2 OK
+{"postgres": "17", "assertions_passed": 596, "clean_rebuilds": 2, "remote_connections": 0}
