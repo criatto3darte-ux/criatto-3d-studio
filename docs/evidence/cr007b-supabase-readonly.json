@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-13",
+  "access_mode": "read_only",
+  "remote_writes": 0,
+  "validate_credential": { "success": true },
+  "list_organizations": { "items": [{ "id": "akifnzwtxnmjxvaljjro", "name": "criatto3darte-ux's Org", "slug": "akifnzwtxnmjxvaljjro" }] },
+  "list_projects": { "items": [] },
+  "list_organization_members_summary": { "member_count": 1, "role": "Owner", "mfa_enabled": false },
+  "prior_header_only_mail_inspection": {
+    "welcome_date_utc": "2026-11-13T14:01:02Z",
+    "oauth_approval_dates_utc": ["2026-11-13T14:05:31Z", "2026-11-13T14:23:28Z"],
+    "project_creation_messages_found": 0,
+    "caveat": "Email absence is supporting context, not proof of complete project/account history."
+  },
+  "conclusion": "The connection works. No projects are currently visible in its accessible organization scope. There is no project ref available to inspect or migrate. No project was created or modified.",
+  "limitations": "Other accounts, organizations outside authorization scope and deleted project history are not ruled out. No credentials, keys or personal email values are included."
+}
