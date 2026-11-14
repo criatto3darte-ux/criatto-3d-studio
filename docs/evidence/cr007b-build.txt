@@ -1,0 +1,274 @@
+$ vite build
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 2049 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/DemoNotice-ajfO23ff.css              0.34 kB │ gzip:   0.22 kB
+.output/public/assets/QuantityStepper-9y1LBQVb.css         0.51 kB │ gzip:   0.29 kB
+.output/public/assets/ThemeToggle-QL6vzu3R.css             0.67 kB │ gzip:   0.34 kB
+.output/public/assets/Section-Dkf38Crd.css                 0.70 kB │ gzip:   0.36 kB
+.output/public/assets/CategoryCard-CYlvG4wY.css            0.77 kB │ gzip:   0.40 kB
+.output/public/assets/Logo-BJ1fp4iG.css                    0.79 kB │ gzip:   0.40 kB
+.output/public/assets/categoryVisual-DtFcMYlT.css          0.80 kB │ gzip:   0.40 kB
+.output/public/assets/Input-BBDyaXL3.css                   0.84 kB │ gzip:   0.40 kB
+.output/public/assets/Badge-BptHpJwH.css                   1.37 kB │ gzip:   0.40 kB
+.output/public/assets/ProductCard-B_grBKwP.css             1.67 kB │ gzip:   0.71 kB
+.output/public/assets/_store-L-13W3ts.css                  1.84 kB │ gzip:   0.65 kB
+.output/public/assets/WhatsAppAction-CRQM2aBu.css          1.91 kB │ gzip:   0.67 kB
+.output/public/assets/_store.produto-D8oJX3Ge.css          2.00 kB │ gzip:   0.62 kB
+.output/public/assets/index-BuxaqSgS.css                   2.00 kB │ gzip:   0.68 kB
+.output/public/assets/_store-BRhjDnRP.css                  2.05 kB │ gzip:   0.73 kB
+.output/public/assets/_store-BlsBfJ9R.css                  2.33 kB │ gzip:   0.78 kB
+.output/public/assets/InfoPages-DxTgApiV.css               2.90 kB │ gzip:   0.81 kB
+.output/public/assets/_store-BgbX84s6.css                  3.14 kB │ gzip:   0.98 kB
+.output/public/assets/styles-DOgOxhRY.css                  3.49 kB │ gzip:   1.31 kB
+.output/public/assets/_store-HCDparGo.css                  3.96 kB │ gzip:   1.26 kB
+.output/public/assets/admin-BD4vho0t.css                   4.40 kB │ gzip:   1.28 kB
+.output/public/assets/AdminUI-C-jStuTD.css                 6.26 kB │ gzip:   1.66 kB
+.output/public/assets/plus-BPKKbYC2.js                     0.15 kB │ gzip:   0.15 kB
+.output/public/assets/x-B4dPDCkW.js                        0.15 kB │ gzip:   0.15 kB
+.output/public/assets/arrow-left-_A1zP_tg.js               0.16 kB │ gzip:   0.16 kB
+.output/public/assets/arrow-right-t5kLs4TR.js              0.16 kB │ gzip:   0.16 kB
+.output/public/assets/search-CKfJmV27.js                   0.17 kB │ gzip:   0.17 kB
+.output/public/assets/circle-check-TGib2X25.js             0.17 kB │ gzip:   0.16 kB
+.output/public/assets/message-circle-HhxC7I5w.js           0.24 kB │ gzip:   0.21 kB
+.output/public/assets/useNavigate-BfrtWDTq.js              0.25 kB │ gzip:   0.20 kB
+.output/public/assets/eye-CtClT6yF.js                      0.25 kB │ gzip:   0.20 kB
+.output/public/assets/triangle-alert-CFmTUcn_.js           0.26 kB │ gzip:   0.21 kB
+.output/public/assets/pencil-CUsoGIXl.js                   0.27 kB │ gzip:   0.22 kB
+.output/public/assets/shopping-cart-Ch_giQap.js            0.29 kB │ gzip:   0.23 kB
+.output/public/assets/shield-check-hkknY7z2.js             0.32 kB │ gzip:   0.25 kB
+.output/public/assets/trash-2-CAqMddCH.js                  0.32 kB │ gzip:   0.21 kB
+.output/public/assets/ProductMedia-BQtcLvP4.js             0.40 kB │ gzip:   0.30 kB
+.output/public/assets/layers-gDFDcbgW.js                   0.42 kB │ gzip:   0.24 kB
+.output/public/assets/package-check-UVvPDvYP.js            0.42 kB │ gzip:   0.28 kB
+.output/public/assets/labels-B3iofZbS.js                   0.44 kB │ gzip:   0.27 kB
+.output/public/assets/InfoPages.module-BqHi0caY.js         0.46 kB │ gzip:   0.20 kB
+.output/public/assets/Badge-wATBHldf.js                    0.46 kB │ gzip:   0.28 kB
+.output/public/assets/_store.categorias-DXfDnF4t.js        0.53 kB │ gzip:   0.36 kB
+.output/public/assets/catalog.service-CzlqlUTZ.js          0.54 kB │ gzip:   0.34 kB
+.output/public/assets/admin_.login-DcVnhstr.js             0.57 kB │ gzip:   0.38 kB
+.output/public/assets/DemoNotice-DWDzDUVK.js               0.61 kB │ gzip:   0.43 kB
+.output/public/assets/useMatch-DlfLAk3N.js                 0.74 kB │ gzip:   0.45 kB
+.output/public/assets/QuantityStepper-BDViqfTV.js          0.79 kB │ gzip:   0.44 kB
+.output/public/assets/boxes-BHhoagqB.js                    0.85 kB │ gzip:   0.39 kB
+.output/public/assets/Input-DtUzHQZr.js                    0.89 kB │ gzip:   0.46 kB
+.output/public/assets/CategoryCard-BTbArnrR.js             0.90 kB │ gzip:   0.47 kB
+.output/public/assets/Section-BBo3u8HV.js                  0.91 kB │ gzip:   0.37 kB
+.output/public/assets/jsx-runtime-BkSabwWG.js              0.96 kB │ gzip:   0.55 kB
+.output/public/assets/createLucideIcon-CaYjXmwE.js         1.22 kB │ gzip:   0.71 kB
+.output/public/assets/_store.privacidade-JNzQJWf0.js       1.36 kB │ gzip:   0.70 kB
+.output/public/assets/useReconciledCart-CPk64GHc.js        1.59 kB │ gzip:   0.82 kB
+.output/public/assets/ThemeToggle-CO5TMW65.js              1.61 kB │ gzip:   0.76 kB
+.output/public/assets/Logo-BTpBGNnS.js                     1.91 kB │ gzip:   0.80 kB
+.output/public/assets/WhatsAppAction-DkUopa68.js           1.96 kB │ gzip:   0.95 kB
+.output/public/assets/ProductCard-B1NBcxRI.js              1.99 kB │ gzip:   0.87 kB
+.output/public/assets/StorageNotice-CuOAOYrT.js            2.15 kB │ gzip:   1.06 kB
+.output/public/assets/_store.contato-CATj7_9E.js           2.19 kB │ gzip:   1.01 kB
+.output/public/assets/admin.estoque-C_qZaS0e.js            2.63 kB │ gzip:   1.17 kB
+.output/public/assets/_store.sobre-BOE8lk7z.js             2.72 kB │ gzip:   1.36 kB
+.output/public/assets/admin.relatorios-CXflK2Hl.js         2.74 kB │ gzip:   1.05 kB
+.output/public/assets/admin.index-DJvMXObV.js              3.08 kB │ gzip:   1.14 kB
+.output/public/assets/categoryVisual-D82DtccV.js           3.58 kB │ gzip:   1.66 kB
+.output/public/assets/admin.personalizacoes-DMQPGFzx.js    3.65 kB │ gzip:   1.47 kB
+.output/public/assets/_store.produto._slug-CnqBErcY.js     4.04 kB │ gzip:   2.01 kB
+.output/public/assets/route-Cl0WXmbz.js                    4.23 kB │ gzip:   1.35 kB
+.output/public/assets/admin.clientes-CyfrU6K7.js           4.26 kB │ gzip:   1.67 kB
+.output/public/assets/admin.cupons-DphEeVOk.js             4.63 kB │ gzip:   1.84 kB
+.output/public/assets/admin.configuracoes-B3JLoLtw.js      4.70 kB │ gzip:   1.93 kB
+.output/public/assets/admin.categorias-B0JAX5e2.js         4.96 kB │ gzip:   1.89 kB
+.output/public/assets/admin.banners-BU5hpg6i.js            5.13 kB │ gzip:   1.97 kB
+.output/public/assets/_store.produtos-DayBypS9.js          5.57 kB │ gzip:   2.22 kB
+.output/public/assets/_store.produto._slug-CO8BIWRn.js     5.63 kB │ gzip:   2.29 kB
+.output/public/assets/AdminUI-CDdgXtQ0.js                  5.73 kB │ gzip:   1.99 kB
+.output/public/assets/_store-YDgkCJC6.js                   5.80 kB │ gzip:   2.08 kB
+.output/public/assets/admin.pedidos-Bd0hb2M_.js            5.86 kB │ gzip:   2.25 kB
+.output/public/assets/_store.checkout-B9vQNCt9.js          5.92 kB │ gzip:   2.40 kB
+.output/public/assets/_store.carrinho-Div-mdhu.js          6.22 kB │ gzip:   2.45 kB
+.output/public/assets/_store.personalizados-31AJGiP1.js    6.59 kB │ gzip:   2.83 kB
+.output/public/assets/_store.index-RuuVirh_.js             7.45 kB │ gzip:   2.96 kB
+.output/public/assets/react-DHmoMYoq.js                    7.52 kB │ gzip:   2.88 kB
+.output/public/assets/admin-BuZReBHa.js                    9.68 kB │ gzip:   3.67 kB
+.output/public/assets/admin.produtos-C6Z7R84L.js          11.01 kB │ gzip:   3.95 kB
+.output/public/assets/link-DduslMWA.js                    11.33 kB │ gzip:   5.00 kB
+.output/public/assets/repository-BOQ7NAJY.js              89.15 kB │ gzip:  24.12 kB
+.output/public/assets/index-Cyjmg4ka.js                  338.53 kB │ gzip: 106.41 kB
+
+✓ built in 1.36s
+vite v8.1.5 building ssr environment for production...
+[2Ktransforming...✓ 203 modules transformed.
+rendering chunks...
+computing gzip size...
+node_modules/.nitro/vite/services/ssr/assets/DemoNotice-ajfO23ff.css                  0.34 kB │ gzip:  0.22 kB
+node_modules/.nitro/vite/services/ssr/assets/SystemPage-pNMA9nJT.css                  0.48 kB │ gzip:  0.28 kB
+node_modules/.nitro/vite/services/ssr/assets/QuantityStepper-9y1LBQVb.css             0.51 kB │ gzip:  0.29 kB
+node_modules/.nitro/vite/services/ssr/assets/ThemeToggle-QL6vzu3R.css                 0.67 kB │ gzip:  0.34 kB
+node_modules/.nitro/vite/services/ssr/assets/Section-Dkf38Crd.css                     0.70 kB │ gzip:  0.36 kB
+node_modules/.nitro/vite/services/ssr/assets/CategoryCard-CYlvG4wY.css                0.77 kB │ gzip:  0.40 kB
+node_modules/.nitro/vite/services/ssr/assets/Logo-BJ1fp4iG.css                        0.79 kB │ gzip:  0.40 kB
+node_modules/.nitro/vite/services/ssr/assets/categoryVisual-DtFcMYlT.css              0.80 kB │ gzip:  0.40 kB
+node_modules/.nitro/vite/services/ssr/assets/Input-BBDyaXL3.css                       0.84 kB │ gzip:  0.40 kB
+node_modules/.nitro/vite/services/ssr/assets/Badge-BptHpJwH.css                       1.37 kB │ gzip:  0.40 kB
+node_modules/.nitro/vite/services/ssr/assets/Button-CDJ22k6F.css                      1.52 kB │ gzip:  0.53 kB
+node_modules/.nitro/vite/services/ssr/assets/ProductCard-B_grBKwP.css                 1.67 kB │ gzip:  0.71 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-L-13W3ts.css                      1.84 kB │ gzip:  0.65 kB
+node_modules/.nitro/vite/services/ssr/assets/WhatsAppAction-CRQM2aBu.css              1.91 kB │ gzip:  0.67 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.produto-D8oJX3Ge.css              2.00 kB │ gzip:  0.62 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-BRhjDnRP.css                      2.05 kB │ gzip:  0.73 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-BlsBfJ9R.css                      2.33 kB │ gzip:  0.78 kB
+node_modules/.nitro/vite/services/ssr/assets/InfoPages-DxTgApiV.css                   2.90 kB │ gzip:  0.81 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-BgbX84s6.css                      3.14 kB │ gzip:  0.98 kB
+node_modules/.nitro/vite/services/ssr/assets/styles-DOgOxhRY.css                      3.49 kB │ gzip:  1.31 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-HCDparGo.css                      3.96 kB │ gzip:  1.26 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-BD4vho0t.css                       4.40 kB │ gzip:  1.28 kB
+node_modules/.nitro/vite/services/ssr/assets/AdminUI-C-jStuTD.css                     6.26 kB │ gzip:  1.66 kB
+node_modules/.nitro/vite/services/ssr/assets/cx-BnWJax7I.js                           0.13 kB │ gzip:  0.13 kB
+node_modules/.nitro/vite/services/ssr/assets/empty-plugin-adapters-D9UWiqvJ.js        0.22 kB │ gzip:  0.16 kB
+node_modules/.nitro/vite/services/ssr/assets/InfoPages.module-BnR7IJDN.js             0.59 kB │ gzip:  0.24 kB
+node_modules/.nitro/vite/services/ssr/assets/DemoNotice-BtFHwXf4.js                   0.60 kB │ gzip:  0.38 kB
+node_modules/.nitro/vite/services/ssr/assets/labels-7OwgGLKA.js                       0.64 kB │ gzip:  0.36 kB
+node_modules/.nitro/vite/services/ssr/assets/Badge-Ce-i99MT.js                        0.66 kB │ gzip:  0.36 kB
+node_modules/.nitro/vite/services/ssr/assets/ProductMedia-BxF93uZY.js                 0.67 kB │ gzip:  0.41 kB
+node_modules/.nitro/vite/services/ssr/assets/admin_.login-B7nQ2ri6.js                 0.89 kB │ gzip:  0.49 kB
+node_modules/.nitro/vite/services/ssr/assets/SystemPage-Dh2Wu3S1.js                   0.95 kB │ gzip:  0.38 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.categorias-BLNPPker.js            0.97 kB │ gzip:  0.51 kB
+node_modules/.nitro/vite/services/ssr/assets/catalog.service-Byg1zknq.js              1.06 kB │ gzip:  0.49 kB
+node_modules/.nitro/vite/services/ssr/assets/Button-BeYLK_s7.js                       1.06 kB │ gzip:  0.47 kB
+node_modules/.nitro/vite/services/ssr/assets/QuantityStepper-BS3eyTPO.js              1.23 kB │ gzip:  0.50 kB
+node_modules/.nitro/vite/services/ssr/assets/ThemeProvider-BuLcsJQh.js                1.47 kB │ gzip:  0.69 kB
+node_modules/.nitro/vite/services/ssr/assets/Input-_0q4iGYu.js                        1.51 kB │ gzip:  0.59 kB
+node_modules/.nitro/vite/services/ssr/assets/start-RKGGYzjZ.js                        1.57 kB │ gzip:  0.71 kB
+node_modules/.nitro/vite/services/ssr/assets/CategoryCard-DuMpfREN.js                 1.64 kB │ gzip:  0.66 kB
+node_modules/.nitro/vite/services/ssr/assets/Section-5aj0eTeU.js                      1.68 kB │ gzip:  0.52 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.privacidade-7I7Tx5TG.js           1.80 kB │ gzip:  0.82 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.produto._slug-8lW5xuMN.js         1.80 kB │ gzip:  0.82 kB
+node_modules/.nitro/vite/services/ssr/assets/ThemeToggle-BexVihUE.js                  1.94 kB │ gzip:  0.72 kB
+node_modules/.nitro/vite/services/ssr/assets/categoryVisual-Dx0Wsfgr.js               2.21 kB │ gzip:  0.98 kB
+node_modules/.nitro/vite/services/ssr/assets/StorageNotice-B1hZLKXq.js                2.52 kB │ gzip:  1.04 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.sobre-uFoO7Cak.js                 2.83 kB │ gzip:  1.15 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.contato-DezPbKdJ.js               3.04 kB │ gzip:  1.06 kB
+node_modules/.nitro/vite/services/ssr/assets/Logo-_3s-1O6o.js                         3.17 kB │ gzip:  1.06 kB
+node_modules/.nitro/vite/services/ssr/assets/catalog.logic-ac26u_Ze.js                3.17 kB │ gzip:  1.25 kB
+node_modules/.nitro/vite/services/ssr/assets/createCsrfMiddleware-B2To0gPJ.js         3.19 kB │ gzip:  1.01 kB
+node_modules/.nitro/vite/services/ssr/assets/useReconciledCart-C-6Z425e.js            3.46 kB │ gzip:  1.29 kB
+node_modules/.nitro/vite/services/ssr/assets/WhatsAppAction-R3ASLcUf.js               3.50 kB │ gzip:  1.29 kB
+node_modules/.nitro/vite/services/ssr/assets/ProductCard-RMOwFNDU.js                  3.70 kB │ gzip:  1.26 kB
+node_modules/.nitro/vite/services/ssr/index.js                                        4.61 kB │ gzip:  1.92 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.estoque-rzWNNne-.js                4.64 kB │ gzip:  1.55 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.relatorios-BFcCNBg-.js             4.91 kB │ gzip:  1.47 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.index-6H3ogui1.js                  5.53 kB │ gzip:  1.55 kB
+node_modules/.nitro/vite/services/ssr/assets/CartContext-CT2Y-KhY.js                  5.78 kB │ gzip:  1.97 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.personalizacoes-BPU1HDYB.js        6.56 kB │ gzip:  1.90 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.configuracoes-GIA241tx.js          7.26 kB │ gzip:  2.13 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.clientes-3-Vgt-N6.js               7.77 kB │ gzip:  2.24 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.cupons-BH1z25cg.js                 8.21 kB │ gzip:  2.42 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.produtos-Bjwgmp8f.js              8.86 kB │ gzip:  2.49 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.categorias-CMwVU0Gh.js             8.99 kB │ gzip:  2.53 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.banners-BOo087DI.js                9.01 kB │ gzip:  2.52 kB
+node_modules/.nitro/vite/services/ssr/assets/AdminUI-BPg0JRzP.js                      9.12 kB │ gzip:  2.56 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.index-BjjR3YL6.js                 9.99 kB │ gzip:  2.89 kB
+node_modules/.nitro/vite/services/ssr/assets/_store-BwuaTqNW.js                      10.19 kB │ gzip:  2.71 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.produto._slug-DD8tSQ_G.js        10.33 kB │ gzip:  2.98 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.carrinho-CHRHLK2v.js             10.34 kB │ gzip:  2.86 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.checkout-CcOhWslA.js             10.42 kB │ gzip:  2.99 kB
+node_modules/.nitro/vite/services/ssr/assets/_store.personalizados-DFMO0IH_.js       10.43 kB │ gzip:  3.21 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.pedidos-DuvmajVm.js               10.65 kB │ gzip:  3.02 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-Bty4cIH2.js                       10.99 kB │ gzip:  3.05 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-DBkOBvWU.js  12.61 kB │ gzip:  2.09 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.produtos-Dh8zorIW.js              18.84 kB │ gzip:  4.94 kB
+node_modules/.nitro/vite/services/ssr/assets/router-C9ABXrWw.js                      26.48 kB │ gzip:  4.86 kB
+node_modules/.nitro/vite/services/ssr/assets/repository-CR7UEzlM.js                  50.23 kB │ gzip: 15.30 kB
+node_modules/.nitro/vite/services/ssr/assets/server-CRbfuCrq.js                      66.34 kB │ gzip: 16.95 kB
+
+✓ built in 615ms
+
+[nitro] ◐ Building [Nitro] (preset: cloudflare-module, compatibility: 2026-11-13)
+[nitro] ✔ Generated public .output/public
+vite v8.1.5 building nitro environment for production...
+
+ WARN  inlineDynamicImports option is ignored because the codeSplitting option is specified.
+
+[2Ktransforming...✓ 2011 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/server/_ssr/cx-BnWJax7I.mjs                       0.17 kB │ gzip:   0.16 kB
+.output/server/_ssr/empty-plugin-adapters-D9UWiqvJ.mjs    0.23 kB │ gzip:   0.16 kB
+.output/server/_chunks/ssr-renderer.mjs                   0.60 kB │ gzip:   0.36 kB
+.output/server/_ssr/labels-7OwgGLKA.mjs                   0.67 kB │ gzip:   0.39 kB
+.output/server/_ssr/InfoPages.module-BnR7IJDN.mjs         0.67 kB │ gzip:   0.30 kB
+.output/server/_ssr/DemoNotice-BtFHwXf4.mjs               0.78 kB │ gzip:   0.45 kB
+.output/server/_ssr/Badge-Ce-i99MT.mjs                    0.80 kB │ gzip:   0.43 kB
+.output/server/_ssr/ProductMedia-BxF93uZY.mjs             0.83 kB │ gzip:   0.47 kB
+.output/server/_store.categorias-BLNPPker.mjs             1.10 kB │ gzip:   0.55 kB
+.output/server/_ssr/admin_.login-B7nQ2ri6.mjs             1.13 kB │ gzip:   0.56 kB
+.output/server/_libs/hookable.mjs                         1.16 kB │ gzip:   0.51 kB
+.output/server/_runtime.mjs                               1.18 kB │ gzip:   0.57 kB
+.output/server/_ssr/SystemPage-Dh2Wu3S1.mjs               1.20 kB │ gzip:   0.46 kB
+.output/server/_ssr/catalog.service-Byg1zknq.mjs          1.26 kB │ gzip:   0.61 kB
+.output/server/_ssr/Button-BeYLK_s7.mjs                   1.32 kB │ gzip:   0.57 kB
+.output/server/_ssr/QuantityStepper-BS3eyTPO.mjs          1.51 kB │ gzip:   0.58 kB
+.output/server/_ssr/start-RKGGYzjZ.mjs                    1.53 kB │ gzip:   0.70 kB
+.output/server/_ssr/ThemeProvider-BuLcsJQh.mjs            1.77 kB │ gzip:   0.79 kB
+.output/server/_store.produto._slug-8lW5xuMN.mjs          1.81 kB │ gzip:   0.85 kB
+.output/server/_ssr/Input-_0q4iGYu.mjs                    1.92 kB │ gzip:   0.69 kB
+.output/server/_ssr/CategoryCard-DuMpfREN.mjs             1.97 kB │ gzip:   0.73 kB
+.output/server/_ssr/Section-5aj0eTeU.mjs                  2.01 kB │ gzip:   0.59 kB
+.output/server/_store.privacidade-7I7Tx5TG.mjs            2.17 kB │ gzip:   0.89 kB
+.output/server/_ssr/ThemeToggle-BexVihUE.mjs              2.27 kB │ gzip:   0.80 kB
+.output/server/_ssr/categoryVisual-Dx0Wsfgr.mjs           2.41 kB │ gzip:   1.05 kB
+.output/server/_ssr/StorageNotice-B1hZLKXq.mjs            3.07 kB │ gzip:   1.15 kB
+.output/server/_ssr/createCsrfMiddleware-B2To0gPJ.mjs     3.11 kB │ gzip:   1.01 kB
+.output/server/_ssr/catalog.logic-ac26u_Ze.mjs            3.21 kB │ gzip:   1.28 kB
+.output/server/_store.sobre-uFoO7Cak.mjs                  3.29 kB │ gzip:   1.21 kB
+.output/server/_store.contato-DezPbKdJ.mjs                3.55 kB │ gzip:   1.12 kB
+.output/server/_ssr/useReconciledCart-C-6Z425e.mjs        3.61 kB │ gzip:   1.39 kB
+.output/server/_ssr/Logo-_3s-1O6o.mjs                     3.96 kB │ gzip:   1.16 kB
+.output/server/_ssr/ProductCard-RMOwFNDU.mjs              4.13 kB │ gzip:   1.32 kB
+.output/server/_ssr/WhatsAppAction-R3ASLcUf.mjs           4.17 kB │ gzip:   1.40 kB
+.output/server/_ssr/ssr.mjs                               4.55 kB │ gzip:   1.92 kB
+.output/server/_ssr/admin.estoque-rzWNNne-.mjs            5.46 kB │ gzip:   1.64 kB
+.output/server/_ssr/admin.relatorios-BFcCNBg-.mjs         5.92 kB │ gzip:   1.55 kB
+.output/server/_ssr/CartContext-CT2Y-KhY.mjs              6.01 kB │ gzip:   2.05 kB
+.output/server/_ssr/admin.index-6H3ogui1.mjs              6.64 kB │ gzip:   1.62 kB
+.output/server/_ssr/admin.personalizacoes-BPU1HDYB.mjs    7.62 kB │ gzip:   2.02 kB
+.output/server/_ssr/admin.configuracoes-GIA241tx.mjs      8.36 kB │ gzip:   2.25 kB
+.output/server/_ssr/admin.clientes-3-Vgt-N6.mjs           9.17 kB │ gzip:   2.35 kB
+.output/server/_ssr/admin.cupons-BH1z25cg.mjs             9.52 kB │ gzip:   2.53 kB
+.output/server/_libs/h3-v2+rou3+srvx.mjs                  9.89 kB │ gzip:   3.06 kB
+.output/server/_store.produtos-Bjwgmp8f.mjs              10.16 kB │ gzip:   2.61 kB
+.output/server/_ssr/admin.categorias-CMwVU0Gh.mjs        10.36 kB │ gzip:   2.64 kB
+.output/server/_ssr/AdminUI-BPg0JRzP.mjs                 10.49 kB │ gzip:   2.66 kB
+.output/server/_ssr/admin.banners-BOo087DI.mjs           10.54 kB │ gzip:   2.63 kB
+.output/server/_store.index-BjjR3YL6.mjs                 11.57 kB │ gzip:   2.98 kB
+.output/server/_store.personalizados-DFMO0IH_.mjs        11.76 kB │ gzip:   3.30 kB
+.output/server/_store.carrinho-CHRHLK2v.mjs              11.84 kB │ gzip:   2.94 kB
+.output/server/_store.produto._slug-DD8tSQ_G.mjs         11.88 kB │ gzip:   3.09 kB
+.output/server/_store-BwuaTqNW.mjs                       11.98 kB │ gzip:   2.82 kB
+.output/server/_store.checkout-CcOhWslA.mjs              11.99 kB │ gzip:   3.10 kB
+.output/server/_ssr/admin.pedidos-DuvmajVm.mjs           12.41 kB │ gzip:   3.12 kB
+.output/server/_libs/tanstack__history.mjs               12.50 kB │ gzip:   3.70 kB
+.output/server/_ssr/admin-Bty4cIH2.mjs                   12.58 kB │ gzip:   3.21 kB
+.output/server/_tanstack-start-manifest_v-DBkOBvWU.mjs   12.67 kB │ gzip:   2.12 kB
+.output/server/_libs/h3+rou3+srvx.mjs                    16.61 kB │ gzip:   4.80 kB
+.output/server/_libs/react+tanstack__react-query.mjs     17.65 kB │ gzip:   4.65 kB
+.output/server/_ssr/admin.produtos-Dh8zorIW.mjs          21.32 kB │ gzip:   5.07 kB
+.output/server/_ssr/router-C9ABXrWw.mjs                  25.81 kB │ gzip:   4.83 kB
+.output/server/_libs/@tanstack/router-core+[...].mjs     29.60 kB │ gzip:   7.98 kB
+.output/server/index.mjs                                 30.87 kB │ gzip:   7.71 kB
+.output/server/_libs/lucide-react.mjs                    34.50 kB │ gzip:   7.34 kB
+.output/server/_libs/tanstack__query-core.mjs            48.17 kB │ gzip:  10.70 kB
+.output/server/_ssr/repository-CR7UEzlM.mjs              50.18 kB │ gzip:  15.35 kB
+.output/server/_ssr/server-CRbfuCrq.mjs                  64.72 kB │ gzip:  16.82 kB
+.output/server/_libs/zod.mjs                            100.02 kB │ gzip:  17.31 kB
+.output/server/_libs/@tanstack/react-router+[...].mjs   758.00 kB │ gzip: 160.25 kB
+
+✓ built in 786ms
+[nitro] ℹ Using auto generated worker name: criatto3darte-ux-criatto-3d-studio
+ℹ Generated .output/server/wrangler.json
+ℹ Generated .wrangler/deploy/config.json
+ℹ Generated .output/public/_headers
+ℹ Generated .output/nitro.json
+
+[nitro] ✔ You can preview this build using npx vite preview
+[nitro] ✔ You can deploy this build using npx nitro deploy --prebuilt

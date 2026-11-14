@@ -1,0 +1,11 @@
+Running postgres
+PASS postgres
+Running vitest
+PASS vitest
+Running typescript
+PASS typescript
+Running eslint
+PASS eslint
+Running build
+PASS build
+All CR-007B gates passed (targeted ESLint; see baseline lint debt separately).

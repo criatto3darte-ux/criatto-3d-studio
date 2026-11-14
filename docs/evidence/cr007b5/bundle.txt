@@ -1,0 +1,6 @@
+/home/user/CR-007B-supabase-foundation.bundle is okay
+The bundle contains this ref:
+c6b229c68a3862e4b2e192bab3a47ab4a0c9a15a refs/heads/feature/cr-007b-supabase-foundation
+The bundle records a complete history.
+The bundle uses this hash algorithm: sha1
+c6b229c68a3862e4b2e192bab3a47ab4a0c9a15a refs/heads/feature/cr-007b-supabase-foundation

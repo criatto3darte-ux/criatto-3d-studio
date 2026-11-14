@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-13",
+  "credential_valid": true,
+  "organization": {"id":"akifnzwtxnmjxvaljjro", "name":"criatto3darte-ux's Org"},
+  "projects": [],
+  "staging_project_identified": false,
+  "project_exclusivity": "not verifiable: no project is visible",
+  "remote_sql_executed": false,
+  "remote_writes": 0,
+  "limitations": "Visibility is limited to the connected credential. No assertion about deleted projects or inaccessible accounts."
+}

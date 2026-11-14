@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StoreRouteImport } from './routes/_store'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as StoreIndexRouteImport } from './routes/_store.index'
 import { Route as StoreCarrinhoRouteImport } from './routes/_store.carrinho'
 import { Route as StoreCategoriasRouteImport } from './routes/_store.categorias'
@@ -32,6 +33,13 @@ import { Route as AdminPersonalizacoesRouteImport } from './routes/admin.persona
 import { Route as AdminProdutosRouteImport } from './routes/admin.produtos'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
+import { Route as AuthIndexRouteImport } from './routes/auth.index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthDoneRouteImport } from './routes/auth.done'
+import { Route as AuthErrorRouteImport } from './routes/auth.error'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthMfaRouteImport } from './routes/auth.mfa'
+import { Route as AuthSetPasswordRouteImport } from './routes/auth.set-password'
 import { Route as StoreProdutoSlugRouteImport } from './routes/_store.produto.$slug'
 
 const StoreRoute = StoreRouteImport.update({
@@ -41,6 +49,11 @@ const StoreRoute = StoreRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StoreIndexRoute = StoreIndexRouteImport.update({
@@ -148,6 +161,41 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthIndexRoute = AuthIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDoneRoute = AuthDoneRouteImport.update({
+  id: '/done',
+  path: '/done',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthErrorRoute = AuthErrorRouteImport.update({
+  id: '/error',
+  path: '/error',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthMfaRoute = AuthMfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSetPasswordRoute = AuthSetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
+  getParentRoute: () => AuthRoute,
+} as any)
 const StoreProdutoSlugRoute = StoreProdutoSlugRouteImport.update({
   id: '/produto/$slug',
   path: '/produto/$slug',
@@ -157,6 +205,7 @@ const StoreProdutoSlugRoute = StoreProdutoSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof StoreIndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
   '/carrinho': typeof StoreCarrinhoRoute
   '/categorias': typeof StoreCategoriasRoute
   '/checkout': typeof StoreCheckoutRoute
@@ -176,7 +225,14 @@ export interface FileRoutesByFullPath {
   '/admin/produtos': typeof AdminProdutosRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/done': typeof AuthDoneRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/': typeof AdminIndexRoute
+  '/auth/': typeof AuthIndexRoute
   '/produto/$slug': typeof StoreProdutoSlugRoute
 }
 export interface FileRoutesByTo {
@@ -199,14 +255,22 @@ export interface FileRoutesByTo {
   '/admin/produtos': typeof AdminProdutosRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/done': typeof AuthDoneRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
   '/': typeof StoreIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/auth': typeof AuthIndexRoute
   '/produto/$slug': typeof StoreProdutoSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_store': typeof StoreRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
   '/_store/carrinho': typeof StoreCarrinhoRoute
   '/_store/categorias': typeof StoreCategoriasRoute
   '/_store/checkout': typeof StoreCheckoutRoute
@@ -226,8 +290,15 @@ export interface FileRoutesById {
   '/admin/produtos': typeof AdminProdutosRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin_/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/done': typeof AuthDoneRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
   '/_store/': typeof StoreIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/auth/': typeof AuthIndexRoute
   '/_store/produto/$slug': typeof StoreProdutoSlugRoute
 }
 export interface FileRouteTypes {
@@ -235,6 +306,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/auth'
     | '/carrinho'
     | '/categorias'
     | '/checkout'
@@ -254,7 +326,14 @@ export interface FileRouteTypes {
     | '/admin/produtos'
     | '/admin/relatorios'
     | '/admin/login'
+    | '/auth/callback'
+    | '/auth/done'
+    | '/auth/error'
+    | '/auth/login'
+    | '/auth/mfa'
+    | '/auth/set-password'
     | '/admin/'
+    | '/auth/'
     | '/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -277,13 +356,21 @@ export interface FileRouteTypes {
     | '/admin/produtos'
     | '/admin/relatorios'
     | '/admin/login'
+    | '/auth/callback'
+    | '/auth/done'
+    | '/auth/error'
+    | '/auth/login'
+    | '/auth/mfa'
+    | '/auth/set-password'
     | '/'
     | '/admin'
+    | '/auth'
     | '/produto/$slug'
   id:
     | '__root__'
     | '/_store'
     | '/admin'
+    | '/auth'
     | '/_store/carrinho'
     | '/_store/categorias'
     | '/_store/checkout'
@@ -303,14 +390,22 @@ export interface FileRouteTypes {
     | '/admin/produtos'
     | '/admin/relatorios'
     | '/admin_/login'
+    | '/auth/callback'
+    | '/auth/done'
+    | '/auth/error'
+    | '/auth/login'
+    | '/auth/mfa'
+    | '/auth/set-password'
     | '/_store/'
     | '/admin/'
+    | '/auth/'
     | '/_store/produto/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   StoreRoute: typeof StoreRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
 }
 
@@ -328,6 +423,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_store/': {
@@ -477,6 +579,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/': {
+      id: '/auth/'
+      path: '/'
+      fullPath: '/auth/'
+      preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/done': {
+      id: '/auth/done'
+      path: '/done'
+      fullPath: '/auth/done'
+      preLoaderRoute: typeof AuthDoneRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/error': {
+      id: '/auth/error'
+      path: '/error'
+      fullPath: '/auth/error'
+      preLoaderRoute: typeof AuthErrorRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/mfa': {
+      id: '/auth/mfa'
+      path: '/mfa'
+      fullPath: '/auth/mfa'
+      preLoaderRoute: typeof AuthMfaRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/set-password': {
+      id: '/auth/set-password'
+      path: '/set-password'
+      fullPath: '/auth/set-password'
+      preLoaderRoute: typeof AuthSetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_store/produto/$slug': {
       id: '/_store/produto/$slug'
       path: '/produto/$slug'
@@ -545,21 +696,34 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthDoneRoute: typeof AuthDoneRoute
+  AuthErrorRoute: typeof AuthErrorRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthMfaRoute: typeof AuthMfaRoute
+  AuthSetPasswordRoute: typeof AuthSetPasswordRoute
+  AuthIndexRoute: typeof AuthIndexRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthDoneRoute: AuthDoneRoute,
+  AuthErrorRoute: AuthErrorRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthMfaRoute: AuthMfaRoute,
+  AuthSetPasswordRoute: AuthSetPasswordRoute,
+  AuthIndexRoute: AuthIndexRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   StoreRoute: StoreRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
