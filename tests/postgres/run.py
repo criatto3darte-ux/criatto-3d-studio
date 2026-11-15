@@ -352,38 +352,48 @@ try:
               "SELECT bool_and(NOT has_function_privilege('anon',p.oid,'EXECUTE')) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
-        sys.stderr.write(f'DBG seed block starting db={db}\n')
         # Seed auth users FIRST so that FK columns (confirmed_by, actor_id,
         # created_by) pointing at auth.users(id) resolve when the rest of the
-        # fixtures insert rows referencing them.
-        execute(db, "BEGIN; " +
-                "; ".join(f"INSERT INTO auth.users VALUES({q(k)})" for k in ['owner','editor','operator','finance','roleless','inactive','revoked','customer']) +
-                "; COMMIT;")
+        # fixtures insert rows referencing them. Each seed step runs as its
+        # own statement so that failures surface with a precise label rather
+        # than being buried in a 40-line heredoc.
+        seed_users = "; ".join(
+            f"INSERT INTO auth.users VALUES({q(k)}) ON CONFLICT DO NOTHING"
+            for k in ['owner','editor','operator','finance','roleless',
+                      'inactive','revoked','customer'])
+        execute(db, f"BEGIN; {seed_users}; COMMIT;")
         for k in ['owner','editor','operator','finance','roleless','inactive','revoked']:
             execute(db,f"INSERT INTO admin_profiles(user_id,display_name,active) VALUES({q(k)},'Synthetic',{str(k!='inactive').lower()});")
         for k,r in [('owner','proprietario'),('editor','editor'),('operator','operador'),('finance','financeiro'),('inactive','proprietario')]:
             execute(db,f"INSERT INTO user_roles(user_id,role) VALUES({q(k)},'{r}');")
         execute(db,f"INSERT INTO user_roles(user_id,role) VALUES({q('revoked')},'editor'); DELETE FROM user_roles WHERE user_id={q('revoked')};")
-        execute(db,f"""
-INSERT INTO categories(id,slug,name,active) VALUES({q('category')},'public','Public',true),({q('draft-category')},'draft','Draft',false);
-INSERT INTO products(id,category_id,slug,name,regular_price_cents,promo_price_cents,production_mode,active,internal_notes) VALUES
-({q('product')},{q('category')},'public-product','Public',1000,900,'pronta-entrega',true,'PRIVATE'),
-({q('draft')},{q('category')},'draft-product','Draft',1000,NULL,'pronta-entrega',false,''),
-({q('hidden')},{q('draft-category')},'hidden-product','Hidden',1000,NULL,'pronta-entrega',true,'');
-INSERT INTO product_variants(id,product_id,sku,selection_key,active) VALUES({q('variant')},{q('product')},'SKU-TEST','base',true);
-INSERT INTO media_assets(id,bucket,object_key,mime,byte_size,width,height,checksum,state) VALUES({q('media')},'synthetic','fake.webp','image/webp',12,1,1,'test','published');
-INSERT INTO product_images VALUES({q('product')},{q('media')},0,true);
-INSERT INTO customers(id,name,phone_e164) VALUES({q('customer')},'Synthetic','+5521999999999');
-INSERT INTO orders(id,customer_id,customer_name_snapshot,customer_phone_snapshot,subtotal_cents,discount_cents,shipping_cents,total_cents,idempotency_key,payload_hash,privacy_notice_version,status) VALUES({q('order')},{q('customer')},'Synthetic','+5521999999999',1000,0,0,1000,gen_random_uuid(),repeat('a',64),'test','confirmado');
-INSERT INTO order_items(id,order_id,product_id,variant_id,product_name_snapshot,unit_price_cents,quantity,line_discount_cents) VALUES({q('item')},{q('order')},{q('product')},{q('variant')},'Snapshot',1000,1,0);
-INSERT INTO order_status_history(id,order_id,from_status,to_status,actor_id,operation_key) VALUES({q('history')},{q('order')},NULL,'aguardando-contato',{q('owner')},'history-test');
-INSERT INTO payments(id,order_id,amount_cents,kind,method,confirmed_by,confirmed_at,operation_key) VALUES({q('payment')},{q('order')},100,'receipt','synthetic',{q('owner')},now(),gen_random_uuid());
-INSERT INTO inventory(product_id,on_hand,allocated) VALUES({q('product')},2,1);
-INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,actor_id,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2,0,'Synthetic',{q('owner')},'movement-test');
-INSERT INTO custom_requests(id,customer_id,customer_name_snapshot,customer_phone_snapshot,description,quantity,idempotency_key,payload_hash) VALUES({q('request')},{q('customer')},'Synthetic','+5521999999999','Test',1,gen_random_uuid(),repeat('b',64));
-INSERT INTO custom_request_history(id,request_id,from_status,to_status,actor_id,operation_key) VALUES({q('request-history')},{q('request')},NULL,'recebida',{q('owner')},'test');
-INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'test');
-""")
+        # Catalog / media / orders / inventory / requests fixtures.
+        seed_stmts = [
+            f"INSERT INTO categories(id,slug,name,active) VALUES({q('category')},'public','Public',true),({q('draft-category')},'draft','Draft',false)",
+            f"INSERT INTO products(id,category_id,slug,name,regular_price_cents,promo_price_cents,production_mode,active,internal_notes) VALUES"
+            f"({q('product')},{q('category')},'public-product','Public',1000,900,'pronta-entrega',true,'PRIVATE'),"
+            f"({q('draft')},{q('category')},'draft-product','Draft',1000,NULL,'pronta-entrega',false,''),"
+            f"({q('hidden')},{q('draft-category')},'hidden-product','Hidden',1000,NULL,'pronta-entrega',true,'')",
+            f"INSERT INTO product_variants(id,product_id,sku,selection_key,active) VALUES({q('variant')},{q('product')},'SKU-TEST','base',true)",
+            f"INSERT INTO media_assets(id,bucket,object_key,mime,byte_size,width,height,checksum,state) VALUES({q('media')},'synthetic','fake.webp','image/webp',12,1,1,'test','published')",
+            f"INSERT INTO product_images VALUES({q('product')},{q('media')},0,true)",
+            f"INSERT INTO customers(id,name,phone_e164) VALUES({q('customer')},'Synthetic','+5521999999999')",
+            f"INSERT INTO orders(id,customer_id,customer_name_snapshot,customer_phone_snapshot,subtotal_cents,discount_cents,shipping_cents,total_cents,idempotency_key,payload_hash,privacy_notice_version,status) VALUES({q('order')},{q('customer')},'Synthetic','+5521999999999',1000,0,0,1000,gen_random_uuid(),repeat('a',64),'test','confirmado')",
+            f"INSERT INTO order_items(id,order_id,product_id,variant_id,product_name_snapshot,unit_price_cents,quantity,line_discount_cents) VALUES({q('item')},{q('order')},{q('product')},{q('variant')},'Snapshot',1000,1,0)",
+            f"INSERT INTO order_status_history(id,order_id,from_status,to_status,actor_id,operation_key) VALUES({q('history')},{q('order')},NULL,'aguardando-contato',{q('owner')},'history-test')",
+            f"INSERT INTO payments(id,order_id,amount_cents,kind,method,confirmed_by,confirmed_at,operation_key) VALUES({q('payment')},{q('order')},100,'receipt','synthetic',{q('owner')},now(),gen_random_uuid())",
+            f"INSERT INTO inventory(product_id,on_hand,allocated) VALUES({q('product')},2,1)",
+            f"INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,actor_id,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2,0,'Synthetic',{q('owner')},'movement-test')",
+            f"INSERT INTO custom_requests(id,customer_id,customer_name_snapshot,customer_phone_snapshot,description,quantity,idempotency_key,payload_hash) VALUES({q('request')},{q('customer')},'Synthetic','+5521999999999','Test',1,gen_random_uuid(),repeat('b',64))",
+            f"INSERT INTO custom_request_history(id,request_id,from_status,to_status,actor_id,operation_key) VALUES({q('request-history')},{q('request')},NULL,'recebida',{q('owner')},'test')",
+            f"INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'test')",
+        ]
+        for i, stmt in enumerate(seed_stmts):
+            try:
+                execute(db, stmt)
+            except Exception:
+                sys.stderr.write(f'FAILED seed statement #{i}: {stmt[:300]}\n')
+                raise
         execute(db,f"""
 BEGIN;
 INSERT INTO product_attribute_groups(id,product_id,code,label) VALUES({q('group')},{q('product')},'material','Material');
