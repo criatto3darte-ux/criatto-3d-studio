@@ -1,49 +1,52 @@
 # CRIATTO 3D — Continuidade de engenharia
 
-**Atualizado:** 2026-11-15 (UTC) · **Etapa:** retomada CR-010B, implementação parcial/local
+**Atualizado:** 2026-11-15 (UTC) · **Etapa:** CR-010B.1, implementação local em revisão
+**Branch ativo/fixo:** `arena/1f32d4fc-criatto-3d-studio`
+**PR #7:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7
 
-## Estado real do checkout e recuperação
+## Estado das branches e integração
 
-- Ao abrir esta sessão, o checkout estava limpo em `d922aef` (`main`), sem arquivos não rastreados e sem stash. Nenhum trabalho parcial de CR-010B existia nessa árvore.
-- O PR #7 estava aberto e seu HEAD remoto era `bdf895be12d110761c35d6a77faa92fdaeedc7bb` (`docs(CR-010A): relatório de preparação da loja para produção`). As páginas administrativas continuavam usando `demoRepository`/LocalStorage; não havia camada Supabase de catálogo executável. Portanto, o avanço parcial citado na retomada anterior **não foi recuperado**.
-- O HEAD remoto do PR foi recuperado por fast-forward, mantendo o branch fixo desta sessão: `arena/1f32d4fc-criatto-3d-studio`. O código e a documentação de retomada foram commitados e enviados somente para o branch ativo desta sessão. A branch citada no histórico do PR/na solicitação é `arena/81a1f1ff-criatto-3d-studio`; não foi feito checkout nem push para ela.
-- PR #7: https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7 — permanece aberto, HEAD remoto consultado `bdf895b`. Checks daquele HEAD estavam verdes (Static + unit, PostgreSQL 17 local, pacote de homologação). Esses checks **não** validam as alterações locais desta retomada.
-- Relatório da etapa anterior: `docs/CR-010A-REPORT.md`. Relatório desta retomada: `docs/CR-010B-REPORT.md`.
+- Antes da retomada CR-010B.1, HEAD ativo e `origin/arena/1f32d4fc-criatto-3d-studio` eram `5e42fb0feb627f1ffe72d9fa5031485a58e97ffe` (`docs(CR-010B): clarify session branch and push status`).
+- A branch do PR #7 (`arena/81a1f1ff-criatto-3d-studio`) e `origin/pr/7` apontavam para `bdf895be12d110761c35d6a77faa92fdaeedc7bb`; era o merge-base. Não havia commits exclusivos na branch 81. O trabalho CR-010B recente já estava no branch ativo e não havia arquivos divergentes da outra branch a sobrescrever.
+- Commits de CR-010B no ativo: `43ddb43`, `84457bf`, `0a8d7ab`, `5e42fb0`. Detalhe de CR-010B.1: `docs/CR-010B1-REPORT.md`.
+- PR #7 permanece aberto contra `main`, head antigo `bdf895b`, mergeable/CLEAN no momento da consulta. Seus checks verdes pertencem àquele HEAD, não às mudanças novas.
+- A sessão exige permanecer no branch ativo fixo; não trocar de branch, não fazer force-push, não tocar `main` nem enviar commits à branch 81. A integração é proposta como PR dependente com base na branch do PR #7; isso **não atualiza automaticamente o head do PR #7** e exige aprovação do mantenedor para integrar.
 
-## Supabase de homologação (somente leitura nesta retomada)
+## Supabase remoto — limites mantidos
 
-Projeto confirmado: `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), região `sa-east-1`, PostgreSQL `17.11`, serviços DB/REST/Storage/Auth saudáveis.
+Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Última leitura remota registrada na etapa anterior: 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`, signup desabilitado, TOTP habilitado, custom access-token hook habilitado; zero usuários Auth, categorias, produtos, inventário, assets e buckets. Nenhuma consulta de escrita ou alteração remota foi feita nesta etapa CR-010B.1.
 
-- 13 migrations registradas, até `20261115103000` (`cr009f_hook_type_fix_and_media_aal2`). Nenhuma migration foi criada/aplicada nesta retomada.
-- Custom Access Token Hook habilitado para `public.custom_access_token_hook`; Auth com signup desabilitado e MFA TOTP habilitado.
-- URL Auth atual ainda é `http://localhost:5173`; allow-list inclui callback local, preview de Arena e `https://homolog.criatto3d.art.br/auth/callback`. Nenhuma configuração foi alterada.
-- Contagens lidas: 0 usuários Auth, 0 categorias, 0 produtos, 0 saldos de inventário, 0 registros `media_assets` e 0 buckets Storage.
-- As projeções públicas `public_categories`, `public_products`, `public_attribute_groups`, `public_attribute_options`, `public_variants`, `public_variant_options`, `public_product_images` e `public_availability` existem. A busca remota de funções não encontrou comandos RPC de catálogo/estoque; as funções encontradas nessa busca eram auxiliares de mídia.
-- Nenhum usuário, convite, produto, categoria, movimento de estoque, bucket ou objeto Storage foi criado. Nenhuma escrita, migration, policy, Auth, deploy, FTP ou domínio foi alterado.
+- Nenhum usuário, convite, bootstrap, produto/categoria/movimento de teste, bucket, objeto, configuração Auth, policy ou migration foi criado/aplicado remotamente.
+- Sem `service_role` no navegador. Checkout, pedidos e pagamentos continuam desabilitados; nenhuma loja oficial foi substituída e nenhum deploy/FTP/Locaweb foi executado.
+- Alterações administrativas só podem ser usadas por sessão Auth + MFA AAL2 e políticas existentes. Testes remotos CRUD não foram executados porque não há usuário admin, conforme restrições.
 
-## O que mudou localmente em CR-010B
+## Implementação local atual
 
-- Loja pública agora obtém categorias/produtos exclusivamente das projeções Supabase estreitas. Estados de carregamento, erro e catálogo vazio são explícitos; não há fallback silencioso para `products.mock.ts`/seed no serviço da vitrine.
-- O detalhe de produto e o carrinho conferem o catálogo remoto. Metadados não promovem registros do seed a páginas indexáveis. Checkout permanece bloqueado até CR-010C.
-- Administração de produtos/categorias deixou `useDemoData()` e usa PostgREST direto com a sessão do Supabase; as policies/RLS e `require_aal2()` do banco continuam autoritativas. Categoria suporta criar/editar/ordenar/ativar e exclusão condicionada a ausência de vínculos. Produto suporta criar/editar campos principais, publicar/despublicar e arquivar (em vez de apagar referências históricas), com `version` em atualizações.
-- Estoque lê saldo e últimas movimentações sob a policy administrativa existente. Escritas estão deliberadamente bloqueadas na UI: não existe RPC transacional autorizada no remoto; não se contorna a política com escrita direta/LocalStorage.
-- Variantes são lidas das relações públicas, mas edição de combinações/SKUs ainda não está habilitada. Imagens e galeria não são gravadas nem servidas como se fossem reais.
-- Avisos comerciais foram atualizados para não chamar produtos/preços reais de fictícios e para não prometer checkout ativo. O resumo do carrinho não cria pedidos.
+- Vitrine, detalhe, carrinho e categorias lêem as projeções Supabase públicas sem fallback comercial de seed/LocalStorage; loading/erro/vazio são explícitos. Seleções públicas são reconciliadas com combinações de SKU publicadas; combinação inexistente não é aceita. Imagens continuam vazias até Storage seguro.
+- Administração de produto persiste campos que já existem (`products`): CRUD, publicação, preço/promoção, destaque e arquivamento seguro. Categorias: CRUD/ativação/exclusão com FK e atualização da vitrine.
+- Reordenação de categoria usa agora comando transacional com versões esperadas; não são mais dois updates independentes.
+- Administração de variantes/SKU carrega grupos/opções/combinações e as grava via comando atômico em migration local. Editor usa JSON avançado, valida SKU único e bloqueia alterações que removam variante referenciada por pedido.
+- Estoque segue leitura do saldo/histórico pela RLS. Foi acrescentado no código um ajuste por movimento append-only com lock, versão otimista, chave idempotente, validação de saldo/alocação, motivo, AAL2 e papel. Estoque mínimo é por produto. **Essas operações ainda não existem no remoto**: dependem da migration local aditiva.
+- Imagens/upload/galeria ainda não estão implementados: homolog não tem bucket e `media_assets` reserva criação/verificação de metadados a canal confiável; não criar upload direto no navegador nem abrir policy para contornar isso.
 
-## Pendências e limites — CR-010B não está concluída
+## Migration local CR-010B.1
 
-1. **Operações de estoque:** falta comando transacional aditivo para saldo + ledger + versão + chave idempotente e autorização de `proprietario`/`operador` em AAL2. Implementar migration local e testes PostgreSQL 17; aplicar no remoto somente após autorização expressa.
-2. **Variantes/SKU:** falta comando transacional para grupos, opções, variantes e valores compostos, mantendo os invariantes diferidos do banco. Não foi introduzido RPC sem contrato e teste.
-3. **Storage/imagens:** o projeto não tem bucket. É necessária decisão/autorizações para bucket, classificação pública/privada, limites, formatos, validação, policies e fluxo de metadados; não criar bucket nem enfraquecer as policies atuais sem consentimento.
-4. **Teste administrativo end-to-end:** não há usuário admin real (e não foi criado, conforme instrução); logo, CRUD com sessão AAL2 não foi exercitado remotamente. Validar em ambiente aprovado depois que a etapa de proprietário permitir.
-5. **Vitrine:** projeções remotas foram inspecionadas e contagens confirmadas vazias, mas não houve teste HTTP do bundle com as variáveis públicas do projeto. A configuração local não tem `.env`.
-6. **PostgreSQL local:** esta sandbox não tem `psql`, servidor PostgreSQL 17 ou Docker/Podman. O harness PG17 não foi executado nesta retomada. CI verde consultado refere-se ao HEAD remoto anterior.
-7. **Branch/PR:** a sessão está vinculada ao branch `arena/1f32d4fc-criatto-3d-studio`, não ao branch do PR #7 (`arena/81a1f1ff-criatto-3d-studio`). Não é permitido trocar de branch; por isso não é possível afirmar que o PR #7 foi atualizado pelos commits locais. Não houve merge.
+`supabase/migrations/20261115120000_cr010b1_catalog_stock_commands.sql`, sem aplicação remota. Após verificar as migrations/funções existentes (nenhuma RPC equivalente de catálogo/estoque), esta proposta local acrescenta apenas coluna em `inventory` e comandos de swap de categoria, substituição transacional do grafo de variantes, ajuste de saldo/ledger e estoque mínimo. Não acrescenta tabela, bucket ou policy, nem reabre grants de escrita direta em inventário/media. Hash fixado no harness PG17.
 
-## Verificações desta retomada
+## Validação desta etapa
 
-Resultados detalhados em `docs/CR-010B-REPORT.md`. Verificação final: TypeScript passou; Vitest 196/196; build Vite passou com warning de chunk JS acima de 500 kB; ESLint focado nos arquivos alterados passou sem warnings; credential scan e autotestes passaram (23/23). `npm run lint` global acusa dívida de formatação Prettier espalhada em arquivos legados não alterados. O npm foi usado só localmente sem gerar `package-lock.json`; o projeto/CI continua com Bun e `bun.lock`.
+- `npx tsc --noEmit`: passou.
+- Vitest: 197/197 passaram (18 arquivos). Inclui mapeamento e validação de combinação, mas não comprova CRUD comercial, armazenamento remoto ou sessão AAL2 real.
+- ESLint com `--max-warnings 0` nos arquivos TypeScript alterados: passou; não houve formatação global. A dívida do lint global do repositório permanece separada.
+- `npm run build`: passou com warning de chunk JS (824.46 kB > 500 kB).
+- Credential scan passou; autotestes 23/23; `git diff --check`, parser de SQL e compilação de sintaxe Python passaram.
+- Harness PostgreSQL 17 foi ampliado para testar migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. **Ainda precisa executar em GitHub Actions**; sandbox sem `psql`, servidor PG17, Docker/Podman.
+- CI do PR #7 consultado é antigo. O workflow foi ampliado para aceitar PR com base na branch de integração do #7; estado do novo CI deverá ser registrado após abrir PR dependente.
+- `npm run lint` global tinha dívida preexistente ampla (860 problemas, majoritariamente Prettier); não formatar o repo inteiro para limpar esse baseline.
 
-## Próximo passo exato
+## Gates pendentes e próxima etapa
 
-Revisar `docs/CR-010B-REPORT.md`; completar comandos transacionais e testes PG17 **em arquivos locais**, sem alterar migrations históricas. Antes de publicar qualquer migration ou criar Storage remoto, obter autorização explícita. Para validar a administração real, aguardar também o fluxo aprovado de primeiro proprietário/MFA; não criar usuário nem enviar convite nesta etapa.
+1. Commitar/publicar apenas no branch ativo; abrir PR dependente do ativo para `arena/81a1f1ff-criatto-3d-studio` e acompanhar CI PG17. Não chamar PR #7 de atualizado enquanto o head dele continuar `bdf895b`.
+2. Corrigir falhas dos testes PG17 antes de aprovar a migration. Depois obter autorização explícita para aplicá-la em homologação; nenhum comando local aplica automaticamente ao remoto.
+3. Para mídia, obter autorização/decisão de bucket, visibilidade, tamanho/MIME, validação, policies e canal confiável de upload/registro/limpeza órfã. A ausência de Storage impede concluir CR-010B comercialmente.
+4. CR-010C só depois da decisão de catálogo/estoque e contrato do pedido: implementar criação de pedidos idempotente e validação server-side, com testes de concorrência/permissões. Não iniciar pagamento nem criar pedido nesta etapa.
