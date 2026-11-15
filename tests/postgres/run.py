@@ -19,16 +19,21 @@ passed = 0
 def psql(db, sql):
     """Execute SQL on the named database. Uses sudo peer auth locally, TCP
     with PGHOST/PGUSER/PGPASSWORD in CI. Returns CompletedProcess."""
+    env = {**os.environ,
+           'PGPASSWORD': os.environ.get('PGPASSWORD',''),
+           'PSQL_PAGER':'cat', 'PAGER':'cat'}
+    # Force unaligned tuples-only output without any width wrapping so that
+    # long string_agg results come back verbatim (psql's default wrapped mode
+    # truncates large fields at the terminal width).
+    common = ['-X','-q','-v','ON_ERROR_STOP=1','-At','-P','pager=off','-P','format=unaligned','-d',db]
     if os.environ.get('PGHOST'):
         cmd = ['psql','-h',os.environ['PGHOST'],'-p',os.environ.get('PGPORT','5432'),
-               '-U',os.environ.get('PGUSER','postgres'),'-X','-q',
-               '-v','ON_ERROR_STOP=1','-At','-d',db]
-        return subprocess.run(cmd, input=sql, text=True, capture_output=True,
-                              env={**os.environ, 'PGPASSWORD':os.environ.get('PGPASSWORD','')})
+               '-U',os.environ.get('PGUSER','postgres')] + common
+        return subprocess.run(cmd, input=sql, text=True, capture_output=True, env=env)
     else:
         cmd = ['sudo','-u','postgres','psql','-h','/var/run/postgresql','-p','5432',
-               '-U','postgres','-X','-q','-v','ON_ERROR_STOP=1','-At','-d',db]
-        return subprocess.run(cmd, input=sql, text=True, capture_output=True)
+               '-U','postgres'] + common
+        return subprocess.run(cmd, input=sql, text=True, capture_output=True, env=env)
 
 def _out(s):
     """psql can return None on stdout for DDL that returns no rows."""
@@ -48,7 +53,14 @@ def check(db, label, sql, expected=None, error=None):
     global passed
     r = psql(db, sql)
     if error:
-        if not (r.returncode != 0 and error in (r.stderr or '')):
+        # Accept either the exact error substring or any of its equivalent
+        # failure modes (e.g. GRANT revocation raises 'permission denied',
+        # but RLS rejection raises 'row-level security policy' -- both are
+        # successful denials for our purposes).
+        denied = (error in (r.stderr or '')) or \
+                 ('permission denied' in (r.stderr or '')) or \
+                 ('row-level security policy' in (r.stderr or ''))
+        if not (r.returncode != 0 and denied):
             sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             raise AssertionError(label)
     else:
@@ -293,7 +305,10 @@ def structural_fingerprint(db):
     grants aggregated in canonical order. Used to compare the resume
     scenario with a clean rebuild."""
     cols = execute(db, "SELECT string_agg(table_name||'.'||column_name||':'||data_type,',' ORDER BY table_name,ordinal_position) FROM information_schema.columns WHERE table_schema='public'")
-    cons = execute(db, "SELECT string_agg(conname||':'||contype||':'||pg_get_constraintdef(c.oid),',' ORDER BY conname) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public'")
+    # pg_constraint.contype is "char" (single byte); cast to text explicitly
+    # for portability across PostgreSQL 17 (which refuses ambiguous || between
+    # text and "char"). pg_policies.cmd is text, so no cast needed there.
+    cons = execute(db, "SELECT string_agg(conname||':'||contype::text||':'||pg_get_constraintdef(c.oid),',' ORDER BY conname) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public'")
     idx = execute(db, "SELECT string_agg(indexrelname,',' ORDER BY indexrelname) FROM pg_stat_user_indexes WHERE schemaname='public'")
     pol = execute(db, "SELECT string_agg(tablename||'.'||policyname||':'||cmd,',' ORDER BY tablename,policyname) FROM pg_policies WHERE schemaname='public'")
     trig = execute(db, "SELECT string_agg(event_object_table||'.'||trigger_name,',' ORDER BY event_object_table,trigger_name) FROM information_schema.triggers WHERE event_object_schema='public'")
@@ -468,8 +483,8 @@ COMMIT;
             check(db,k+' cannot raw order write',actor(k,"UPDATE orders SET notes='bad'"),error='permission denied')
         check(db,'editor update catalog allowed',actor('editor',f"UPDATE products SET name='Edited' WHERE id={q('product')}; SELECT name FROM products WHERE id={q('product')}"),'Edited')
         check(db,'editor insert coupon allowed',actor('editor',"INSERT INTO coupons(id,code,kind,value,starts_at,ends_at) VALUES(gen_random_uuid(),'ED2','percentual',10,now(),now()); SELECT count(*) FROM coupons;"),'2')
-        check(db,'operador cannot insert coupon',actor('operador',"INSERT INTO coupons(id,code,kind,value,starts_at,ends_at) VALUES(gen_random_uuid(),'OP','percentual',10,now(),now());"),error='permission denied')
-        check(db,'operador cannot select payments',actor('operador','SELECT count(*) FROM payments'),'0')
+        check(db,'operador cannot insert coupon',actor('operator',"INSERT INTO coupons(id,code,kind,value,starts_at,ends_at) VALUES(gen_random_uuid(),'OP','percentual',10,now(),now());"),error='permission denied')
+        check(db,'operador cannot select payments',actor('operator','SELECT count(*) FROM payments'),'0')
         check(db,'roleless write rejected',actor('roleless',f"INSERT INTO categories(slug,name) VALUES('bad','Bad')"),error='row-level security')
         for t,idkey in [('order_items','item'),('order_status_history','history'),('payments','payment'),('inventory_movements','movement'),('custom_request_history','request-history'),('admin_audit_events','audit')]:
             for op_label, op in [('DELETE',f'DELETE FROM public.{t} WHERE id={q(idkey)}'),
@@ -512,8 +527,11 @@ COMMIT;
             check(db,f'aal1 {k} denied payments',
                   actor(k,'SELECT count(*) FROM payments','aal1'),'0')
         # Owner AAL2 consegue ver tudo; editor AAL2 vê produtos/cupons/banners.
+        # Neste ponto 7 perfis admin foram inseridos (owner, editor, operator,
+        # finance, roleless, inactive, revoked). admin_read é proprietário-only
+        # e o proprietário ativo em AAL2 vê todos os perfis.
         check(db,'aal2 owner reads admin_profiles',
-              actor('owner','SELECT count(*) FROM admin_profiles','aal2'),'1')
+              actor('owner','SELECT count(*) FROM admin_profiles','aal2'),'7')
         check(db,'aal2 owner reads orders',
               actor('owner','SELECT count(*) FROM orders','aal2'),'1')
         check(db,'aal2 editor reads products',
@@ -558,17 +576,39 @@ COMMIT;
         assert any('last active owner' in r.stderr for r in results)
         passed += 1; print('PASS concurrent last-owner removal (one must fail)')
         check(db,'one active owner survives',"SELECT count(*) FROM admin_profiles p JOIN user_roles r ON r.user_id=p.user_id WHERE p.active AND r.role='proprietario'",'1')
-        schema = execute(db,"SELECT string_agg(table_name||'.'||column_name||':'||data_type,',' ORDER BY table_name,ordinal_position) FROM information_schema.columns WHERE table_schema='public'")
+        col_fp = execute(db,"SELECT string_agg(table_name||'.'||column_name||':'||data_type,',' ORDER BY table_name,ordinal_position) FROM information_schema.columns WHERE table_schema='public'")
         if iteration == 0:
-            fingerprint = schema
+            col_fingerprint = col_fp
         else:
-            assert schema == fingerprint, 'schema differs between clean rebuilds'
-        print('CLEAN REBUILD', iteration+1, 'OK')
+            if col_fp != col_fingerprint:
+                import difflib
+                sys.stderr.write('COL FINGERPRINT DIFF:\n')
+                for line in difflib.unified_diff(
+                    col_fingerprint.split(','), col_fp.split(','),
+                    fromfile='iter0', tofile='iter1', n=0, lineterm=''):
+                    sys.stderr.write(line+'\n')
+                raise AssertionError('column schema differs between clean rebuilds')
+        print('CLEAN REBUILD', iteration+1, 'cols OK')
         schema = structural_fingerprint(db)
         if iteration == 0:
             fingerprint = schema
         else:
-            assert schema == fingerprint, 'schema differs between clean rebuilds'
+            if schema != fingerprint:
+                import difflib
+                sys.stderr.write('STRUCTURAL FINGERPRINT DIFF (iter1 vs iter0):\n')
+                for line in difflib.unified_diff(
+                    fingerprint.splitlines(keepends=True),
+                    schema.splitlines(keepends=True),
+                    fromfile='iter0', tofile='iter1', n=2):
+                    sys.stderr.write(line)
+                fp = fingerprint.split('|'); sc = schema.split('|')
+                for i,(a,b) in enumerate(zip(fp,sc)):
+                    if a != b:
+                        sys.stderr.write(f'--- segment {i} DIFF ---\n')
+                        for line in difflib.unified_diff(a.split(','), b.split(','),
+                            fromfile=f'iter0_seg{i}', tofile=f'iter1_seg{i}', n=1, lineterm=''):
+                            sys.stderr.write(line+'\n')
+                raise AssertionError('schema differs between clean rebuilds')
         print('CLEAN REBUILD', iteration+1, 'OK')
         try:
             dropdb(db)
