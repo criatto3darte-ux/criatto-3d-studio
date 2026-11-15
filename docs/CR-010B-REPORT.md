@@ -90,8 +90,8 @@ Não foi inserido dado de teste remoto. Não foram alterados Auth, policies, mig
 
 ## 7. Commits, PR e próximo passo
 
-- Commit desta etapa: a registrar após conferência final.
-- PR #7 permanece aberto no HEAD remoto `bdf895b`; CI consultado antes destas alterações estava verde, sem executar novo CI sobre elas.
+- Commits: `43ddb43` (`feat(CR-010B): connect storefront and catalog admin to Supabase`), `84457bf` (documentação de retomada) e o commit final de atualização deste relatório.
+- Push efetuado somente para o branch fixo da sessão `arena/1f32d4fc-criatto-3d-studio`. PR #7 permanece aberto no HEAD remoto `bdf895b`; não foi possível atualizar seu head `arena/81a1f1ff-criatto-3d-studio` sem violar a restrição de branch da sessão. CI consultado antes destas alterações estava verde; não houve CI novo para este branch.
 - Nenhum merge, deploy ou alteração na loja oficial.
 - Próximo passo técnico: fechar teste de integração dos PostgREST operations com mocks/controlos de RLS; criar e testar em PostgreSQL 17 uma migration estritamente aditiva para variantes/estoque, sem tocar nas 13 aplicadas. Depois revisar e pedir autorização antes de aplicá-la a homologação.
 - Próximo gate de mídia: autorização explícita de Storage e definição de buckets/permissões. Próximo gate de integração administrativa real: fluxo aprovado de identidade/owner e sessão AAL2; não faz parte deste commit.

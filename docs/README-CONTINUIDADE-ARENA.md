@@ -6,7 +6,7 @@
 
 - Ao abrir esta sessão, o checkout estava limpo em `d922aef` (`main`), sem arquivos não rastreados e sem stash. Nenhum trabalho parcial de CR-010B existia nessa árvore.
 - O PR #7 estava aberto e seu HEAD remoto era `bdf895be12d110761c35d6a77faa92fdaeedc7bb` (`docs(CR-010A): relatório de preparação da loja para produção`). As páginas administrativas continuavam usando `demoRepository`/LocalStorage; não havia camada Supabase de catálogo executável. Portanto, o avanço parcial citado na retomada anterior **não foi recuperado**.
-- O HEAD remoto do PR foi recuperado por fast-forward, mantendo o branch fixo desta sessão: `arena/1f32d4fc-criatto-3d-studio`. A branch citada no histórico do PR/na solicitação é `arena/81a1f1ff-criatto-3d-studio`; não foi feito checkout nem push para ela.
+- O HEAD remoto do PR foi recuperado por fast-forward, mantendo o branch fixo desta sessão: `arena/1f32d4fc-criatto-3d-studio`. Código commitado em `43ddb43` e documentação em `84457bf`; push feito somente para o branch ativo desta sessão. A branch citada no histórico do PR/na solicitação é `arena/81a1f1ff-criatto-3d-studio`; não foi feito checkout nem push para ela.
 - PR #7: https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7 — permanece aberto, HEAD remoto consultado `bdf895b`. Checks daquele HEAD estavam verdes (Static + unit, PostgreSQL 17 local, pacote de homologação). Esses checks **não** validam as alterações locais desta retomada.
 - Relatório da etapa anterior: `docs/CR-010A-REPORT.md`. Relatório desta retomada: `docs/CR-010B-REPORT.md`.
 
