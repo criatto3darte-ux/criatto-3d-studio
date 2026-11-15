@@ -206,7 +206,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_attribute_groups TO authe
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_attribute_options TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_variants TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.variant_option_values TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.media_assets TO authenticated;
+-- A migration 0009 tornou media_assets somente leitura para authenticated.
+-- Escritas permanecem restritas ao service_role/canal confiável; não reabrir
+-- INSERT/UPDATE/DELETE ao preparar as policies com AAL2.
+GRANT SELECT ON public.media_assets TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.media_assets FROM authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_images TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.category_images TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO authenticated;

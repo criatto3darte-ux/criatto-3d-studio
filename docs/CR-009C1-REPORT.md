@@ -19,6 +19,9 @@ Assim, as implementações anteriores permanecem presentes sem merge em `main`.
 4. Não havia comparação automatizada do estado antes e depois do rollback.
 5. O PR #7 isolado não continha as migrations nem o harness usado para validar
    o procedimento.
+6. A migration 0011 reabria `INSERT`, `UPDATE` e `DELETE` em `media_assets`
+   para `authenticated`, anulando o endurecimento introduzido pela migration
+   0009 e permitindo tentativas de escrita fora do canal confiável.
 
 ## Correções realizadas
 
@@ -38,6 +41,8 @@ Assim, as implementações anteriores permanecem presentes sem merge em `main`.
 - O harness cria a role local `supabase_auth_admin`, executa o ciclo
   0001–0010 → snapshot → 0011 → rollback → comparação → reaplicação e inclui
   cenários negativos AAL1 e de execução indevida do hook.
+- A migration 0011 preserva `media_assets` como somente leitura para
+  `authenticated`; escrita continua exclusiva do canal confiável.
 
 ## Arquivos modificados
 
@@ -45,6 +50,7 @@ Assim, as implementações anteriores permanecem presentes sem merge em `main`.
 - `docs/sql/03-rollback-cr008c-aal.sql`
 - `tests/postgres/run.py`
 - `.github/workflows/ci.yml`
+- `supabase/migrations/20261114133000_cr008c_jwt_claims_and_aal.sql`
 - `supabase/migrations/20261114133100_cr009c1_pg17_advisory_lock.sql`
 - `docs/CR-009C1-REPORT.md`
 
@@ -89,6 +95,12 @@ Na sequência, o harness alcançou a matriz completa de RLS e revelou que o
 helper antigo de JWT gerava JSON inválido ao interpolar UUID. O helper agora
 define `request.jwt.claim.sub` e serializa `request.jwt.claims` com
 `json.dumps`, preservando os cenários AAL1/AAL2.
+
+O ciclo seguinte alcançou os cenários negativos de mídia e confirmou uma
+regressão na 0011: o grant amplo devolvia escrita em `media_assets` ao papel
+`authenticated`, contrariando a migration 0009. A 0011, ainda pendente em
+homologação, passou a conceder somente `SELECT` e a revogar explicitamente
+`INSERT`, `UPDATE` e `DELETE` desse papel.
 
 ## PostgreSQL 17 e CI
 
