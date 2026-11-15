@@ -10,6 +10,9 @@
 name: pacote-homolog
 
 on:
+  push:
+    branches:
+      - arena/81a1f1ff-criatto-3d-studio
   workflow_dispatch:
 
 permissions:
