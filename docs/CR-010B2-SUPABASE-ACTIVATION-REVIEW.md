@@ -6,7 +6,7 @@
 
 ## Resumo de decisão
 
-A CR-010B.1 é **compatível em estrutura com o schema remoto observado** e o fluxo de aplicação foi transacionalmente testado em PG17 pelo CI da CR-010B.1. Nesta CR-010B.2 foi adicionado um rollback específico e um teste PG17 de ciclo apply/rollback, incluindo proteção contra descarte de limites de estoque configurados. O teste novo precisa passar no CI desta alteração antes de marcar o rollback como validado.
+A CR-010B.1 é **compatível em estrutura com o schema remoto observado**. Nesta CR-010B.2 foi adicionado um rollback específico e um teste PG17 de ciclo apply/rollback, incluindo proteção contra descarte de limites de estoque configurados. O CI PG17 desta alteração passou no run `43753920274` (head `6e431a6`): aplicação das 13 migrations fundacionais + migration comercial, recusa de rollback com minimum não-default, confirmação de não alteração após recusa e rollback limpo com fingerprint pré/pós idêntico. O primeiro rascunho do teste falhou por concatenar array de roles sem cast; isso foi corrigido para comparação textual, e o rerun passou.
 
 Ainda não é seguro declarar a loja comercial pronta: não existe bucket nem canal confiável para publicar/verificar mídia; não foi feito CRUD remoto com sessão Auth+AAL2; o checkout não persiste pedidos; quantidades públicas de estoque são booleanas e o modelo atual as projeta para saldo `0/1` no cliente.
 
@@ -60,7 +60,7 @@ SHA-256: `731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246`
 
 O rollback também é transacional. Primeiro exige que a coluna exista e **recusa** execução se qualquer produto tiver `minimum_on_hand <> 0`; se aprovado, remove as quatro funções exatas e a coluna adicionada. Não altera tabelas/policies preexistentes. Se mínimos forem configurados, não apagar os dados para forçar rollback: é necessário exportar/decidir como preservar esses valores e preparar rollback revisado.
 
-O harness PG17 foi ampliado para aplicar as 13 migrations fundacionais + migration comercial em banco descartável, confirmar coluna/funções, testar a recusa com mínimo `5`, verificar que a recusa não removeu objetos e, após retornar o valor sintético a zero, executar o rollback e comparar fingerprint de colunas, constraints, índices, policies, triggers, views, grants de tabela e expressões de policy contra o estado pré-migration. O novo teste ainda aguarda o CI deste commit; não alegar aprovação até o job terminar verde.
+O harness PG17 aplica as 13 migrations fundacionais + migration comercial em banco descartável, confirma coluna/funções, testa a recusa com mínimo `5`, verifica que a recusa não removeu objetos e, após retornar o valor sintético a zero, executa o rollback e compara fingerprint de colunas, constraints, índices, policies, triggers, views, grants de tabela e expressões de policy contra o estado pré-migration. O job passou no run `43753920274`; isso valida este fluxo no PG17 isolado, não é execução no Supabase remoto.
 
 ## 5. Storage: modelo preparado, sem criação
 
