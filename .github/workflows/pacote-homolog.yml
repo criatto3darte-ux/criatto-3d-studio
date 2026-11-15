@@ -18,7 +18,7 @@ on:
 
 jobs:
   pacote-homolog:
-    name: Pacote de homologação (ZIP artifact)
+    name: Pacote de homologacao (ZIP artifact)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -28,16 +28,13 @@ jobs:
         with:
           bun-version: "1.2"
 
-      - name: Install (--frozen-lockfile = reproduzível)
+      - name: Install (--frozen-lockfile = reproduzivel)
         run: bun install --frozen-lockfile
 
-      - name: Build de homologação (SPA estática, base=/)
+      - name: Build de homolgacao (SPA estatica, base=/)
         run: bun run build:homolog
 
-      - name: Aplicar robots.txt de homologação
-        run: cp public/robots-homolog.txt dist/robots.txt
-
-      - name: Aplicar robots.txt de homologação (Disallow: /)
+      - name: Aplicar robots.txt de homolgacao
         run: cp public/robots-homolog.txt dist/robots.txt
 
       - name: Montar pacote ZIP
@@ -51,7 +48,7 @@ jobs:
           echo "SHA-256:"
           sha256sum criatto3d-homolog.zip
 
-      - name: Validar ausência de arquivos proibidos no pacote
+      - name: Validar ausencia de arquivos proibidos no pacote
         run: |
           set -euo pipefail
           tmpdir=$(mktemp -d)
