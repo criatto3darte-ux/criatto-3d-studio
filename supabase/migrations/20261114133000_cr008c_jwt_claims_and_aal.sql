@@ -213,12 +213,18 @@ GRANT SELECT ON public.media_assets TO authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.media_assets FROM authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_images TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.category_images TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory TO authenticated;
+-- Operações, pedidos e anexos de solicitações são escritos exclusivamente
+-- por RPCs/service_role. A 0011 só acrescenta AAL2 às policies existentes e
+-- não deve ampliar os privilégios de tabela definidos pelas migrations base.
+GRANT SELECT ON public.customers TO authenticated;
+GRANT SELECT ON public.orders TO authenticated;
+GRANT SELECT ON public.inventory TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.store_settings TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.custom_requests TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.custom_request_images TO authenticated;
+GRANT SELECT ON public.custom_requests TO authenticated;
+GRANT SELECT ON public.custom_request_images TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.customers, public.orders,
+  public.inventory, public.custom_requests, public.custom_request_images
+  FROM authenticated;
 -- admin_profiles / user_roles: SELECT já concedido via policies, sem INSERT/UPDATE/DELETE
 -- por usuário comum (somente service_role/bootstrap); read é suficiente para auto-identidade.
 GRANT SELECT ON public.admin_profiles TO authenticated;

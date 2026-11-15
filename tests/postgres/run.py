@@ -155,7 +155,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261113120800_cr007b_access_invariants.sql':'de9f7e5e2c5b672692eeafeade78dd07b62b694c5649dfa36ea9ef7ace40f1b8',
     '20261113120900_cr007b_media_privilege_hardening.sql':'683ffe938b3e88ee4eff88e65351770af87d42a9e984d44d3d6bd957c69d8ac7',
     '20261113121000_cr007b7_private_media_and_role_matrix.sql':'e22fdd131f09f860e21a4d22e51cdc9c9baa5e4584b06e8dbc6eb686686eb2c9',
-    '20261114133000_cr008c_jwt_claims_and_aal.sql':'2cb4426d1ea637391ad11dabc89b577a0d1268664973178f5b5c36d7d460ea49',
+    '20261114133000_cr008c_jwt_claims_and_aal.sql':'18acfd79b6625f98d6caf2a824e315d52556f9850f70ed28ad2d4719874689ea',
     '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
 }
 
