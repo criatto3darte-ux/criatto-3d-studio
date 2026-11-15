@@ -15,4 +15,8 @@ jobs:
         with:
           bun-version: "1.2"
 
-      - run: bun --version
+      - name: Install (--frozen-lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Build de homologação
+        run: bun run build:homolog
