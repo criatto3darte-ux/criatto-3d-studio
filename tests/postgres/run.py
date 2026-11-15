@@ -383,7 +383,7 @@ try:
             f"INSERT INTO order_status_history(id,order_id,from_status,to_status,actor_id,operation_key) VALUES({q('history')},{q('order')},NULL,'aguardando-contato',{q('owner')},'history-test')",
             f"INSERT INTO payments(id,order_id,amount_cents,kind,method,confirmed_by,confirmed_at,operation_key) VALUES({q('payment')},{q('order')},100,'receipt','synthetic',{q('owner')},now(),gen_random_uuid())",
             f"INSERT INTO inventory(product_id,on_hand,allocated) VALUES({q('product')},2,1)",
-            f"INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,actor_id,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2,0,'Synthetic',{q('owner')},'movement-test')",
+            f"INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,actor_id,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2::integer,0::integer,'Synthetic',{q('owner')},'movement-test')",
             f"INSERT INTO custom_requests(id,customer_id,customer_name_snapshot,customer_phone_snapshot,description,quantity,idempotency_key,payload_hash) VALUES({q('request')},{q('customer')},'Synthetic','+5521999999999','Test',1,gen_random_uuid(),repeat('b',64))",
             f"INSERT INTO custom_request_history(id,request_id,from_status,to_status,actor_id,operation_key) VALUES({q('request-history')},{q('request')},NULL,'recebida',{q('owner')},'test')",
             f"INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'test')",
