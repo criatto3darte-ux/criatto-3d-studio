@@ -4,10 +4,8 @@ import { FlaskConical, Info, X } from "lucide-react";
 import styles from "./PublicDemoBanner.module.css";
 
 /**
- * Banner fixo no topo da loja indicando que é uma versão demonstrativa
- * (sem pedidos reais, sem pagamento). Aparece SEMPRE nesta publicação inicial.
- * Se a query ?adminDisabled=1 vier de um redirecionamento do painel, também
- * mostra o aviso de que o admin não está disponível publicamente.
+ * Banner fixo mantém o limite comercial visível enquanto o checkout transacional
+ * (CR-010C) e o fluxo real de pedidos ainda não foram entregues.
  */
 export function PublicDemoBanner() {
   const search = useSearch({ strict: false }) as { adminDisabled?: string } | undefined;
@@ -29,9 +27,9 @@ export function PublicDemoBanner() {
           <FlaskConical size={16} />
         </span>
         <div className={styles.text}>
-          <strong>Loja em versão demonstrativa.</strong>{" "}
-          Produtos, preços e imagens são fictícios. Nenhum pedido será cobrado
-          ou processado; o checkout apenas simula o fluxo.{" "}
+          <strong>Loja em homologação comercial.</strong> O catálogo publicado é consultado no
+          Supabase. Pedidos ainda não são processados; entre em contato pelo WhatsApp para
+          informações.{" "}
           {fromAdmin && (
             <>
               <Info size={14} aria-hidden="true" />{" "}

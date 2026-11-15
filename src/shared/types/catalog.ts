@@ -2,6 +2,10 @@
 export type CategorySlug = string;
 
 export interface Category {
+  /** Supabase UUID when loaded from the persisted catalog; demo-only categories omit it. */
+  id?: string;
+  /** Optimistic concurrency token for persisted categories. */
+  version?: number;
   slug: CategorySlug;
   name: string;
   description: string;
@@ -38,7 +42,7 @@ export interface Product {
   /** Optional promotional price in cents; must be lower than priceCents. */
   promoPriceCents?: number;
   images: string[];
-  badge?: "Mais Vendido" | "Novo" | "Destaque";
+  badge?: "Mais Vendido" | "Novo" | "Destaque" | "Promoção";
   availability: ProductAvailability;
   productionDays?: number;
   stock: number;

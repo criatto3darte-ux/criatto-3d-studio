@@ -14,7 +14,7 @@ import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { CartProvider } from "@/features/cart/CartContext";
 import { SystemPage } from "@/shared/ui/SystemPage";
 import { Button, buttonClass } from "@/shared/ui/Button";
-import type { DemoData } from "@/features/demo-data/model";
+import type { Product } from "@/shared/types/catalog";
 
 function NotFoundComponent() {
   return (
@@ -78,7 +78,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 //     também no head() para que HeadContent os gerencie em navegações SPA.
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
-  productMetadataCatalog?: DemoData;
+  productMetadataCatalog?: readonly Product[];
 }>()({
   head: () => ({
     meta: [
@@ -91,16 +91,26 @@ export const Route = createRootRouteWithContext<{
           "Produtos 3D criativos para decoração, organização, presentes e peças personalizadas. Fabricação própria com impressão 3D no Rio de Janeiro.",
       },
       { name: "author", content: "Criatto 3D" },
-      { name: "keywords", content: "impressão 3D, produtos 3D, decoração, personalizados, presentes, Rio de Janeiro" },
+      {
+        name: "keywords",
+        content: "impressão 3D, produtos 3D, decoração, personalizados, presentes, Rio de Janeiro",
+      },
       { name: "theme-color", content: "#080B14" },
       { property: "og:site_name", content: "Criatto 3D" },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Criatto 3D — Produtos 3D criativos e personalizados" },
-      { property: "og:description", content: "Produtos 3D criativos para decoração, organização e presentes. Fabricação própria no Rio de Janeiro." },
+      {
+        property: "og:description",
+        content:
+          "Produtos 3D criativos para decoração, organização e presentes. Fabricação própria no Rio de Janeiro.",
+      },
       { property: "og:image", content: "/branding/logo-full-dark.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Criatto 3D — Produtos 3D criativos" },
-      { name: "twitter:description", content: "Produtos 3D criativos para decoração, presentes e personalizados." },
+      {
+        name: "twitter:description",
+        content: "Produtos 3D criativos para decoração, presentes e personalizados.",
+      },
       { name: "twitter:image", content: "/branding/logo-full-dark.png" },
       { name: "robots", content: "index,follow" },
     ],
