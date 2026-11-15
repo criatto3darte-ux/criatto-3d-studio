@@ -46,31 +46,31 @@ def execute(db, sql):
         sys.stderr.write('SQL: ' + sql[:2000] + '\n')
         sys.stderr.write('STDOUT: ' + (r.stdout or '') + '\n')
         sys.stderr.write('STDERR: ' + (r.stderr or '') + '\n')
-        raise RuntimeError(r.stderr or 'psql failed')
+        sys.stderr.flush()
+        raise RuntimeError((r.stderr or 'psql failed').splitlines()[-1] if r.stderr else 'psql failed')
     return _out(r.stdout)
 
 def check(db, label, sql, expected=None, error=None):
     global passed
     r = psql(db, sql)
     if error:
-        # Accept either the exact error substring or any of its equivalent
-        # failure modes (e.g. GRANT revocation raises 'permission denied',
-        # but RLS rejection raises 'row-level security policy' -- both are
-        # successful denials for our purposes).
         denied = (error in (r.stderr or '')) or \
                  ('permission denied' in (r.stderr or '')) or \
                  ('row-level security policy' in (r.stderr or ''))
         if not (r.returncode != 0 and denied):
             sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+            sys.stderr.flush()
             raise AssertionError(label)
     else:
         if r.returncode != 0:
             sys.stderr.write(f'CHECK FAILED (rc={r.returncode}): {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+            sys.stderr.flush()
             raise AssertionError(label)
         if expected is not None:
             last = _out(r.stdout).splitlines()[-1] if _out(r.stdout) else ''
             if last != expected:
                 sys.stderr.write(f'CHECK FAILED: {label}\nexpected={expected!r}\ngot={last!r}\nstdout={r.stdout}\nstderr={r.stderr}\n')
+                sys.stderr.flush()
                 raise AssertionError(label)
     passed += 1
     print('PASS', label, flush=True)
