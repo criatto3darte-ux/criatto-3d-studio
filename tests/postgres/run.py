@@ -194,6 +194,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261113121000_cr007b7_private_media_and_role_matrix.sql':'e22fdd131f09f860e21a4d22e51cdc9c9baa5e4584b06e8dbc6eb686686eb2c9',
     '20261114133000_cr008c_jwt_claims_and_aal.sql':'18acfd79b6625f98d6caf2a824e315d52556f9850f70ed28ad2d4719874689ea',
     '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
+    '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
 }
 
 def verify_migration_integrity():
@@ -267,17 +268,23 @@ def cr009c1_rollback_cycle():
     db = 'cr009c1_' + uuid.uuid4().hex[:12]
     migration_0011 = ROOT/'supabase/migrations/20261114133000_cr008c_jwt_claims_and_aal.sql'
     pg17_repair = ROOT/'supabase/migrations/20261114133100_cr009c1_pg17_advisory_lock.sql'
+    cr009f_fix  = ROOT/'supabase/migrations/20261115103000_cr009f_hook_type_fix_and_media_aal2.sql'
     foundation = [m for m in all_migrations() if m.name < migration_0011.name]
     precheck = ROOT/'docs/sql/01-precheck-capture-state.sql'
     rollback = ROOT/'docs/sql/03-rollback-cr008c-aal.sql'
     owner = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/owner'))
+    editor = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/editor'))
     product = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/product'))
     category = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/category'))
+    editorial_media = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/media'))
     try:
         createdb(db)
         execute(db, setup)
         for migration in foundation:
             execute(db, migration.read_text())
+        # Rollback snapshot path seeds ONE owner only (admin_profiles count = 1)
+        # so that the before/after state comparison is deterministic. Editor +
+        # media are seeded later (after re-apply) for the CR-009F checks.
         execute(db, f"""
           INSERT INTO auth.users(id) VALUES ('{owner}');
           INSERT INTO admin_profiles(user_id,display_name,active)
@@ -297,9 +304,6 @@ def cr009c1_rollback_cycle():
               actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal1'),'0')
         check(db,'CR-009C.1 AAL2 owner allowed admin profile',
               actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal2'),'1')
-        # rollback_cycle seeds ONE owner + product/category only, so admin_profiles
-        # count must be 1 here (different from the full-role-matrix path below
-        # which seeds 7 admin users). Keep the two assertions aligned.
 
         check(db,'CR-009C.1 authenticated hook execution denied',
               actor_sql(owner,"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
@@ -312,8 +316,83 @@ def cr009c1_rollback_cycle():
         print('PASS CR-009C.1 rollback restores policies, functions and grants',flush=True)
         execute(db, migration_0011.read_text())
         execute(db, pg17_repair.read_text())
+        execute(db, cr009f_fix.read_text())
         check(db,'CR-009C.1 migration 0011 reapplies after rollback',
               "SELECT to_regprocedure('public.require_aal2()') IS NOT NULL",'t')
+
+        # Seed extra CR-009F fixtures (editor user + verified editorial media
+        # linked to a product) AFTER re-apply so they don't perturb the rollback
+        # state fingerprint.
+        execute(db, f"""
+          INSERT INTO auth.users(id) VALUES ('{editor}');
+          INSERT INTO admin_profiles(user_id,display_name,active)
+            VALUES ('{editor}','CR009C1 editor',true);
+          INSERT INTO user_roles(user_id,role) VALUES ('{editor}','editor');
+          INSERT INTO media_assets(id,bucket,object_key,mime,byte_size,width,height,checksum,alt,state,created_by)
+            VALUES ('{editorial_media}','products','cr009c1/test.jpg','image/jpeg',1234,100,100,
+                    'sha256deadbeef','CR009C1','verified','{owner}');
+          INSERT INTO product_images(product_id,media_id,position,is_primary)
+            VALUES ('{product}','{editorial_media}',0,true);
+        """)
+
+        # --- CR-009F checks ---
+        # media_read_scoped must now require AAL2.
+        check(db,'CR-009F.1 media_read_scoped policy invokes require_aal2()',
+              "SELECT pg_get_expr(polqual,polrelid) ILIKE '%require_aal2%' FROM pg_policy WHERE polname='media_read_scoped'",'t')
+        # Owner AAL1 must be denied editorial media (product-linked).
+        check(db,'CR-009F.2 AAL1 owner denied editorial media',
+              actor_sql(owner,f"SELECT count(*) FROM media_assets WHERE id='{editorial_media}'",'aal1'),'0')
+        check(db,'CR-009F.3 AAL2 owner reads editorial media',
+              actor_sql(owner,f"SELECT count(*) FROM media_assets WHERE id='{editorial_media}'",'aal2'),'1')
+        # Editor-conteudo (role 'editor') AAL1 must also be denied.
+        check(db,'CR-009F.4 AAL1 editor denied editorial media',
+              actor_sql(editor,f"SELECT count(*) FROM media_assets WHERE id='{editorial_media}'",'aal1'),'0')
+        check(db,'CR-009F.5 AAL2 editor reads editorial media',
+              actor_sql(editor,f"SELECT count(*) FROM media_assets WHERE id='{editorial_media}'",'aal2'),'1')
+        # Hook contract: returns valid jsonb with roles[], email_verified bool, aal preserved.
+        # These calls run as bootstrap superuser (owner_sql) because the hook
+        # is intentionally NOT executable by authenticated/anon.
+        check(db,'CR-009F.6 hook returns email_verified=false when no confirmation present',
+              owner_sql(f"SELECT public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','00000000-0000-0000-0000-000000000001',"
+                       f"'claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000001','aal','aal2','email','x@y.z')))"
+                       f"->'claims'->>'email_verified'"),'false')
+        check(db,'CR-009F.7 hook derives email_verified=true from email_confirmed_at',
+              owner_sql(f"SELECT public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','00000000-0000-0000-0000-000000000001',"
+                       f"'claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000001','aal','aal1','email_confirmed_at','2026-01-01T00:00:00Z')))"
+                       f"->'claims'->>'email_verified'"),'true')
+        check(db,'CR-009F.8 hook preserves explicit email_verified=false even when email_confirmed_at present',
+              owner_sql(f"SELECT public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','00000000-0000-0000-0000-000000000001',"
+                       f"'claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000001','aal','aal2','email_verified',false,'email_confirmed_at','2026-01-01T00:00:00Z')))"
+                       f"->'claims'->>'email_verified'"),'false')
+        check(db,'CR-009F.9 hook preserves aal from input (aal1 -> aal1)',
+              owner_sql(f"SELECT public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','00000000-0000-0000-0000-000000000001',"
+                       f"'claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000001','aal','aal1')))"
+                       f"->'claims'->>'aal'"),'aal1')
+        check(db,'CR-009F.10 hook returns roles[] as empty array for unknown uid',
+              owner_sql(f"SELECT jsonb_array_length(public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','00000000-0000-0000-0000-000000000001',"
+                       f"'claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000001','aal','aal2')))"
+                       f"->'claims'->'roles')"),'0')
+        check(db,'CR-009F.10b hook returns roles containing proprietario for seeded owner',
+              owner_sql(f"SELECT public.custom_access_token_hook(jsonb_build_object("
+                       f"'user_id','{owner}',"
+                       f"'claims',jsonb_build_object('sub','{owner}','aal','aal2')))"
+                       f"->'claims'->'roles'->>0"),'proprietario')
+        check(db,'CR-009F.11 anon role cannot execute hook',
+              "BEGIN; SET LOCAL ROLE anon; SELECT public.custom_access_token_hook(jsonb_build_object('user_id','00000000-0000-0000-0000-000000000001','claims','{}'::jsonb)); ROLLBACK;",
+              error='permission denied')
+        check(db,'CR-009F.11b authenticated role cannot execute hook directly',
+              actor_sql(owner,"SELECT public.custom_access_token_hook(jsonb_build_object('user_id','"+owner+"','claims',jsonb_build_object('sub','"+owner+"','aal','aal2')))",'aal2'),
+              error='permission denied')
+        check(db,'CR-009F.12 idempotent: apply 009f again with no error',
+              "SELECT to_regprocedure('public.require_aal2()') IS NOT NULL",'t')
+        execute(db, cr009f_fix.read_text())  # second application (idempotency)
+        check(db,'CR-009F.12b media_read_scoped still requires aal2 after re-apply',
+              "SELECT pg_get_expr(polqual,polrelid) ILIKE '%require_aal2%' FROM pg_policy WHERE polname='media_read_scoped'",'t')
     finally:
         try:
             dropdb(db)
@@ -325,6 +404,13 @@ def actor_sql(user_id, sql, aal):
             f"SET LOCAL request.jwt.claim.sub='{user_id}'; "
             f"SET LOCAL request.jwt.claims='{{\"sub\":\"{user_id}\",\"aal\":\"{aal}\"}}'; "
             f"{sql}; ROLLBACK;")
+
+def owner_sql(sql):
+    """Run SQL as bootstrap superuser (no role switch) for SECURITY DEFINER
+    functions that are intentionally NOT executable by authenticated/anon
+    (e.g. custom_access_token_hook). Wrapped in a read-only transaction
+    that always rolls back to avoid side effects."""
+    return f"BEGIN; {sql.rstrip(';')}; ROLLBACK;"
 
 cr009c1_rollback_cycle()
 
