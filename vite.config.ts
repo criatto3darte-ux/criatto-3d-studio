@@ -109,7 +109,9 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
-      sourcemap: mode !== "production" ? true : false,
+      // Sourcemaps são desligados em homolog e produção para não vazar
+      // código-fonte; em build:dev (testes locais) são mantidos.
+      sourcemap: mode === "development" ? true : false,
       rollupOptions: {
         output: {
           // Hashes de conteúdo nos assets para cache agressivo no CDN.

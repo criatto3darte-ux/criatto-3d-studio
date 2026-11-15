@@ -57,7 +57,11 @@ EXCLUDE_PATH_PATTERNS=(
   -not -path '*/public/branding/*'
   -not -path '*/scripts/credential-scan.sh'
   -not -path '*/scripts/credential-scan.test.sh'
+  -not -path '*/scripts/pacote-homolog.sh'
   -not -path '*/scripts/vendor/node_modules/*'
+  # Arquivos .env.* locais e de homolog NÃO são versionados (.gitignore) e
+  # contêm a chave anon de homolog de propósito. Não devem falhar o scan.
+  -not -name '.env.local' -not -name '.env.homolog' -not -name '.env.production'
 )
 
 mapfile -d '' FILES < <(

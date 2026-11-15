@@ -8,6 +8,7 @@
     "dev:tunnel": "CR009I_TUNNEL=1 vite dev --host 0.0.0.0",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:homolog": "vite build --mode homolog --base=/",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",

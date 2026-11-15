@@ -1,0 +1,3 @@
+# Homologação — NÃO indexar.
+User-agent: *
+Disallow: /
