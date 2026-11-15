@@ -73,6 +73,11 @@ ordem após `REVOKE`/`GRANT`, mesmo com privilégios idênticos. O fingerprint
 foi canonicalizado por tabela, grantor, grantee, privilégio e grant option,
 mantendo comparação semântica exata sem depender da ordem interna do catálogo.
 
+O terceiro ciclo identificou que o `REVOKE` percorria apenas tabelas com uma
+policy-alvo capturada. A migration concede privilégios a um conjunto maior. O
+rollback passou a percorrer explicitamente todas as 23 tabelas afetadas e agora
+compara grants nos dois sentidos antes do `COMMIT`.
+
 ## PostgreSQL 17 e CI
 
 O executor local desta sessão não disponibiliza PostgreSQL, Docker nem

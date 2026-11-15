@@ -69,8 +69,17 @@ END $$;
 
 -- A migration 0011 altera apenas ACLs de authenticated nas tabelas alvo.
 DO $$ DECLARE r record; BEGIN
-  FOR r IN SELECT DISTINCT schema_name,table_name
-             FROM private.cr009c1_policy_snapshot LOOP
+  FOR r IN
+    SELECT 'public'::name schema_name,table_name::name
+      FROM (VALUES
+       ('admin_profiles'),('user_roles'),('categories'),('products'),
+       ('product_attribute_groups'),('product_attribute_options'),('product_variants'),
+       ('variant_option_values'),('media_assets'),('product_images'),('category_images'),
+       ('customers'),('orders'),('order_items'),('order_status_history'),('payments'),
+       ('inventory'),('inventory_movements'),('coupons'),('banners'),('custom_requests'),
+       ('custom_request_images'),('store_settings')
+      ) target(table_name)
+  LOOP
     EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE %I.%I FROM authenticated',
                    r.schema_name,r.table_name);
   END LOOP;
@@ -133,6 +142,32 @@ BEGIN
        AND pg_get_function_identity_arguments(p.oid)=s.identity_arguments
      WHERE s.existed IS DISTINCT FROM (p.oid IS NOT NULL)
   ) THEN RAISE EXCEPTION 'Function set differs from snapshot'; END IF;
+
+  IF EXISTS (
+    WITH target_tables(table_name) AS (VALUES
+      ('admin_profiles'),('user_roles'),('categories'),('products'),
+      ('product_attribute_groups'),('product_attribute_options'),('product_variants'),
+      ('variant_option_values'),('media_assets'),('product_images'),('category_images'),
+      ('customers'),('orders'),('order_items'),('order_status_history'),('payments'),
+      ('inventory'),('inventory_movements'),('coupons'),('banners'),('custom_requests'),
+      ('custom_request_images'),('store_settings')
+    ), actual_grants AS (
+      SELECT n.nspname::name schema_name,c.relname::name table_name,
+             'authenticated'::name grantee,x.privilege_type,x.is_grantable
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        JOIN target_tables t ON t.table_name=c.relname
+       CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) x
+       WHERE n.nspname='public'
+         AND x.grantee=(SELECT oid FROM pg_roles WHERE rolname='authenticated')
+    ), differences AS (
+      (SELECT * FROM private.cr009c1_table_grant_snapshot
+       EXCEPT SELECT * FROM actual_grants)
+      UNION ALL
+      (SELECT * FROM actual_grants
+       EXCEPT SELECT * FROM private.cr009c1_table_grant_snapshot)
+    )
+    SELECT 1 FROM differences
+  ) THEN RAISE EXCEPTION 'Authenticated table grants differ from snapshot'; END IF;
 END $$;
 COMMIT;
 
