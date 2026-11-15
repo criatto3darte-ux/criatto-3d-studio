@@ -20,32 +20,65 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 
 /**
- * CR-009I: plugin que bloqueia acesso a arquivos de desenvolvimento quando o
- * servidor está atrás do túnel HTTPS público (CR009I_TUNNEL=1).
- *   - *.map (sourcemaps)
- *   - /@fs/*    (acesso direto ao filesystem via Vite)
- *   - /node_modules/.vite/* (código de deps transformadas, com paths completos)
+ * CR-009I: plugin que endurece o Vite para operação atrás de túnel HTTPS
+ * público (CR009I_TUNNEL=1). Bloqueia caminhos sensíveis e retira
+ * sourceMappingURL de respostas JS/CSS para não vazar paths de FS.
  *
- * Em dev local sem túnel (CR009I_TUNNEL vazio/0), nada é bloqueado — preserva
- * DX normal com HMR e sourcemaps no navegador.
+ * Em dev local sem túnel (CR009I_TUNNEL=0) o plugin é neutro, preservando
+ * DX normal com HMR e sourcemaps.
  */
 function tunnelLockdownPlugin(enabled: boolean): Plugin {
   return {
     name: "criatto/tunnel-lockdown",
     configureServer(server) {
       if (!enabled) return;
+
+      // Middleware 1 (bloqueios) — executa antes do transformMiddleware.
       server.middlewares.use((req, res, next) => {
         const url = req.url ?? "";
-        // Bloqueia caminhos que vaziam código-fonte ou caminhos do FS local.
-        // Endpoints Vite essenciais (/@vite/client, /@id/, /@react-refresh,
-        // /src/*, /node_modules/.vite/deps/*) são preservados porque o
-        // navegador do homologador precisa deles para o HMR.
         if (url.endsWith(".map") || url.startsWith("/@fs/") || url.startsWith("/__inspect")) {
           res.statusCode = 404;
           res.setHeader("content-type", "text/plain; charset=utf-8");
           res.end("Not found");
           return;
         }
+        next();
+      });
+
+      // Middleware 2 (strip sourceMappingURL) — intercepta JS/CSS e remove
+      // qualquer diretiva de sourcemap antes de enviar ao cliente.
+      server.middlewares.use((req, res, next) => {
+        const url = req.url ?? "";
+        const isTransformed =
+          url.startsWith("/src/") ||
+          url.startsWith("/node_modules/") ||
+          url.startsWith("/@") || // /@vite/client, /@id/, /@react-refresh, /@fs (já 404 antes), etc.
+          url.endsWith(".js") ||
+          url.endsWith(".jsx") ||
+          url.endsWith(".ts") ||
+          url.endsWith(".tsx") ||
+          url.endsWith(".css") ||
+          url.endsWith(".mjs");
+        if (!isTransformed) {
+          next();
+          return;
+        }
+        const origWrite = res.write.bind(res);
+        const origEnd = res.end.bind(res);
+        const chunks: Buffer[] = [];
+        res.write = ((chunk: unknown, ..._rest: unknown[]) => {
+          if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+          return true;
+        }) as typeof res.write;
+        res.end = ((chunk?: unknown, ..._rest: unknown[]) => {
+          if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+          const body = Buffer.concat(chunks).toString("utf8");
+          const stripped = body.replace(/\/[*/#]\s*sourceMappingURL=[^\s*]+\s*\*?\/?/g, "");
+          const out = Buffer.from(stripped, "utf8");
+          res.setHeader("content-length", String(out.length));
+          origWrite(out);
+          return origEnd();
+        }) as typeof res.end;
         next();
       });
     },
@@ -95,8 +128,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: true,
       strictPort: true,
-      // No modo túnel NÃO geramos sourcemaps para resposta HTTP. O esbuild
-      // já foi configurado com sourcemap: !tunnelMode acima.
+      // Permite o host do proxy HTTPS do sandbox Arena (usado como túnel
+      // público de homologação quando cloudflared/localtunnel não estão
+      // disponíveis por restrições de rede).
+      allowedHosts: [".e2b.app", "localhost"],
+      // No modo túnel NÃO geramos sourcemaps para resposta HTTP.
     },
     preview: {
       port: 4173,
