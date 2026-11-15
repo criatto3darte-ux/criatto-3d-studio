@@ -352,6 +352,7 @@ try:
               "SELECT bool_and(NOT has_function_privilege('anon',p.oid,'EXECUTE')) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
+        sys.stderr.write(f'DBG seed block starting db={db}\n')
         # Seed auth users FIRST so that FK columns (confirmed_by, actor_id,
         # created_by) pointing at auth.users(id) resolve when the rest of the
         # fixtures insert rows referencing them.
