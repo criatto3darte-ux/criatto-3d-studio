@@ -41,7 +41,7 @@ Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-
 - `npm run build`: passou com warning de chunk JS (824.51 kB > 500 kB).
 - Credential scan passou; autotestes 23/23; `git diff --check`, parser de SQL e compilação de sintaxe Python passaram.
 - Harness PostgreSQL 17 foi ampliado para testar migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. Sandbox sem `psql`, servidor PG17, Docker/Podman.
-- GitHub Actions run `43752621332` no head `a3d3f66`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity) **PASS**; pacote de publicação foi skipped. A primeira execução de PG17 falhou porque o teste do trigger diferido fazia rollback; corrigido para commitar antes de verificar rejeição, e rerun passou.
+- GitHub Actions run `43753010833` no head `721c755`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity) **PASS**; pacote de publicação foi skipped. Run anterior `43752621332` também passou em `a3d3f66`. A primeira execução de PG17 falhou porque o teste do trigger diferido fazia rollback; corrigido para commitar antes de verificar rejeição, e reruns passaram.
 - #9 ainda é draft; o CI green não torna a migration remota aplicada nem conclui Storage/imagens. Os checks antigos de PR #7 continuam sendo do head `bdf895b`.
 - `npm run lint` global tinha dívida preexistente ampla (860 problemas, majoritariamente Prettier); não formatar o repo inteiro para limpar esse baseline.
 
