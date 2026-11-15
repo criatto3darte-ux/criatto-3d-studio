@@ -1,13 +1,38 @@
-# README-CONTINUIDADE-ARENA.md — CR-009C.3 (final)
+# README-CONTINUIDADE-ARENA.md — CR-009D.2 (runbook final, pré-autorização)
 
 **Última atualização:** 2026-11-15
 **Branch:** `cr-009c1-safe-rollback` (head do PR #8)
 **PR:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/8
-**Último commit:** `f41647c` — `fix(test/CR-009C.3): recognise trigger/constraint denials in harness`
-**CI aprovado (run 43676186796):** https://github.com/criatto3darte-ux/criatto-3d-studio/actions/runs/43676186796
-- Static + unit: ✅ PASS (41s)
-- PostgreSQL 17 local (RLS + migration integrity): ✅ PASS (53s)
+**Último commit:** `6846876` / `CR-009D.2*` — docs + script de limpeza segura do snapshot, runbook final
+**CI aprovado (últimos 3 runs, todos success):** runs 43676186796, 43676511126, 43677090137 (Postgres 17 local + vitest + eslint + tsc)
+- Static + unit: ✅ PASS
+- PostgreSQL 17 local (RLS + migration integrity + rollback cycle): ✅ PASS (708 assertions)
 - Pacote (ZIP artifact): skipping (apenas para pushes `integration/*`, não PRs)
+
+## Documentos de referência (atuais)
+- `docs/CR-009C-REPORT.md` — histórico CR-009C e conserto do harness PG17
+- `docs/CR-009D-PRECHECK-REPORT.md` — pré-check de leitura e bloqueios (bloqueio do callback público)
+- `docs/CR-009D.1-BACKUP-AND-ACTIVATION-PLAN.md` — backup comprovado e etapas E1-E11
+- **`docs/CR-009D.2-FINAL-RUNBOOK.md`** — runbook definitivo para autorização (este é o documento operacional principal)
+- `docs/cr009d-backup/README.md` — explicação backup/rollback, escopo de restauração, tratamento 0011 vs 0012
+- Scripts SQL em `docs/sql/`:
+  - `01-precheck-capture-state.sql` (escrita — cria snapshot `private.cr009c1_*`)
+  - `02-postcheck-verify.sql` (leitura — verifica estado pós-0011+0012)
+  - `03-rollback-cr008c-aal.sql` (escrita — reverte 0011 a partir do snapshot; preserva 0012)
+  - `04-cleanup-cr009c1-snapshot.sql` (escrita — remove APENAS as 5 tabelas cr009c1_*, sem DROP SCHEMA)
+
+## Pontos-chave (D.2)
+- Plano Supabase Free **não tem backups automáticos restauráveis**; backup por migrations 0001-0010 + rollback transacional 03 é o método provado.
+- **Não usar `DROP SCHEMA private CASCADE`** — limpeza seletiva via `04-cleanup`.
+- Rollback 03 reverte só a 0011; a 0012 (reparo PG17 de `check_private_media`) é preservada intencionalmente.
+- Todas as falhas preservam os controles de segurança (RLS, triggers append-only, grants); nenhum caminho de rollback concede privilégios extra.
+- Teste PG17 é provado pelo CI (imagem `postgres:17`), 708 assertions.
+- Callback de homolog: `http://localhost:5173/auth/callback`; callback público ainda não serve a rota.
+
+## Pendências reais de ativação remota
+1. Aguardar **autorização explícita** do usuário para executar E2–E5 (precheck + 0011 + 0012 + postcheck), depois E7 (hook), depois E8 (URL localhost).
+2. SMTP e convite ao proprietário são CR/autorizações separadas.
+3. Deploy produção em `admin.criatto3d.art.br` com fallback SPA + HTTPS é Fase B (CR futura).
 
 ## Correções efetuadas nesta iteração (CR-009C.3)
 
