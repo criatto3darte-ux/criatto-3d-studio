@@ -190,8 +190,12 @@ WITH target_policies AS (
        'payments_owner','payments_finance','finance_read','settings_owner',
        'own_profile','own_roles')
 ), table_acl AS (
-  SELECT n.nspname,c.relname,c.relacl
+  SELECT n.nspname,c.relname,
+         pg_get_userbyid(x.grantor) grantor,
+         CASE WHEN x.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END grantee,
+         x.privilege_type,x.is_grantable
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) x
    WHERE n.nspname='public' AND c.relname IN
     ('admin_profiles','user_roles','categories','products',
      'product_attribute_groups','product_attribute_options','product_variants',
@@ -209,7 +213,8 @@ WITH target_policies AS (
 SELECT md5(
   coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,relname,polname)
               FROM target_policies x),'') || '#' ||
-  coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,relname)
+  coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY
+                            nspname,relname,grantor,grantee,privilege_type,is_grantable)
               FROM table_acl x),'') || '#' ||
   coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,proname,args)
               FROM funcs x),'')

@@ -68,6 +68,11 @@ assinatura passava o nome do argumento a `to_regprocedure`, e o pipeline do
 harness não propagava o exit code do Python através de `tee`. A validação foi
 reescrita por junção em `pg_proc` e o workflow agora usa `set -o pipefail`.
 
+O segundo ciclo mostrou que a representação textual de `relacl` pode mudar a
+ordem após `REVOKE`/`GRANT`, mesmo com privilégios idênticos. O fingerprint
+foi canonicalizado por tabela, grantor, grantee, privilégio e grant option,
+mantendo comparação semântica exata sem depender da ordem interna do catálogo.
+
 ## PostgreSQL 17 e CI
 
 O executor local desta sessão não disponibiliza PostgreSQL, Docker nem
