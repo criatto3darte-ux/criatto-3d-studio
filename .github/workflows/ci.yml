@@ -9,7 +9,9 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches:
+      - main
+      - "integration/**"
 
 permissions:
   contents: read        # checkout only; sem write, id-token, packages ou PR-comments.
@@ -133,3 +135,43 @@ jobs:
           PYTHONUNBUFFERED: 1
         run: |
           python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log
+
+  # Job adicional: gera ZIP de publicação e disponibiliza como Artifact
+  # para download pela UI do GitHub. Roda apenas em pushes para branches
+  # integration/* (não em PRs, não em main).
+  pacote:
+    name: Pacote de publicação (ZIP artifact)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/integration/')
+    runs-on: ubuntu-24.04
+    needs: [static]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Install (--frozen-lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Build de produção (SPA estática)
+        run: bun run build
+
+      - name: Montar pacote
+        run: |
+          mkdir -p _pkg
+          cp -r dist/* _pkg/
+          cd _pkg
+          zip -r ../criatto3d-producao.zip .
+          cd ..
+          ls -la criatto3d-producao.zip
+          echo "SHA-256:"
+          sha256sum criatto3d-producao.zip
+
+      - name: Upload artifact (ZIP para download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: criatto3d-producao.zip
+          path: criatto3d-producao.zip
+          retention-days: 30
