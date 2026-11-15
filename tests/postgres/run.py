@@ -769,7 +769,7 @@ COMMIT;
             {'sku':'DRAFT-MISSING-SIZE','active':True,'selections':{'cor':'azul'}}
         ],separators=(',',':')).replace("'","''")
         check(db,'variant save enforces required color/size selections',
-              actor('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{incomplete_variant}'::jsonb)",'aal2'),
+              actor_commit('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{incomplete_variant}'::jsonb)",'aal2'),
               error='invalid active variant')
         check(db,'SKU and integrity rejections preserve persisted variants',
               f"SELECT count(*) FROM product_variants WHERE product_id={q('draft')}",'2')
