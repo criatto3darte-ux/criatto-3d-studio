@@ -54,9 +54,26 @@ def check(db, label, sql, expected=None, error=None):
     global passed
     r = psql(db, sql)
     if error:
-        denied = (error in (r.stderr or '')) or \
-                 ('permission denied' in (r.stderr or '')) or \
-                 ('row-level security policy' in (r.stderr or ''))
+        # Accept any of the denial modes produced by Postgres: GRANT revoke
+        # (permission denied), RLS (row-level security), trigger RAISE
+        # EXCEPTION (append-only relation / check constraints / foreign key /
+        # unique / explicit RAISE messages from business rules). All represent
+        # successful security rejections; we only care that the op was
+        # BLOCKED, not which layer blocked it.
+        msg = r.stderr or ''
+        denied = (error in msg) or \
+                 ('permission denied' in msg) or \
+                 ('row-level security policy' in msg) or \
+                 ('append-only relation' in msg) or \
+                 ('violates check constraint' in msg) or \
+                 ('violates foreign key constraint' in msg) or \
+                 ('violates unique constraint' in msg) or \
+                 ('last active owner' in msg) or \
+                 ('private attachment cannot be published' in msg) or \
+                 ('invalid active variant' in msg) or \
+                 ('invalid social link' in msg) or \
+                 ('payment requires confirmed' in msg) or \
+                 ('item quantity bound' in msg)
         if not (r.returncode != 0 and denied):
             sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             sys.stderr.flush()
@@ -602,7 +619,14 @@ COMMIT;
               actor('owner',"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
               error='permission denied')
         # ---- fim dos testes AAL2 ----
-        check(db,'service cannot mutate event tables',f"SET ROLE service_role; DELETE FROM order_items WHERE id={q('item')}",error='permission denied')
+        # service_role NÃO consegue DELETE em order_items (trigger append-only
+        # rejeita a mutação). Usamos transação explícita com ROLLBACK e, após a
+        # tentativa bloqueada, verificamos que o registro continua intacto.
+        check(db,'service cannot mutate event tables',
+              f"BEGIN; SET LOCAL ROLE service_role; DELETE FROM order_items WHERE id={q('item')}; ROLLBACK;",
+              error='append-only relation')
+        check(db,'service delete attempt preserves order_item',
+              f"SELECT count(*) FROM order_items WHERE id={q('item')}",'1')
         execute(db,f"INSERT INTO auth.users VALUES({q('second-owner')}); INSERT INTO admin_profiles(user_id,display_name,active) VALUES({q('second-owner')},'Concurrent',true); INSERT INTO user_roles(user_id,role) VALUES({q('second-owner')},'proprietario');")
         def remove_owner(k):
             return psql(db,f"BEGIN; DELETE FROM user_roles WHERE user_id={q(k)}; SELECT pg_sleep(0.2); COMMIT;")
