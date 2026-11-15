@@ -388,14 +388,19 @@ try:
             f"INSERT INTO custom_request_history(id,request_id,from_status,to_status,actor_id,operation_key) VALUES({q('request-history')},{q('request')},NULL,'recebida',{q('owner')},'test')",
             f"INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,operation_key,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'seed-test','test')",
         ]
+        # Wrap all seed statements in a single transaction so we can COMMIT
+        # them as a block.  PG17 is stricter about deferring trigger checks,
+        # and running each statement in its own auto-commit leaves some FK
+        # checks half-resolved.
+        execute(db, "BEGIN;")
         for i, stmt in enumerate(seed_stmts):
-            sys.stderr.write(f'  seed#{i} ... '); sys.stderr.flush()
             try:
                 execute(db, stmt)
-                sys.stderr.write('OK\n'); sys.stderr.flush()
             except Exception:
                 sys.stderr.write(f'FAILED seed statement #{i}: {stmt[:400]}\n')
+                execute(db, "ROLLBACK;")
                 raise
+        execute(db, "COMMIT;")
         execute(db,f"""
 BEGIN;
 INSERT INTO product_attribute_groups(id,product_id,code,label) VALUES({q('group')},{q('product')},'material','Material');
