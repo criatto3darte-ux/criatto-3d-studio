@@ -39,6 +39,12 @@ def _out(s):
     """psql can return None on stdout for DDL that returns no rows."""
     return (s or '').strip()
 
+def github_error(message):
+    """Publish concise failure detail as a Check Run annotation, not only logs."""
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        escaped = str(message).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        print(f'::error title=PostgreSQL harness::{escaped}', flush=True)
+
 def execute(db, sql):
     r = psql(db, sql)
     if r.returncode:
@@ -47,6 +53,7 @@ def execute(db, sql):
         sys.stderr.write('STDOUT: ' + (r.stdout or '') + '\n')
         sys.stderr.write('STDERR: ' + (r.stderr or '') + '\n')
         sys.stderr.flush()
+        github_error(f"SQL apply failed: {(r.stderr or 'psql failed').splitlines()[-1] if r.stderr else 'psql failed'}; statement={sql[:700]}")
         raise RuntimeError((r.stderr or 'psql failed').splitlines()[-1] if r.stderr else 'psql failed')
     return _out(r.stdout)
 
@@ -75,17 +82,20 @@ def check(db, label, sql, expected=None, error=None):
                  ('payment requires confirmed' in msg) or \
                  ('item quantity bound' in msg)
         if not (r.returncode != 0 and denied):
+            github_error(f"check failed: {label}; stderr={r.stderr}; stdout={r.stdout}")
             sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             sys.stderr.flush()
             raise AssertionError(label)
     else:
         if r.returncode != 0:
+            github_error(f"check failed (rc={r.returncode}): {label}; stderr={r.stderr}; stdout={r.stdout}")
             sys.stderr.write(f'CHECK FAILED (rc={r.returncode}): {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             sys.stderr.flush()
             raise AssertionError(label)
         if expected is not None:
             last = _out(r.stdout).splitlines()[-1] if _out(r.stdout) else ''
             if last != expected:
+                github_error(f"check mismatch: {label}; expected={expected!r}; got={last!r}; stderr={r.stderr}; stdout={r.stdout}")
                 sys.stderr.write(f'CHECK FAILED: {label}\nexpected={expected!r}\ngot={last!r}\nstdout={r.stdout}\nstderr={r.stderr}\n')
                 sys.stderr.flush()
                 raise AssertionError(label)
