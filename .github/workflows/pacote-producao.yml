@@ -1,0 +1,136 @@
+# CR-010A — Workflow para gerar o pacote de produção como artifact baixável.
+#
+# Gatilho: workflow_dispatch (disparo manual na UI do GitHub Actions).
+# Não faz merge na main, não altera hospedagem, não executa FTP,
+# não altera Supabase/DNS/SSL.
+#
+# O artifact resultante (criatto3d-producao.zip) fica disponível para download
+# na página da execução do workflow, com retenção de 30 dias.
+#
+# VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são valores públicos (embutidos
+# no bundle pelo Vite). Não há service_role nem segredos privados neste arquivo.
+#
+name: pacote-producao
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pacote-producao:
+    name: Pacote de produção (ZIP artifact)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun (gerenciador real do projeto, lockfile bun.lock)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Criar .env.production (variáveis públicas de produção)
+        run: |
+          # VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são valores públicos:
+          # são embutidos no bundle do navegador pelo Vite. Não há service_role.
+          cat > .env.production << 'EOF'
+          # Produção — https://criatto3d.art.br
+          # Usado apenas para o build de produção (GitHub Actions).
+          VITE_SUPABASE_URL=https://ugwuxczcqlrdjkpjsdqb.supabase.co
+          VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnd3V4Y3pjcWxyZGprcGpzZHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1OTkwMzgsImV4cCI6MjExMDE3NTAzOH0.4g5oKkg3JMiIf7g1GtPa4iltIS6NF9B2-fxLJR-Ij00
+          VITE_APP_URL=https://criatto3d.art.br
+          EOF
+
+      - name: Install (--frozen-lockfile = reproduzível)
+        run: bun install --frozen-lockfile
+
+      - name: Build de produção (SPA estática, base=/)
+        run: bun run build
+
+      - name: Sanitizar dist (remover arquivos proibidos)
+        run: |
+          set -euo pipefail
+          find dist -type f \( \
+            -name "*.map" \
+            -o -name ".env*" \
+            -o -name "*.sql" \
+            -o -name "*.sh" \
+            -o -name "thumbs.db" \
+            -o -name ".DS_Store" \
+            -o -name "robots-homolog.txt" \
+          \) -print -delete || true
+          echo "Sanitização concluída. Nenhum arquivo proibido encontrado."
+
+      - name: Validar ausência de arquivos proibidos no pacote
+        run: |
+          set -euo pipefail
+          tmpdir=$(mktemp -d)
+          cp -r dist/* "$tmpdir/"
+          proibidos=$(find "$tmpdir" -name '*.map' -o -name '.env*' -o -name '*.sql' -o -name '*.sh' | head)
+          if [[ -n "$proibidos" ]]; then
+            echo "ARQUIVOS PROIBIDOS ENCONTRADOS:"; echo "$proibidos"; exit 1
+          fi
+          echo "Nenhum .map, .env*, .sql ou .sh no pacote. OK."
+          rm -rf "$tmpdir"
+
+      - name: Validar que não há JWT service_role no bundle
+        run: |
+          python3 - <<'PYEOF'
+          import base64, pathlib, re, sys
+          pat = re.compile(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}')
+          bad = []
+          for p in sorted(pathlib.Path('dist').rglob('*')):
+              if not p.is_file():
+                  continue
+              try:
+                  text = p.read_text(errors='ignore')
+              except OSError:
+                  continue
+              for m in pat.finditer(text):
+                  parts = m.group(0).split('.')
+                  try:
+                      payload = parts[1] + '=' * (-len(parts[1]) % 4)
+                      decoded = base64.urlsafe_b64decode(payload).decode(errors='ignore')
+                  except Exception:
+                      continue
+                  if '"service_role"' in decoded:
+                      bad.append(str(p))
+                      break
+          if bad:
+              print('ERRO: JWT com role service_role encontrado em:')
+              for b in bad:
+                  print(f'  {b}')
+              sys.exit(1)
+          print('ok: nenhum JWT service_role no dist (apenas anon, esperado).')
+          PYEOF
+
+      - name: Validar .htaccess com SPA fallback
+        run: |
+          grep -q 'RewriteRule . /index.html' dist/.htaccess || {
+            echo "ERRO: .htaccess sem regra de fallback SPA."; exit 1
+          }
+          echo ".htaccess com fallback SPA: OK."
+
+      - name: Validar robots.txt de produção (indexável)
+        run: |
+          grep -q 'Allow: /' dist/robots.txt || {
+            echo "ERRO: robots.txt de produção não permite indexação."; exit 1
+          }
+          echo "robots.txt de produção (indexável): OK."
+
+      - name: Montar pacote ZIP de produção
+        run: |
+          rm -rf dist-producao
+          mkdir -p dist-producao
+          ( cd dist && zip -rq ../dist-producao/criatto3d-producao.zip . )
+          ls -la dist-producao/criatto3d-producao.zip
+          echo "SHA-256:"
+          sha256sum dist-producao/criatto3d-producao.zip
+
+      - name: Upload artifact (ZIP para download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: criatto3d-producao.zip
+          path: dist-producao/criatto3d-producao.zip
+          retention-days: 30
