@@ -135,6 +135,7 @@ jobs:
           PGUSER: postgres
           PYTHONUNBUFFERED: 1
         run: |
+          set -o pipefail
           python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log
 
   # Job adicional: gera ZIP de publicação e disponibiliza como Artifact

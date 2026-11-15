@@ -63,6 +63,11 @@ Assim, as implementações anteriores permanecem presentes sem merge em `main`.
 O build mantém o aviso já existente de chunk JavaScript acima de 500 kB. Isso
 não bloqueia a CR de banco de dados.
 
+O primeiro GitHub Actions expôs dois defeitos adicionais: a validação de
+assinatura passava o nome do argumento a `to_regprocedure`, e o pipeline do
+harness não propagava o exit code do Python através de `tee`. A validação foi
+reescrita por junção em `pg_proc` e o workflow agora usa `set -o pipefail`.
+
 ## PostgreSQL 17 e CI
 
 O executor local desta sessão não disponibiliza PostgreSQL, Docker nem

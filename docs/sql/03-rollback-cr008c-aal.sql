@@ -124,10 +124,14 @@ BEGIN
          IS DISTINCT FROM s.role_names;
   IF mismatches<>0 THEN RAISE EXCEPTION '% policies differ from snapshot',mismatches; END IF;
   IF EXISTS (
-    SELECT 1 FROM private.cr009c1_function_snapshot s
-     WHERE s.existed IS DISTINCT FROM
-       (to_regprocedure(format('%I.%I(%s)',s.schema_name,s.function_name,
-                               s.identity_arguments)) IS NOT NULL)
+    SELECT 1
+      FROM private.cr009c1_function_snapshot s
+      LEFT JOIN pg_namespace n ON n.nspname=s.schema_name
+      LEFT JOIN pg_proc p
+        ON p.pronamespace=n.oid
+       AND p.proname=s.function_name
+       AND pg_get_function_identity_arguments(p.oid)=s.identity_arguments
+     WHERE s.existed IS DISTINCT FROM (p.oid IS NOT NULL)
   ) THEN RAISE EXCEPTION 'Function set differs from snapshot'; END IF;
 END $$;
 COMMIT;
