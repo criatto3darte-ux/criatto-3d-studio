@@ -87,8 +87,15 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 """
 ids = {k: str(uuid.uuid5(uuid.NAMESPACE_URL,'cr007b-test/'+k)) for k in ['owner','editor','operator','finance','roleless','inactive','revoked','category','draft-category','product','draft','hidden','variant','group','option','media','customer','order','item','history','payment','movement','request','request-history','audit','private-media','coupon','second-owner','newm']}
 def q(k): return "'"+ids[k]+"'"
-def actor(k,sql):
-    return f"BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub={q(k)}; {sql}; ROLLBACK;"
+def actor(k,sql, aal='aal2'):
+    """Simula um usuário autenticado com o id do ator k, claim 'aal' definida.
+    Default = 'aal2' (MFA TOTP verificado), que é o nível exigido pelas
+    policies administrativas após a migration 0011 (CR-008C). Use aal='aal1'
+    para verificar explicitamente que acesso sem MFA é negado."""
+    return (f"BEGIN; SET LOCAL ROLE authenticated; "
+            f"SET LOCAL request.jwt.claims="
+            f"'{{\"sub\":{q(k)},\"aal\":\"{aal}\",\"roles\":[]}}'; "
+            f"{sql}; ROLLBACK;")
 
 def createdb(name):
     """Create an empty test database. Use psql (always present) instead of
@@ -122,10 +129,12 @@ def dropdb(name):
                        check=True)
 
 def all_migrations():
-    """All CR-007* migrations in lexical (timestamp) order. Currently only
-    cr007b_* foundation migrations exist; this glob also picks up any
-    future cr007d_* incremental fixes / guards."""
-    return sorted((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
+    """Todas as migrations de foundation em ordem léxica (timestamp):
+    CR-007B a CR-008C (AAL2 / JWT claims). Novas migrations devem ser
+    adicionadas ao APPROVED_MIGRATION_SHA256 antes de serem aceitas pelo CI."""
+    migs = list((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr008c*.sql'))
+    return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
 # The CI HARD-FAILS if any on-disk migration drifts from its pinned hash,
@@ -142,6 +151,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261113120800_cr007b_access_invariants.sql':'de9f7e5e2c5b672692eeafeade78dd07b62b694c5649dfa36ea9ef7ace40f1b8',
     '20261113120900_cr007b_media_privilege_hardening.sql':'683ffe938b3e88ee4eff88e65351770af87d42a9e984d44d3d6bd957c69d8ac7',
     '20261113121000_cr007b7_private_media_and_role_matrix.sql':'e22fdd131f09f860e21a4d22e51cdc9c9baa5e4584b06e8dbc6eb686686eb2c9',
+    '20261114133000_cr008c_jwt_claims_and_aal.sql':'d6809d7011b8fa973d6322520e68343011dd54943a75b389ba168d35df1a9cbe',
 }
 
 def verify_migration_integrity():
@@ -375,6 +385,56 @@ COMMIT;
         check(db,'publish private-media denied (orig regression)',f"UPDATE media_assets SET state='published' WHERE id={q('private-media')}",error='private attachment cannot be published')
         check(db,'link published media to private request denied',f"INSERT INTO custom_request_images VALUES({q('request')},{q('media')},1)",error='private attachment cannot be published')
         check(db,'unrelated media publish succeeds (M-1 fix)',f"INSERT INTO media_assets(id,bucket,object_key,mime,byte_size,width,height,checksum,state) VALUES({q('newm')},'m','n.webp','image/webp',1,1,1,'d','staging'); UPDATE media_assets SET state='published' WHERE id={q('newm')}; SELECT state FROM media_assets WHERE id={q('newm')}",'published')
+        # ---- AAL2 enforcement (migration 0011 / CR-008C) ----
+        # Garante que as policies administrativas EXIGEM aal2 (MFA verificado).
+        # Owner/editor/operador/financeiro logados SOMENTE com senha (aal1) não
+        # conseguem SELECT em tabelas administrativas.
+        for k in ['owner','editor','operator','finance']:
+            check(db,f'aal1 {k} denied admin_profiles',
+                  actor(k,'SELECT count(*) FROM admin_profiles','aal1'),'0')
+            check(db,f'aal1 {k} denied orders',
+                  actor(k,'SELECT count(*) FROM orders','aal1'),'0')
+            check(db,f'aal1 {k} denied customers',
+                  actor(k,'SELECT count(*) FROM customers','aal1'),'0')
+            check(db,f'aal1 {k} denied payments',
+                  actor(k,'SELECT count(*) FROM payments','aal1'),'0')
+        # Owner AAL2 consegue ver tudo; editor AAL2 vê produtos/cupons/banners.
+        check(db,'aal2 owner reads admin_profiles',
+              actor('owner','SELECT count(*) FROM admin_profiles','aal2'),'1')
+        check(db,'aal2 owner reads orders',
+              actor('owner','SELECT count(*) FROM orders','aal2'),'1')
+        check(db,'aal2 editor reads products',
+              actor('editor','SELECT count(*) FROM products','aal2'),'3')
+        check(db,'aal2 finance reads payments',
+              actor('finance','SELECT count(*) FROM payments','aal2'),'1')
+        check(db,'aal2 finance blocked orders',
+              actor('finance','SELECT count(*) FROM orders','aal2'),'0')
+        # Usuário inativo (mesmo com role proprietario e aal2) NÃO consegue ler,
+        # por causa da checagem active=true em has_role().
+        check(db,'aal2 inactive denied orders',
+              actor('inactive','SELECT count(*) FROM orders','aal2'),'0')
+        # Anônimo permanece bloqueado.
+        check(db,'anon denied orders',"SET ROLE anon; SELECT count(*) FROM orders",error='permission denied')
+        # RPC my_roles() retorna array vazio para roleless; não funciona para anon.
+        check(db,'aal2 owner my_roles() includes proprietario',
+              actor('owner','SELECT public.my_roles() @> ARRAY[$$proprietario$$]::text[]','aal2'),'t')
+        check(db,'aal1 roleless my_roles() returns empty',
+              actor('roleless','SELECT array_length(public.my_roles(),1) IS NULL','aal1'),'t')
+        check(db,'anon cannot call my_roles()',
+              "SET ROLE anon; SELECT public.my_roles()",error='permission denied')
+        # require_aal2() retorna falso quando aal claim é aal1 (ou ausente).
+        check(db,'require_aal2 true for aal2 claim',
+              actor('owner','SELECT public.require_aal2()','aal2'),'t')
+        check(db,'require_aal2 false for aal1 claim',
+              actor('owner','SELECT public.require_aal2()','aal1'),'f')
+        # custom_access_token_hook existe e só é executável por service_role/supabase_auth_admin
+        check(db,'anon exec custom_access_token_hook denied',
+              "SET ROLE anon; SELECT public.custom_access_token_hook('{}'::jsonb)",
+              error='permission denied')
+        check(db,'auth exec custom_access_token_hook denied',
+              actor('owner',"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
+              error='permission denied')
+        # ---- fim dos testes AAL2 ----
         check(db,'service cannot mutate event tables',f"SET ROLE service_role; DELETE FROM order_items WHERE id={q('item')}",error='permission denied')
         execute(db,f"INSERT INTO auth.users VALUES({q('second-owner')}); INSERT INTO admin_profiles(user_id,display_name,active) VALUES({q('second-owner')},'Concurrent',true); INSERT INTO user_roles(user_id,role) VALUES({q('second-owner')},'proprietario');")
         def remove_owner(k):

@@ -31,8 +31,19 @@ export interface AuthStatus {
   roles: string[];
 }
 
-/** Roles válidos para acesso administrativo. */
-export const ADMIN_ROLES = ["proprietario", "admin", "editor", "operador", "financeiro"] as const;
+/**
+ * Roles válidos para acesso administrativo.
+ *
+ * Mantido em sincronia com o enum Postgres `public.admin_role` definido em
+ * supabase/migrations/20261113120100_cr007b_identity.sql:
+ *   ('proprietario','editor','operador','financeiro').
+ *
+ * "admin" NÃO é uma role válida no banco (era um valor legado); mantenho o
+ * mapeamento como tolerância para sessões antigas, mas a lista canônica
+ * usada pelo isAdminAuthorized é a do Postgres.
+ */
+export const ADMIN_ROLES_DB = ["proprietario", "editor", "operador", "financeiro"] as const;
+export const ADMIN_ROLES = [...ADMIN_ROLES_DB, "admin"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 /**
@@ -45,9 +56,7 @@ export function decodeJwtClaim(token: string): Record<string, unknown> | null {
     if (parts.length !== 3 || !parts[1]) return null;
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const json =
-      typeof atob === "function"
-        ? atob(base64)
-        : Buffer.from(base64, "base64").toString("utf-8");
+      typeof atob === "function" ? atob(base64) : Buffer.from(base64, "base64").toString("utf-8");
     return JSON.parse(json) as Record<string, unknown>;
   } catch {
     return null;
@@ -101,9 +110,7 @@ export function isAdminAuthorized(session: Session): boolean {
  *
  * NÃO faz mutações, NÃO consome dados sensíveis, NÃO usa service_role.
  */
-export async function checkOnboardingStatus(
-  supabase: SupabaseClient,
-): Promise<AuthStatus> {
+export async function checkOnboardingStatus(supabase: SupabaseClient): Promise<AuthStatus> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -113,7 +120,7 @@ export async function checkOnboardingStatus(
   }
 
   const { data: factors, error } = await supabase.auth.mfa.listFactors();
-  const totpFactors = error ? [] : factors?.totp ?? [];
+  const totpFactors = error ? [] : (factors?.totp ?? []);
   const totpVerified = totpFactors.some((f) => f.status === "verified");
   const aal = sessionAal(session) ?? (totpVerified ? "aal2" : "aal1");
 
