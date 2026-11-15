@@ -31,6 +31,20 @@ jobs:
       - name: Install (--frozen-lockfile = reproduzivel)
         run: bun install --frozen-lockfile
 
+      - name: Criar .env.homolog (variáveis públicas de homologação)
+        run: |
+          # VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são valores públicos:
+          # são embutidos no bundle do navegador pelo Vite. Não há service_role.
+          # Idealmente estes valores viriam de secrets do repositório; enquanto
+          # não forem adicionados, são informados aqui para o build funcionar.
+          cat > .env.homolog << 'EOF'
+          # Homologação — https://homolog.criatto3d.art.br
+          # Usado apenas para o build de homologação (GitHub Actions).
+          VITE_SUPABASE_URL=https://ugwuxczcqlrdjkpjsdqb.supabase.co
+          VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnd3V4Y3pjcWxyZGprcGpzZHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1OTkwMzgsImV4cCI6MjExMDE3NTAzOH0.4g5oKkg3JMiIf7g1GtPa4iltIS6NF9B2-fxLJR-Ij00
+          VITE_APP_URL=https://homolog.criatto3d.art.br
+          EOF
+
       - name: Build de homolgacao (SPA estatica, base=/)
         run: bun run build:homolog
 
