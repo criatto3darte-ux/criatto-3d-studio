@@ -59,9 +59,6 @@ EXCLUDE_PATH_PATTERNS=(
   -not -path '*/scripts/credential-scan.test.sh'
   -not -path '*/scripts/pacote-homolog.sh'
   -not -path '*/scripts/vendor/node_modules/*'
-  # Arquivos .env.* locais e de homolog NÃO são versionados (.gitignore) e
-  # contêm a chave anon de homolog de propósito. Não devem falhar o scan.
-  -not -name '.env.local' -not -name '.env.homolog' -not -name '.env.production'
 )
 
 mapfile -d '' FILES < <(
@@ -91,6 +88,17 @@ scan_file() {
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_no=$((line_no + 1))
     line="${line%$'\r'}"
+
+    # Arquivos .env.* locais (gitignored: .env.local, .env.homolog,
+    # .env.production) contêm a chave anon pública de propósito.
+    # Permitimos SOMENTE a linha da anon key nesses arquivos; qualquer
+    # outro segredo (service_role, connection string, tokens) continua
+    # sendo detectado normalmente.
+    if [[ "$bname" == ".env.local" || "$bname" == ".env.homolog" || "$bname" == ".env.production" ]]; then
+      if [[ "$line" =~ VITE_SUPABASE_ANON_KEY ]]; then
+        continue
+      fi
+    fi
 
     # Helper: detecta comentários e marcadores de exemplo com fronteiras de
     # palavra estritas para NÃO pegar substrings como "example" em domínios
