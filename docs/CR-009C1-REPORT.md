@@ -85,6 +85,11 @@ existe no PostgreSQL 17. Como a 0010 já está aplicada remotamente, ela foi
 preservada e uma migration incremental corrige `check_private_media()` usando
 a assinatura `(integer, integer)`.
 
+Na sequência, o harness alcançou a matriz completa de RLS e revelou que o
+helper antigo de JWT gerava JSON inválido ao interpolar UUID. O helper agora
+define `request.jwt.claim.sub` e serializa `request.jwt.claims` com
+`json.dumps`, preservando os cenários AAL1/AAL2.
+
 ## PostgreSQL 17 e CI
 
 O executor local desta sessão não disponibiliza PostgreSQL, Docker nem

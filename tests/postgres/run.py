@@ -93,9 +93,11 @@ def actor(k,sql, aal='aal2'):
     Default = 'aal2' (MFA TOTP verificado), que é o nível exigido pelas
     policies administrativas após a migration 0011 (CR-008C). Use aal='aal1'
     para verificar explicitamente que acesso sem MFA é negado."""
+    claims = json.dumps({'sub': ids[k], 'aal': aal, 'roles': []},
+                       separators=(',', ':'))
     return (f"BEGIN; SET LOCAL ROLE authenticated; "
-            f"SET LOCAL request.jwt.claims="
-            f"'{{\"sub\":{q(k)},\"aal\":\"{aal}\",\"roles\":[]}}'; "
+            f"SET LOCAL request.jwt.claim.sub='{ids[k]}'; "
+            f"SET LOCAL request.jwt.claims='{claims}'; "
             f"{sql}; ROLLBACK;")
 
 def createdb(name):
