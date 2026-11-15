@@ -8,9 +8,9 @@
 
 - Antes da retomada CR-010B.1, HEAD ativo e `origin/arena/1f32d4fc-criatto-3d-studio` eram `5e42fb0feb627f1ffe72d9fa5031485a58e97ffe` (`docs(CR-010B): clarify session branch and push status`).
 - A branch do PR #7 (`arena/81a1f1ff-criatto-3d-studio`) e `origin/pr/7` apontavam para `bdf895be12d110761c35d6a77faa92fdaeedc7bb`; era o merge-base. Não havia commits exclusivos na branch 81. O trabalho CR-010B recente já estava no branch ativo e não havia arquivos divergentes da outra branch a sobrescrever.
-- Commits de CR-010B no ativo: `43ddb43`, `84457bf`, `0a8d7ab`, `5e42fb0`. Detalhe de CR-010B.1: `docs/CR-010B1-REPORT.md`.
+- Commits de CR-010B no ativo: `43ddb43`, `84457bf`, `0a8d7ab`, `5e42fb0`. CR-010B.1: `c4910e9` implementação, `dfb5f8b` relatório/runbook, `c0f567d` diagnóstico CI, `a3d3f66` correção de teste diferido. Relatório detalhado: `docs/CR-010B1-REPORT.md`.
 - PR #7 permanece aberto contra `main`, head antigo `bdf895b`, mergeable/CLEAN no momento da consulta. Seus checks verdes pertencem àquele HEAD, não às mudanças novas.
-- A sessão exige permanecer no branch ativo fixo; não trocar de branch, não fazer force-push, não tocar `main` nem enviar commits à branch 81. A integração é proposta como PR dependente com base na branch do PR #7; isso **não atualiza automaticamente o head do PR #7** e exige aprovação do mantenedor para integrar.
+- PR dependente #9 foi aberto em draft do branch ativo para base `arena/81a1f1ff-criatto-3d-studio` (head atual consultado `a3d3f66`); pode ser integrado à branch base após revisão, atualizando então o head do #7. #7 ainda permanece no head `bdf895b`: não foi atualizado diretamente. A sessão exige permanecer no branch ativo fixo; não houve force-push, alteração em `main` ou envio de commits à branch 81.
 
 ## Supabase remoto — limites mantidos
 
@@ -38,15 +38,16 @@ Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-
 - `npx tsc --noEmit`: passou.
 - Vitest: 197/197 passaram (18 arquivos). Inclui mapeamento e validação de combinação, mas não comprova CRUD comercial, armazenamento remoto ou sessão AAL2 real.
 - ESLint com `--max-warnings 0` nos arquivos TypeScript alterados: passou; não houve formatação global. A dívida do lint global do repositório permanece separada.
-- `npm run build`: passou com warning de chunk JS (824.46 kB > 500 kB).
+- `npm run build`: passou com warning de chunk JS (824.51 kB > 500 kB).
 - Credential scan passou; autotestes 23/23; `git diff --check`, parser de SQL e compilação de sintaxe Python passaram.
-- Harness PostgreSQL 17 foi ampliado para testar migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. **Ainda precisa executar em GitHub Actions**; sandbox sem `psql`, servidor PG17, Docker/Podman.
-- CI do PR #7 consultado é antigo. O workflow foi ampliado para aceitar PR com base na branch de integração do #7; estado do novo CI deverá ser registrado após abrir PR dependente.
+- Harness PostgreSQL 17 foi ampliado para testar migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. Sandbox sem `psql`, servidor PG17, Docker/Podman.
+- GitHub Actions run `43752621332` no head `a3d3f66`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity) **PASS**; pacote de publicação foi skipped. A primeira execução de PG17 falhou porque o teste do trigger diferido fazia rollback; corrigido para commitar antes de verificar rejeição, e rerun passou.
+- #9 ainda é draft; o CI green não torna a migration remota aplicada nem conclui Storage/imagens. Os checks antigos de PR #7 continuam sendo do head `bdf895b`.
 - `npm run lint` global tinha dívida preexistente ampla (860 problemas, majoritariamente Prettier); não formatar o repo inteiro para limpar esse baseline.
 
 ## Gates pendentes e próxima etapa
 
-1. Commitar/publicar apenas no branch ativo; abrir PR dependente do ativo para `arena/81a1f1ff-criatto-3d-studio` e acompanhar CI PG17. Não chamar PR #7 de atualizado enquanto o head dele continuar `bdf895b`.
-2. Corrigir falhas dos testes PG17 antes de aprovar a migration. Depois obter autorização explícita para aplicá-la em homologação; nenhum comando local aplica automaticamente ao remoto.
+1. Aguardar revisão/aprovação e integração do PR dependente #9 à branch base. Não atualizar nem chamar PR #7 de integrado enquanto o head dele continuar `bdf895b`.
+2. A migration local passou o harness PG17 do CI, mas aplicação em homologação continua exigindo autorização explícita; nenhum comando local aplica automaticamente ao remoto.
 3. Para mídia, obter autorização/decisão de bucket, visibilidade, tamanho/MIME, validação, policies e canal confiável de upload/registro/limpeza órfã. A ausência de Storage impede concluir CR-010B comercialmente.
 4. CR-010C só depois da decisão de catálogo/estoque e contrato do pedido: implementar criação de pedidos idempotente e validação server-side, com testes de concorrência/permissões. Não iniciar pagamento nem criar pedido nesta etapa.

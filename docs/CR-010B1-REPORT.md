@@ -4,7 +4,7 @@
 **Estado:** implementação local em revisão; não liberar para operação comercial nem aplicar migration remota.
 **Branch ativo/fixo:** `arena/1f32d4fc-criatto-3d-studio`.
 **PR #7:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7
-**PR de integração dependente:** será aberto do branch ativo para `arena/81a1f1ff-criatto-3d-studio`; não altera nem substitui o PR #7.
+**PR dependente de integração:** #9 (draft), https://github.com/criatto3darte-ux/criatto-3d-studio/pull/9 — base `arena/81a1f1ff-criatto-3d-studio`; não altera nem substitui o PR #7.
 
 ## 1. Reconciliação de branches
 
@@ -12,7 +12,7 @@
 - A branch remota `arena/1f32d4fc-criatto-3d-studio` apontava para o mesmo commit.
 - A branch do PR #7, `arena/81a1f1ff-criatto-3d-studio`, e `origin/pr/7` apontavam para `bdf895be12d110761c35d6a77faa92fdaeedc7bb`. PR #7 continua aberto, direcionado a `main`, mergeable/CLEAN no momento da consulta; seus checks verdes são do HEAD anterior.
 - `bdf895b` é o merge-base exato das branches. O branch 81 não tinha commits exclusivos além desse ancestral; o branch ativo tinha os commits CR-010B `43ddb43`, `84457bf`, `0a8d7ab`, `5e42fb0`. A implementação anterior já estava toda presente no branch ativo; não foi encontrado trabalho divergente a sobrescrever.
-- A sessão está vinculada ao branch `arena/1f32d4fc-criatto-3d-studio`; não troquei branch, não fiz force-push e não alterei `main` ou `arena/81a1f1ff-criatto-3d-studio`. Para preservar a separação e executar CI, a integração será proposta como PR dependente com base no head do PR #7. Isso não significa que o PR #7 já foi atualizado.
+- A sessão está vinculada ao branch `arena/1f32d4fc-criatto-3d-studio`; não troquei branch, não fiz force-push e não alterei `main` ou `arena/81a1f1ff-criatto-3d-studio`. PR dependente #9 foi criado com base em `arena/81a1f1ff-criatto-3d-studio`; permanece draft, head `a3d3f667ba33ad751084bb6316617649eed83cab`. Isso não significa que o head do PR #7 tenha sido atualizado: #7 continua em `bdf895be12d110761c35d6a77faa92fdaeedc7bb`.
 
 ## 2. Implementação CR-010B.1
 
@@ -58,8 +58,9 @@ Nenhuma escrita Supabase, alteração Auth, policy, bucket, migration remota, us
 - Build: `npm run build` — passou; chunk JS 824.51 kB, com warning acima do limite padrão 500 kB.
 - Credential scan + autotestes: scanner sem achados aparentes; positivos/negativos **23/23**.
 - `git diff --check`, parser PostgreSQL da migration e `python3 -m py_compile tests/postgres/run.py` passaram.
-- Testes PostgreSQL 17 foram adicionados ao harness `tests/postgres/run.py`: persistência em commit, AAL1 negado, roles, swap concorrente/versionado, combinações cor/tamanho, SKU único, histórico de pedido, RLS público, movimento append-only, retry idempotente, mínimo e rejeição abaixo do alocado. **Ainda não executados**: esta sandbox não tem `psql`, servidor PostgreSQL nem Docker/Podman. Precisam rodar no GitHub Actions PostgreSQL 17 antes de aceitar a migration.
-- Não há execução de GitHub Actions para estes novos commits até abrir o PR dependente. O workflow foi ajustado para executar no PR dirigido ao branch de integração do PR #7.
+- Testes PostgreSQL 17 foram adicionados ao harness `tests/postgres/run.py`: persistência commitada, AAL1 negado, roles, swap versionado, combinações cor/tamanho, SKU único, histórico de pedido, publicação nas views, movimento append-only, retry idempotente, mínimo e rejeição abaixo do alocado. A sandbox não tem `psql`, servidor PG17 ou Docker/Podman; o harness executou no GitHub Actions.
+- GitHub Actions run `43752621332` no head `a3d3f66`: **Static + unit PASS; PostgreSQL 17 local (RLS + migration integrity) PASS;** pacote de publicação foi skipped (esperado, não solicitado). A primeira execução PG17 falhou porque um teste esperava trigger diferido dentro de uma transação terminada em `ROLLBACK`; foi corrigido para `COMMIT` e o rerun passou. A migration só é validada localmente no CI, não aplicada em Supabase remoto.
+- PR dependente #9 permanece draft por ainda faltar Storage/imagens e aplicação remota autorizada; #7 segue aberto no head antigo. O workflow foi ajustado para executar quando a base é o branch de integração do #7.
 
 ## 5. Arquivos principais alterados
 
