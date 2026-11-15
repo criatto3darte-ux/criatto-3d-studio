@@ -30,3 +30,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+node_modules/
+
+# Local throwaway Postgres clusters + virtualenv created by scripts/
+.pgdata-*/
+.venv*/
+.tools/
+scripts/vendor/node_modules/
+scripts/vendor/package-lock.json
+package-lock.json
+dist/
+.env
+.env.local

@@ -1,0 +1,75 @@
+name: Build publicação (download do ZIP)
+
+on:
+  # Permite rodar manualmente pela aba Actions do GitHub.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Qual pacote gerar?"
+        required: true
+        default: "producao"
+        type: choice
+        options:
+          - producao
+          - homolog
+
+# Não precisa de permissões especiais para gerar artifact.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Gerar pacote estático
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Instalar dependências (reproduzível)
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript check
+        run: bun x tsc --noEmit
+
+      - name: Vitest
+        run: bun run test
+
+      - name: Build de produção (SPA estática)
+        run: bun run build
+
+      - name: Credential scan
+        run: |
+          chmod +x scripts/credential-scan.sh
+          bash scripts/credential-scan.sh
+
+      # Copiar .htaccess / _redirects / robots / favicons / branding que já
+      # estão em public/ (o vite já copia tudo para dist/).
+      - name: Preparar pasta de pacote
+        run: |
+          mkdir -p _pkg
+          cp -r dist/* _pkg/
+          ls -la _pkg/
+          echo ""
+          echo "Arquivos no pacote:"
+          find _pkg -type f | sort
+
+      - name: Gerar ZIP
+        run: |
+          cd _pkg
+          zip -r ../criatto3d-${{ inputs.environment }}.zip .
+          cd ..
+          ls -la criatto3d-${{ inputs.environment }}.zip
+          echo ""
+          echo "SHA-256:"
+          sha256sum criatto3d-${{ inputs.environment }}.zip
+
+      - name: Upload artifact (ZIP pronto para baixar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: criatto3d-${{ inputs.environment }}.zip
+          path: criatto3d-${{ inputs.environment }}.zip
+          retention-days: 30
