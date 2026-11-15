@@ -1,7 +1,12 @@
 import { useSyncExternalStore } from "react";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { Category, Product, ProductVariantGroup } from "@/shared/types/catalog";
+import type {
+  Category,
+  Product,
+  ProductVariantCombination,
+  ProductVariantGroup,
+} from "@/shared/types/catalog";
 
 export type CatalogLoadState = "loading" | "ready" | "error" | "unconfigured";
 export interface CatalogSnapshot {
@@ -80,28 +85,56 @@ export function toPublicProduct(
   row: PublicProductRow,
   categoryById: ReadonlyMap<string, Category>,
   available: boolean,
-  groups: readonly { id: string; product_id: string; code: string; label: string }[],
+  groups: readonly {
+    id: string;
+    product_id: string;
+    code: string;
+    label: string;
+    required?: boolean;
+  }[],
   options: readonly { group_id: string; id: string; label: string }[],
+  variantRows?: readonly { id: string; product_id: string; sku: string }[],
+  variantOptionRows?: readonly { variant_id: string; group_id: string; option_id: string }[],
 ): Product | null {
   const category = categoryById.get(row.category_id);
   if (!category) return null;
-  const variants: ProductVariantGroup[] = groups
-    .filter((group) => group.product_id === row.id)
-    .flatMap((group) => {
-      const name =
-        group.code === "cor"
-          ? "Cor"
-          : group.code === "tamanho"
-            ? "Tamanho"
-            : group.code === "acabamento"
-              ? "Acabamento"
-              : null;
-      if (!name) return [];
-      const values = options
-        .filter((option) => option.group_id === group.id)
-        .map((option) => ({ id: option.id, label: option.label }));
-      return values.length ? [{ id: group.id, name, options: values }] : [];
-    });
+  const productGroups = groups.filter((group) => group.product_id === row.id);
+  const activeProductVariants = variantRows?.filter((variant) => variant.product_id === row.id);
+  const groupNameById = new Map(productGroups.map((group) => [group.id, group.label]));
+  const optionLabelById = new Map(options.map((option) => [option.id, option.label]));
+  const variantCombinations: ProductVariantCombination[] | undefined = activeProductVariants?.map(
+    (variant) => {
+      const selections: Record<string, string> = {};
+      for (const value of variantOptionRows ?? []) {
+        if (value.variant_id !== variant.id) continue;
+        const groupName = groupNameById.get(value.group_id);
+        const optionLabel = optionLabelById.get(value.option_id);
+        if (groupName && optionLabel) selections[groupName] = optionLabel;
+      }
+      return { sku: variant.sku, selections };
+    },
+  );
+  const validOptionIds = new Set(
+    (variantOptionRows ?? [])
+      .filter((value) => activeProductVariants?.some((variant) => variant.id === value.variant_id))
+      .map((value) => value.option_id),
+  );
+  const variants: ProductVariantGroup[] = productGroups.flatMap((group) => {
+    const values = options
+      .filter(
+        (option) =>
+          option.group_id === group.id &&
+          (variantRows === undefined || validOptionIds.has(option.id)),
+      )
+      .map((option) => ({ id: option.id, label: option.label }));
+    return values.length
+      ? [{ id: group.id, name: group.label, required: group.required ?? true, options: values }]
+      : [];
+  });
+  const hasUnconfiguredVariants =
+    variantRows !== undefined &&
+    productGroups.length > 0 &&
+    (variantCombinations?.length ?? 0) === 0;
   const regularPrice = integer(row.regular_price_cents);
   const promotionalPrice =
     row.promo_price_cents === null ? undefined : integer(row.promo_price_cents);
@@ -126,49 +159,63 @@ export function toPublicProduct(
     // Storage bucket and URL policy exist, never fabricate a URL or use demo media.
     images: [],
     ...(badge ? { badge } : {}),
-    availability:
-      row.production_mode === "sob-demanda"
+    availability: hasUnconfiguredVariants
+      ? "indisponivel"
+      : row.production_mode === "sob-demanda"
         ? "sob-demanda"
         : available
           ? "pronta-entrega"
           : "indisponivel",
     ...(row.production_days ? { productionDays: row.production_days } : {}),
     // Public availability is boolean by design; exact on-hand quantities stay private.
-    stock: available ? 1 : 0,
+    stock: available && !hasUnconfiguredVariants ? 1 : 0,
     featured: Boolean(row.featured),
     active: true,
     variants,
+    ...(variantCombinations === undefined ? {} : { variantCombinations }),
   };
 }
 
 async function loadCatalog(): Promise<{ products: Product[]; categories: Category[] }> {
   const client = getSupabase();
-  const [categoryResult, productResult, groupResult, optionResult, availabilityResult] =
-    await Promise.all([
-      client
-        .from("public_categories")
-        .select("id,slug,name,description,display_order")
-        .order("display_order")
-        .order("id"),
-      client
-        .from("public_products")
-        .select(
-          "id,category_id,slug,name,description,tags,regular_price_cents,promo_price_cents,production_mode,production_days,featured,badge",
-        )
-        .order("slug"),
-      client
-        .from("public_attribute_groups")
-        .select("id,product_id,code,label,position")
-        .order("position"),
-      client
-        .from("public_attribute_options")
-        .select("id,group_id,label,position")
-        .order("position"),
-      client.from("public_availability").select("product_id,available"),
-    ]);
-  const error = [categoryResult, productResult, groupResult, optionResult, availabilityResult].find(
-    (result) => result.error,
-  )?.error;
+  const [
+    categoryResult,
+    productResult,
+    groupResult,
+    optionResult,
+    availabilityResult,
+    variantResult,
+    variantOptionResult,
+  ] = await Promise.all([
+    client
+      .from("public_categories")
+      .select("id,slug,name,description,display_order")
+      .order("display_order")
+      .order("id"),
+    client
+      .from("public_products")
+      .select(
+        "id,category_id,slug,name,description,tags,regular_price_cents,promo_price_cents,production_mode,production_days,featured,badge",
+      )
+      .order("slug"),
+    client
+      .from("public_attribute_groups")
+      .select("id,product_id,code,label,position,required")
+      .order("position"),
+    client.from("public_attribute_options").select("id,group_id,label,position").order("position"),
+    client.from("public_availability").select("product_id,available"),
+    client.from("public_variants").select("id,product_id,sku"),
+    client.from("public_variant_options").select("variant_id,group_id,option_id"),
+  ]);
+  const error = [
+    categoryResult,
+    productResult,
+    groupResult,
+    optionResult,
+    availabilityResult,
+    variantResult,
+    variantOptionResult,
+  ].find((result) => result.error)?.error;
   if (error) throw error;
   const categories = (categoryResult.data ?? []).map((row) => toCategory(row as PublicCategoryRow));
   const categoryById = new Map(categories.map((category) => [category.id!, category]));
@@ -183,8 +230,20 @@ async function loadCatalog(): Promise<{ products: Product[]; categories: Categor
       raw as PublicProductRow,
       categoryById,
       availability.get((raw as PublicProductRow).id) ?? false,
-      (groupResult.data ?? []) as { id: string; product_id: string; code: string; label: string }[],
+      (groupResult.data ?? []) as {
+        id: string;
+        product_id: string;
+        code: string;
+        label: string;
+        required?: boolean;
+      }[],
       (optionResult.data ?? []) as { group_id: string; id: string; label: string }[],
+      (variantResult.data ?? []) as { id: string; product_id: string; sku: string }[],
+      (variantOptionResult.data ?? []) as {
+        variant_id: string;
+        group_id: string;
+        option_id: string;
+      }[],
     );
     return product ? [product] : [];
   });
@@ -254,9 +313,13 @@ export interface AdminProduct extends Product {
 
 function throwSafe(error: PostgrestError | null, fallback: string): void {
   if (!error) return;
-  if (error.code === "23505") throw new Error("Já existe um item com esse slug.");
+  if (error.code === "23505") throw new Error("Já existe um registro com esse valor.");
   if (error.code === "23503")
-    throw new Error("A categoria está associada a outros registros e não pode ser removida.");
+    throw new Error("Há registros associados que impedem esta exclusão ou alteração.");
+  if (error.code === "40001")
+    throw new Error("O registro mudou em outra sessão. Atualize os dados e tente novamente.");
+  if (error.code === "23514")
+    throw new Error("A alteração não atende às regras de integridade do catálogo/estoque.");
   if (error.code === "42501" || error.code === "PGRST301")
     throw new Error("A sessão administrativa ou a permissão AAL2 não está válida.");
   throw new Error(fallback);
@@ -331,6 +394,157 @@ export async function listAdminProducts(
     if (!product) return [];
     return [{ ...product, active: row.active, version: row.version, archivedAt: row.archived_at }];
   });
+}
+
+export async function swapAdminCategoryOrder(
+  first: Pick<AdminCategory, "id" | "version">,
+  second: Pick<AdminCategory, "id" | "version">,
+): Promise<void> {
+  const { error } = await getSupabase().rpc("swap_category_order", {
+    p_first_id: first.id,
+    p_first_version: first.version,
+    p_second_id: second.id,
+    p_second_version: second.version,
+  });
+  throwSafe(error, "Não foi possível reordenar as categorias.");
+  invalidatePublicCatalog();
+}
+
+export interface AdminVariantGroupInput {
+  code: string;
+  label: string;
+  position: number;
+  required: boolean;
+  options: Array<{ code: string; label: string; position: number; active: boolean }>;
+}
+export interface AdminVariantInput {
+  sku: string;
+  active: boolean;
+  selections: Record<string, string>;
+}
+
+export async function getAdminVariantConfiguration(productId: string): Promise<{
+  groups: AdminVariantGroupInput[];
+  variants: AdminVariantInput[];
+}> {
+  const client = getSupabase();
+  const [groupsResult, variantsResult] = await Promise.all([
+    client
+      .from("product_attribute_groups")
+      .select("id,code,label,position,required")
+      .eq("product_id", productId)
+      .order("position"),
+    client
+      .from("product_variants")
+      .select("id,sku,active")
+      .eq("product_id", productId)
+      .order("sku"),
+  ]);
+  throwSafe(groupsResult.error, "Não foi possível carregar as variações.");
+  throwSafe(variantsResult.error, "Não foi possível carregar os SKUs.");
+  const groupRows = groupsResult.data ?? [];
+  const variantRows = variantsResult.data ?? [];
+  const [optionsResult, valuesResult] = await Promise.all([
+    groupRows.length
+      ? client
+          .from("product_attribute_options")
+          .select("id,group_id,code,label,position,active")
+          .in(
+            "group_id",
+            groupRows.map((group) => group.id),
+          )
+          .order("position")
+      : Promise.resolve({ data: [], error: null }),
+    variantRows.length
+      ? client
+          .from("variant_option_values")
+          .select("variant_id,group_id,option_id")
+          .in(
+            "variant_id",
+            variantRows.map((variant) => variant.id),
+          )
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  throwSafe(optionsResult.error, "Não foi possível carregar as opções de variação.");
+  throwSafe(valuesResult.error, "Não foi possível carregar as combinações de SKU.");
+  const optionRows = optionsResult.data ?? [];
+  const optionById = new Map(optionRows.map((option) => [option.id, option.code]));
+  const groupById = new Map(groupRows.map((group) => [group.id, group.code]));
+  const selectionsByVariant = new Map<string, Record<string, string>>();
+  for (const value of valuesResult.data ?? []) {
+    const groupCode = groupById.get(value.group_id);
+    const optionCode = optionById.get(value.option_id);
+    if (!groupCode || !optionCode) continue;
+    const selections = selectionsByVariant.get(value.variant_id) ?? {};
+    selections[groupCode] = optionCode;
+    selectionsByVariant.set(value.variant_id, selections);
+  }
+  return {
+    groups: groupRows.map((group) => ({
+      code: group.code,
+      label: group.label,
+      position: group.position,
+      required: group.required,
+      options: optionRows
+        .filter((option) => option.group_id === group.id)
+        .map((option) => ({
+          code: option.code,
+          label: option.label,
+          position: option.position,
+          active: option.active,
+        })),
+    })),
+    variants: variantRows.map((variant) => ({
+      sku: variant.sku,
+      active: variant.active,
+      selections: selectionsByVariant.get(variant.id) ?? {},
+    })),
+  };
+}
+
+export async function replaceAdminVariantConfiguration(
+  productId: string,
+  groups: AdminVariantGroupInput[],
+  variants: AdminVariantInput[],
+): Promise<void> {
+  const { error } = await getSupabase().rpc("replace_product_variants", {
+    p_product_id: productId,
+    p_groups: groups as unknown as never,
+    p_variants: variants as unknown as never,
+  });
+  throwSafe(error, "Não foi possível salvar as variações e os SKUs.");
+  invalidatePublicCatalog();
+}
+
+export async function adjustAdminInventory(input: {
+  productId: string;
+  delta: number;
+  reason: string;
+  operationKey: string;
+  expectedVersion: number;
+}): Promise<void> {
+  const { error } = await getSupabase().rpc("adjust_inventory", {
+    p_product_id: input.productId,
+    p_delta: input.delta,
+    p_reason: input.reason,
+    p_operation_key: input.operationKey,
+    p_expected_version: input.expectedVersion,
+  });
+  throwSafe(error, "Não foi possível registrar a movimentação de estoque.");
+  invalidatePublicCatalog();
+}
+
+export async function setAdminInventoryMinimum(input: {
+  productId: string;
+  minimum: number;
+  expectedVersion: number;
+}): Promise<void> {
+  const { error } = await getSupabase().rpc("set_inventory_minimum", {
+    p_product_id: input.productId,
+    p_minimum_on_hand: input.minimum,
+    p_expected_version: input.expectedVersion,
+  });
+  throwSafe(error, "Não foi possível salvar o estoque mínimo.");
 }
 
 export async function saveAdminCategory(

@@ -137,6 +137,15 @@ def actor(k,sql, aal='aal2'):
             f"SET LOCAL request.jwt.claims='{claims}'; "
             f"{sql}; ROLLBACK;")
 
+def actor_commit(k,sql, aal='aal2'):
+    """Run a mutating RPC as an actor and commit to the disposable test DB."""
+    claims = json.dumps({'sub': ids[k], 'aal': aal, 'roles': []},
+                       separators=(',', ':'))
+    return (f"BEGIN; SET LOCAL ROLE authenticated; "
+            f"SET LOCAL request.jwt.claim.sub='{ids[k]}'; "
+            f"SET LOCAL request.jwt.claims='{claims}'; "
+            f"{sql}; COMMIT;")
+
 def createdb(name):
     """Create an empty test database. Use psql (always present) instead of
     relying on createdb/dropdb binaries which might not be in PATH in CI."""
@@ -175,6 +184,8 @@ def all_migrations():
     migs = list((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr008c*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr009c1*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr009f*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr010b1*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -195,6 +206,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261114133000_cr008c_jwt_claims_and_aal.sql':'18acfd79b6625f98d6caf2a824e315d52556f9850f70ed28ad2d4719874689ea',
     '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
     '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
+    '20261115120000_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
 }
 
 def verify_migration_integrity():
@@ -472,7 +484,7 @@ try:
         execute(db,f"INSERT INTO user_roles(user_id,role) VALUES({q('revoked')},'editor'); DELETE FROM user_roles WHERE user_id={q('revoked')};")
         # Catalog / media / orders / inventory / requests fixtures.
         seed_stmts = [
-            f"INSERT INTO categories(id,slug,name,active) VALUES({q('category')},'public','Public',true),({q('draft-category')},'draft','Draft',false)",
+            f"INSERT INTO categories(id,slug,name,active,display_order) VALUES({q('category')},'public','Public',true,1),({q('draft-category')},'draft','Draft',false,2)",
             f"INSERT INTO products(id,category_id,slug,name,regular_price_cents,promo_price_cents,production_mode,active,internal_notes) VALUES"
             f"({q('product')},{q('category')},'public-product','Public',1000,900,'pronta-entrega',true,'PRIVATE'),"
             f"({q('draft')},{q('category')},'draft-product','Draft',1000,NULL,'pronta-entrega',false,''),"
@@ -704,7 +716,97 @@ COMMIT;
         check(db,'auth exec custom_access_token_hook denied',
               actor('owner',"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
               error='permission denied')
-        # ---- fim dos testes AAL2 ----
+        # ---- CR-010B.1: atomic catalog/stock commands under AAL2 ----
+        check(db,'aal1 editor cannot swap category order',
+              actor('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1)",'aal1'),
+              error='AAL2 editor authorization required')
+        check(db,'editor category swap is atomic and versioned',
+              actor_commit('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1); SELECT (SELECT display_order FROM categories WHERE id={q('category')})||':'||(SELECT display_order FROM categories WHERE id={q('draft-category')})||':'||(SELECT version FROM categories WHERE id={q('category')})||':'||(SELECT version FROM categories WHERE id={q('draft-category')})",'aal2'),
+              '2:1:2:2')
+        check(db,'category swap rejects stale versions',
+              actor('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1)",'aal2'),
+              error='category changed; refresh')
+
+        variant_groups = json.dumps([
+            {'code':'cor','label':'Cor','position':0,'required':True,'options':[
+                {'code':'azul','label':'Azul','position':0,'active':True},
+                {'code':'branco','label':'Branco','position':1,'active':True}]},
+            {'code':'tamanho','label':'Tamanho','position':1,'required':True,'options':[
+                {'code':'p','label':'P','position':0,'active':True},
+                {'code':'m','label':'M','position':1,'active':True}]}
+        ],separators=(',',':'))
+        variant_rows = json.dumps([
+            {'sku':'DRAFT-AZUL-P','active':True,'selections':{'cor':'azul','tamanho':'p'}},
+            {'sku':'DRAFT-BRANCO-M','active':True,'selections':{'cor':'branco','tamanho':'m'}}
+        ],separators=(',',':'))
+        groups_sql = "'"+variant_groups.replace("'","''")+"'::jsonb"
+        variants_sql = "'"+variant_rows.replace("'","''")+"'::jsonb"
+        check(db,'AAL2 editor atomically saves color/size variants',
+              actor_commit('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},{variants_sql}); SELECT (SELECT count(*) FROM product_attribute_groups WHERE product_id={q('draft')})||':'||(SELECT count(*) FROM product_attribute_options o JOIN product_attribute_groups g ON g.id=o.group_id WHERE g.product_id={q('draft')})||':'||(SELECT count(*) FROM product_variants WHERE product_id={q('draft')})",'aal2'),
+              '2:4:2')
+        check(db,'variant save refuses historical references and rolls back',
+              actor('editor',f"SELECT public.replace_product_variants({q('product')},{groups_sql},{variants_sql})",'aal2'),
+              error='variant history is referenced by an order')
+        check(db,'failed variant replacement preserves old graph',
+              f"SELECT count(*) FROM product_variants WHERE product_id={q('draft')}",'2')
+        duplicate_sku = json.dumps([
+            {'sku':'SKU-TEST','active':True,'selections':{'cor':'azul','tamanho':'p'}}
+        ],separators=(',',':')).replace("'","''")
+        check(db,'variant save enforces global SKU uniqueness',
+              actor('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{duplicate_sku}'::jsonb)",'aal2'),
+              error='unique constraint')
+        incomplete_variant = json.dumps([
+            {'sku':'DRAFT-MISSING-SIZE','active':True,'selections':{'cor':'azul'}}
+        ],separators=(',',':')).replace("'","''")
+        check(db,'variant save enforces required color/size selections',
+              actor('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{incomplete_variant}'::jsonb)",'aal2'),
+              error='invalid active variant')
+        check(db,'SKU and integrity rejections preserve persisted variants',
+              f"SELECT count(*) FROM product_variants WHERE product_id={q('draft')}",'2')
+        check(db,'public projections expose persisted active variants',
+              f"UPDATE products SET active=true WHERE id={q('draft')}; SET ROLE anon; SELECT count(*) FROM public_variants WHERE product_id={q('draft')}",'2')
+        check(db,'public projections expose variant attributes',
+              f"SET ROLE anon; SELECT count(*) FROM public_attribute_options o JOIN public_attribute_groups g ON g.id=o.group_id WHERE g.product_id={q('draft')}",'4')
+        check(db,'AAL1 editor cannot change variant graph',
+              actor('editor',f"SELECT public.replace_product_variants({q('draft')},'[]'::jsonb,'[]'::jsonb)",'aal1'),
+              error='AAL2 editor authorization required')
+
+        check(db,'AAL2 operator adjusts inventory and appends movement',
+              actor_commit('operator',f"SELECT on_hand||':'||allocated||':'||version||':'||replayed FROM public.adjust_inventory({q('product')},3,'Received batch','cr010b1-op-1',1)",'aal2'),
+              '5:1:2:false')
+        check(db,'inventory retry is idempotent',
+              actor('operator',f"SELECT on_hand||':'||allocated||':'||version||':'||replayed FROM public.adjust_inventory({q('product')},3,'Received batch','cr010b1-op-1',1)",'aal2'),
+              '5:1:2:true')
+        check(db,'inventory operation key rejects a changed payload',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},4,'Different batch','cr010b1-op-1',2)",'aal2'),
+              error='operation key was already used')
+        check(db,'inventory concurrent version is required',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Second','cr010b1-op-stale',1)",'aal2'),
+              error='inventory changed; refresh and retry')
+        check(db,'inventory cannot go below allocation',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},-5,'Bad decrease','cr010b1-op-bad',2)",'aal2'),
+              error='adjustment would reduce stock below allocated quantity')
+        check(db,'inventory rejection leaves balance and ledger unchanged',
+              f"SELECT (SELECT on_hand FROM inventory WHERE product_id={q('product')})||':'||(SELECT count(*) FROM inventory_movements WHERE operation_key='cr010b1-op-bad')",
+              '5:0')
+        check(db,'operator stores a per-product inventory minimum',
+              actor_commit('operator',f"SELECT minimum_on_hand||':'||version FROM public.set_inventory_minimum({q('product')},4,2)",'aal2'),
+              '4:3')
+        check(db,'inventory minimum rejects a stale version',
+              actor('operator',f"SELECT * FROM public.set_inventory_minimum({q('product')},9,2)",'aal2'),
+              error='inventory changed; refresh and retry')
+        check(db,'minimum and low-stock state persist',
+              f"SELECT minimum_on_hand||':'||((on_hand-allocated)<=minimum_on_hand)::text FROM inventory WHERE product_id={q('product')}",
+              '4:true')
+        check(db,'AAL1 operator cannot adjust inventory',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Denied','cr010b1-op-aal1',2)",'aal1'),
+              error='AAL2 inventory authorization required')
+        check(db,'editor cannot adjust inventory',
+              actor('editor',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Denied','cr010b1-op-editor',2)",'aal2'),
+              error='AAL2 inventory authorization required')
+        check(db,'anonymous cannot execute new commands',
+              "SET ROLE anon; SELECT public.adjust_inventory(gen_random_uuid(),1,'x','x',0)",
+              error='permission denied')
         # service_role NÃO consegue DELETE em order_items (trigger append-only
         # rejeita a mutação). Usamos transação explícita com ROLLBACK e, após a
         # tentativa bloqueada, verificamos que o registro continua intacto.

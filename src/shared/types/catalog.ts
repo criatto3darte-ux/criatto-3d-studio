@@ -26,8 +26,14 @@ export interface ProductVariantOption {
 
 export interface ProductVariantGroup {
   id: string;
-  name: "Cor" | "Tamanho" | "Acabamento";
+  name: string;
+  required?: boolean;
   options: ProductVariantOption[];
+}
+
+export interface ProductVariantCombination {
+  sku: string;
+  selections: Record<string, string>;
 }
 
 export interface Product {
@@ -50,4 +56,6 @@ export interface Product {
   /** Published in the public store. */
   active: boolean;
   variants: ProductVariantGroup[];
+  /** Persisted active SKU combinations; omitted only for demo/test-only fixtures. */
+  variantCombinations?: ProductVariantCombination[];
 }

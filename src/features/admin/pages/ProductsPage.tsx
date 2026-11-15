@@ -8,6 +8,8 @@ import { formatBRL } from "@/shared/utils/format";
 import { AVAILABILITY_LABEL, normalize } from "@/features/catalog/catalog.logic";
 import {
   archiveAdminProduct,
+  getAdminVariantConfiguration,
+  replaceAdminVariantConfiguration,
   listAdminCategories,
   listAdminProducts,
   saveAdminProduct,
@@ -35,6 +37,8 @@ interface Draft {
   productionDays: string;
   isNew: boolean;
   slugTouched: boolean;
+  variantGroupsJson: string;
+  variantsJson: string;
   version?: number;
 }
 const badgeValue: Record<string, "novo" | "destaque" | "promocao" | null> = {
@@ -52,6 +56,8 @@ function toDraft(product: Product, isNew: boolean, version?: number): Draft {
     productionDays: product.productionDays ? String(product.productionDays) : "",
     isNew,
     slugTouched: !isNew,
+    variantGroupsJson: "[]",
+    variantsJson: "[]",
     ...(version === undefined ? {} : { version }),
   };
 }
@@ -63,6 +69,7 @@ export function ProductsPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [savingVariants, setSavingVariants] = useState(false);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
   const [avail, setAvail] = useState("");
@@ -122,6 +129,88 @@ export function ProductsPage() {
         true,
       ),
     );
+  }
+
+  async function openEdit(product: AdminProduct) {
+    setErrors({});
+    setActionError("");
+    setBusy(true);
+    try {
+      const config = await getAdminVariantConfiguration(product.id);
+      const next = toDraft(product, false, product.version);
+      setDraft({
+        ...next,
+        variantGroupsJson: JSON.stringify(config.groups, null, 2),
+        variantsJson: JSON.stringify(config.variants, null, 2),
+      });
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Não foi possível carregar os SKUs.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveVariants() {
+    if (!draft || draft.isNew || !draft.product.id) return;
+    let groups: unknown;
+    let variants: unknown;
+    try {
+      groups = JSON.parse(draft.variantGroupsJson);
+      variants = JSON.parse(draft.variantsJson);
+    } catch {
+      setActionError("Revise o JSON de grupos/opções e de SKUs antes de salvar.");
+      return;
+    }
+    const validGroups =
+      Array.isArray(groups) &&
+      groups.every(
+        (group) =>
+          group &&
+          typeof group.code === "string" &&
+          typeof group.label === "string" &&
+          Number.isInteger(group.position) &&
+          typeof group.required === "boolean" &&
+          Array.isArray(group.options) &&
+          group.options.every(
+            (option: unknown) =>
+              option &&
+              typeof option === "object" &&
+              typeof (option as Record<string, unknown>).code === "string" &&
+              typeof (option as Record<string, unknown>).label === "string" &&
+              Number.isInteger((option as Record<string, unknown>).position) &&
+              typeof (option as Record<string, unknown>).active === "boolean",
+          ),
+      );
+    const validVariants =
+      Array.isArray(variants) &&
+      variants.every(
+        (variant) =>
+          variant &&
+          typeof variant.sku === "string" &&
+          variant.sku.trim().length > 0 &&
+          typeof variant.active === "boolean" &&
+          variant.selections &&
+          typeof variant.selections === "object" &&
+          !Array.isArray(variant.selections),
+      );
+    if (!validGroups || !validVariants) {
+      setActionError("O JSON não corresponde ao formato de grupos, opções e SKUs esperado.");
+      return;
+    }
+    setSavingVariants(true);
+    setActionError("");
+    try {
+      await replaceAdminVariantConfiguration(
+        draft.product.id,
+        groups as Parameters<typeof replaceAdminVariantConfiguration>[1],
+        variants as Parameters<typeof replaceAdminVariantConfiguration>[2],
+      );
+      setActionError("Variações e SKUs salvos no Supabase.");
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Não foi possível salvar os SKUs.");
+    } finally {
+      setSavingVariants(false);
+    }
   }
 
   async function save() {
@@ -325,9 +414,7 @@ export function ProductsPage() {
                 <Check
                   label={product.featured ? "Sim" : "Não"}
                   checked={product.featured}
-                  onChange={() => {
-                    setDraft(toDraft(product, false, product.version));
-                  }}
+                  onChange={() => void openEdit(product)}
                 />
               </td>
               <td className={s.num}>
@@ -337,9 +424,7 @@ export function ProductsPage() {
                     variant="ghost"
                     aria-label={`Editar ${product.name}`}
                     onClick={() => {
-                      setErrors({});
-                      setActionError("");
-                      setDraft(toDraft(product, false, product.version));
+                      void openEdit(product);
                     }}
                   >
                     <Pencil size={16} />
@@ -539,14 +624,54 @@ export function ProductsPage() {
                 setDraft((value) => value && { ...value, product: { ...value.product, active } })
               }
             />
-            <div className={s.full}>
+            <section className={s.full} aria-label="Variações e SKUs">
+              <h3>Variações e SKUs</h3>
+              {draft.isNew ? (
+                <p role="note">
+                  Salve o produto primeiro; depois abra Editar para cadastrar cores, tamanhos e
+                  SKUs.
+                </p>
+              ) : (
+                <>
+                  <p className={s.muted}>
+                    Formato JSON para grupos de atributos, opções e combinações de SKU. A gravação é
+                    transacional no PostgreSQL e preserva bloqueios de variantes já referenciadas em
+                    pedidos.
+                  </p>
+                  <TextareaField
+                    label="Grupos e opções (JSON)"
+                    rows={8}
+                    value={draft.variantGroupsJson}
+                    onChange={(event) =>
+                      setDraft(
+                        (value) => value && { ...value, variantGroupsJson: event.target.value },
+                      )
+                    }
+                  />
+                  <TextareaField
+                    label="Combinações e SKUs (JSON)"
+                    rows={8}
+                    value={draft.variantsJson}
+                    onChange={(event) =>
+                      setDraft((value) => value && { ...value, variantsJson: event.target.value })
+                    }
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => void saveVariants()}
+                    disabled={busy || savingVariants}
+                  >
+                    {savingVariants ? "Salvando variações…" : "Salvar variações e SKUs"}
+                  </Button>
+                </>
+              )}
               <p role="note">
-                Variantes/combinações SKU e imagens não serão alteradas neste formulário até que
-                existam comandos atômicos e Storage configurados. O restante do produto é gravado
-                diretamente no Supabase sob as permissões RLS existentes.
+                Imagens e galeria aguardam autorização e configuração de um fluxo de upload seguro:
+                o schema atual reserva gravação de metadados de mídia a um canal confiável e não há
+                bucket de Storage.
               </p>
-              {actionError && <p role="alert">{actionError}</p>}
-            </div>
+              {actionError && <p role="status">{actionError}</p>}
+            </section>
           </div>
         )}
       </Modal>

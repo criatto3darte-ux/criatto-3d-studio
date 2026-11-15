@@ -29,8 +29,10 @@ export function ProductPage({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [addError, setAddError] = useState(false);
-  const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
+  const [selected, setSelected] = useState<Record<string, string>>(
+    () =>
+      product.variantCombinations?.[0]?.selections ??
+      Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
   );
   const purchasable = canPurchase(product);
   const views = Math.max(product.images.length, VIEWS);
@@ -116,8 +118,19 @@ export function ProductPage({ product }: { product: Product }) {
                     type="button"
                     className={styles.chip}
                     aria-pressed={selected[g.name] === o.label}
+                    disabled={
+                      product.variantCombinations !== undefined &&
+                      !product.variantCombinations.some(
+                        (combination) => combination.selections[g.name] === o.label,
+                      )
+                    }
                     onClick={() => {
-                      setSelected((s) => ({ ...s, [g.name]: o.label }));
+                      const matchingCombination = product.variantCombinations?.find(
+                        (combination) => combination.selections[g.name] === o.label,
+                      );
+                      setSelected(
+                        matchingCombination?.selections ?? { ...selected, [g.name]: o.label },
+                      );
                       setAdded(false);
                     }}
                   >

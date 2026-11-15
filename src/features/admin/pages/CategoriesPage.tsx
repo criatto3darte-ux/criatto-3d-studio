@@ -10,6 +10,7 @@ import {
   removeAdminCategory,
   saveAdminCategory,
   setAdminCategoryActive,
+  swapAdminCategoryOrder,
   type AdminCategory,
   type AdminProduct,
 } from "@/features/catalog/supabase-catalog";
@@ -131,24 +132,7 @@ export function AdminCategoriesPage() {
     setBusy(true);
     setActionError("");
     try {
-      await saveAdminCategory({
-        id: category.id,
-        version: category.version,
-        slug: category.slug,
-        name: category.name,
-        description: category.description,
-        active: category.active,
-        order: other.order,
-      });
-      await saveAdminCategory({
-        id: other.id,
-        version: other.version,
-        slug: other.slug,
-        name: other.name,
-        description: other.description,
-        active: other.active,
-        order: category.order,
-      });
+      await swapAdminCategoryOrder(category, other);
       await reload();
     } catch (cause) {
       setActionError(
