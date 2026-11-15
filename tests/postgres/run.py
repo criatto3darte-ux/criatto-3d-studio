@@ -73,6 +73,7 @@ admin_exec("""DO $$ BEGIN
  IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='anon')         THEN CREATE ROLE anon NOLOGIN; END IF;
  IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
  IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+ IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='supabase_auth_admin') THEN CREATE ROLE supabase_auth_admin NOLOGIN; END IF;
 END $$;""")
 setup = """
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -173,6 +174,107 @@ def verify_migration_integrity():
             sys.exit(3)
 
 verify_migration_integrity()
+
+def cr009c1_state(db):
+    """Canonical state of every object changed by migration 0011."""
+    return execute(db, """
+WITH target_policies AS (
+  SELECT n.nspname,c.relname,p.polname,p.polpermissive,p.polroles,p.polcmd,
+         pg_get_expr(p.polqual,p.polrelid) qual,
+         pg_get_expr(p.polwithcheck,p.polrelid) check_expr
+    FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public'
+     AND p.polname IN ('admin_read','admin_write','coupon_rw',
+       'coupon_read_operador','coupon_editor','banner_rw','banner_editor',
+       'payments_owner','payments_finance','finance_read','settings_owner',
+       'own_profile','own_roles')
+), table_acl AS (
+  SELECT n.nspname,c.relname,c.relacl
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname IN
+    ('admin_profiles','user_roles','categories','products',
+     'product_attribute_groups','product_attribute_options','product_variants',
+     'variant_option_values','media_assets','product_images','category_images',
+     'customers','orders','order_items','order_status_history','payments',
+     'inventory','inventory_movements','coupons','banners','custom_requests',
+     'custom_request_images','store_settings')
+), funcs AS (
+  SELECT n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) args,
+         pg_get_functiondef(p.oid) definition,p.proacl
+    FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+   WHERE n.nspname='public'
+     AND p.proname IN ('my_roles','custom_access_token_hook','require_aal2')
+)
+SELECT md5(
+  coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,relname,polname)
+              FROM target_policies x),'') || '#' ||
+  coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,relname)
+              FROM table_acl x),'') || '#' ||
+  coalesce((SELECT string_agg(row_to_json(x)::text,'|' ORDER BY nspname,proname,args)
+              FROM funcs x),'')
+)""")
+
+def cr009c1_rollback_cycle():
+    """0001-0010 -> snapshot -> 0011 -> rollback -> compare -> reapply."""
+    global passed
+    db = 'cr009c1_' + uuid.uuid4().hex[:12]
+    migration_0011 = ROOT/'supabase/migrations/20261114133000_cr008c_jwt_claims_and_aal.sql'
+    foundation = [m for m in all_migrations() if m != migration_0011]
+    precheck = ROOT/'docs/sql/01-precheck-capture-state.sql'
+    rollback = ROOT/'docs/sql/03-rollback-cr008c-aal.sql'
+    owner = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/owner'))
+    product = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/product'))
+    category = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/category'))
+    try:
+        createdb(db)
+        execute(db, setup)
+        for migration in foundation:
+            execute(db, migration.read_text())
+        execute(db, f"""
+          INSERT INTO auth.users(id) VALUES ('{owner}');
+          INSERT INTO admin_profiles(user_id,display_name,active)
+            VALUES ('{owner}','CR009C1 owner',true);
+          INSERT INTO user_roles(user_id,role) VALUES ('{owner}','proprietario');
+          INSERT INTO categories(id,slug,name,active)
+            VALUES ('{category}','cr009c1','CR009C1',true);
+          INSERT INTO products(id,category_id,slug,name,regular_price_cents,
+                               production_mode,active)
+            VALUES ('{product}','{category}','cr009c1-product','CR009C1',1000,
+                    'pronta-entrega',true);
+        """)
+        before = cr009c1_state(db)
+        execute(db, precheck.read_text())
+        execute(db, migration_0011.read_text())
+        check(db,'CR-009C.1 AAL1 owner denied admin profile',
+              actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal1'),'0')
+        check(db,'CR-009C.1 AAL2 owner allowed admin profile',
+              actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal2'),'1')
+        check(db,'CR-009C.1 authenticated hook execution denied',
+              actor_sql(owner,"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
+              error='permission denied')
+        execute(db, rollback.read_text())
+        after = cr009c1_state(db)
+        if after != before:
+            raise AssertionError(f'CR-009C.1 rollback state mismatch: {before} != {after}')
+        passed += 1
+        print('PASS CR-009C.1 rollback restores policies, functions and grants',flush=True)
+        execute(db, migration_0011.read_text())
+        check(db,'CR-009C.1 migration 0011 reapplies after rollback',
+              "SELECT to_regprocedure('public.require_aal2()') IS NOT NULL",'t')
+    finally:
+        try:
+            dropdb(db)
+        except Exception as ex:
+            sys.stderr.write(f'warning: failed to drop {db}: {ex}\n')
+
+def actor_sql(user_id, sql, aal):
+    return ("BEGIN; SET LOCAL ROLE authenticated; "
+            f"SET LOCAL request.jwt.claim.sub='{user_id}'; "
+            f"SET LOCAL request.jwt.claims='{{\"sub\":\"{user_id}\",\"aal\":\"{aal}\"}}'; "
+            f"{sql}; ROLLBACK;")
+
+cr009c1_rollback_cycle()
 
 def structural_fingerprint(db):
     """Return a single string that uniquely identifies the CR-007B public
