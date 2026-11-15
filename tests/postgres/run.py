@@ -389,10 +389,12 @@ try:
             f"INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'test')",
         ]
         for i, stmt in enumerate(seed_stmts):
+            sys.stderr.write(f'  seed#{i} ... '); sys.stderr.flush()
             try:
                 execute(db, stmt)
+                sys.stderr.write('OK\n'); sys.stderr.flush()
             except Exception:
-                sys.stderr.write(f'FAILED seed statement #{i}: {stmt[:300]}\n')
+                sys.stderr.write(f'FAILED seed statement #{i}: {stmt[:400]}\n')
                 raise
         execute(db,f"""
 BEGIN;
