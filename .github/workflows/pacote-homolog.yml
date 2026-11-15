@@ -34,6 +34,9 @@ jobs:
       - name: Build de homologação (SPA estática, base=/)
         run: bun run build:homolog
 
+      - name: Aplicar robots.txt de homologação
+        run: cp public/robots-homolog.txt dist/robots.txt
+
       - name: Aplicar robots.txt de homologação (Disallow: /)
         run: cp public/robots-homolog.txt dist/robots.txt
 
