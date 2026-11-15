@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex -- URL safety scan legitimately rejects C0/DEL control characters and percent-encoded octets. */
 /** Persisted media/links allow HTTPS or an unambiguous root-relative path only. */
 export function safeUrl(value: unknown): string | undefined {
   if (typeof value !== "string" || !value || value.length > 2048 || value !== value.trim()) return undefined;

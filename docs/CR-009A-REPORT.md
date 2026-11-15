@@ -348,3 +348,24 @@ Todos devem continuar passando após as próximas fases (adicionar testes espec�
 - 📋 **Plano para próximas fases** detalhado (CR-009B/C/D/E) com riscos e critérios de liberação.
 
 A implementação das fases seguintes (B em diante) **só começa após a aprovação deste relatório** pelo cliente.
+
+---
+
+## 14. Verificação local de todos os gates (executada 2026-11-13)
+
+| Gate | Comando | Resultado |
+|---|---|---|
+| TypeScript strict | `bun x tsc --noEmit` | ✅ sem erros |
+| Vitest (todas as suítes) | `bun run test` | ✅ 16 arquivos, 187 testes passando |
+| Build de produção | `bun run build` | ✅ 2043 módulos, ~774 KB JS (222 KB gz), .htaccess copiado para `dist/` |
+| ESLint (escopo do CI) | `bun x eslint --max-warnings 0 src/features/data-contracts/*.ts src/test/cr007b-contracts.test.ts` | ✅ sem erros nem warnings |
+| ESLint no código alterado (checkout, safe-url) | `bun x eslint` nas rotas/features/contatos | ✅ 0 erros (14 warnings preexistentes de `react-refresh/only-export-components` em arquivos legados, fora do escopo desta CR) |
+| Credential scan | `bash scripts/credential-scan.sh` | ✅ "no obvious secrets (268 files scanned)" |
+| Credential scan self-test (23 positivos/negativos) | `bash scripts/credential-scan.test.sh` | ✅ 23/23 passando |
+
+### Verificações do pacote de publicação
+- `dist/.htaccess` idêntico a `public/.htaccess` (fallback SPA Apache + cabeçalhos de segurança + cache agressivo de assets hasheados).
+- `dist/_redirects` presente (fallback Netlify-style — redundância segura caso o servidor mude).
+- Número `5521987640769` embutido no bundle de produção, resolvido por `useStoreSettings()` → footer, `/contato`, `/checkout` e `/personalizados` já apontam para o WhatsApp oficial.
+- `dist/branding/`, `dist/favicon*`, `dist/manifest.webmanifest` presentes.
+- **Não** há chaves/tokens/segredos no pacote (credential scan validou).

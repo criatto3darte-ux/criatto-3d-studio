@@ -51,10 +51,11 @@ export function isValidBusinessNumber(value: string): boolean {
 }
 
 /** Removes control characters and trims; keeps line breaks in free text. */
+/* eslint-disable no-control-regex -- sanitization legitimately strips C0/DEL controls. */
 export function sanitizeText(v: string, max: number): string {
-  // eslint-disable-next-line no-control-regex
   return v.replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, "").trim().slice(0, max);
 }
+/* eslint-enable no-control-regex */
 
 /**
  * Demonstration reference derived from the cart contents (same cart = same code).
