@@ -1,15 +1,15 @@
-// Logo oficial da Criatto 3D.
+// Logo oficial da Criatto 3D (versão 2026).
 //
-// Variantes de imagem (em /branding/) geradas a partir do logotipo aprovado
-// (PNG 1536×1024, fundo preto com glow neon). As imagens mantêm o fundo preto
-// original, preserva gradientes e brilhos e é apresentada sempre sobre uma
-// superfície escura (header/footer/auth/admin no tema escuro) ou sobre uma
-// moldura preta fina quando o tema for claro (para não "cortar" o brilho).
+// Variantes de imagem (em /branding/) geradas a partir do PNG oficial enviado
+// pelo cliente (1535×1024). O fundo preto original foi removido (canal alpha)
+// para que o logo funcione em qualquer superfície, tanto no tema claro quanto
+// no escuro, sem moldura artificial. Os gradientes do cubo e da tipografia
+// (azul→ciano→magenta→laranja) são preservados.
 //
-//  - logo-full-dark.png / .webp  : logotipo completo (símbolo + "Criatto 3D" + tagline).
+//  - logo-full-dark.png / .webp  : logotipo completo (cubo + "Criatto 3D" + tagline "PRODUTOS 3D").
 //  - logo-mark-dark.png / .webp  : apenas o cubo/símbolo (mobile, sidebar colapsada, fav-like usos).
 //
-// Um logo customizado (definido em store settings) substitui o mark oficial
+// Um logo customizado (definido em store settings) substitui o oficial
 // se fornecido; caso contrário usamos os assets aprovados.
 
 import { useEffect, useState } from "react";
@@ -62,8 +62,8 @@ export function LogoMark({ className }: { className?: string | undefined }) {
         className={styles.image}
         alt=""
         aria-hidden
-        width={120}
-        height={120}
+        width={156}
+        height={156}
         loading="lazy"
         decoding="async"
         draggable={false}
@@ -117,8 +117,8 @@ export function Logo({
         alt={alt ?? (customSrc ? `Logotipo de ${name}` : `${name} — logotipo oficial`)}
         loading="eager"
         decoding="async"
-        width={isFull ? 220 : 46}
-        height={isFull ? 64 : 46}
+        width={isFull ? 68 : 42}
+        height={isFull ? 44 : 42}
         draggable={false}
       />
     </span>
