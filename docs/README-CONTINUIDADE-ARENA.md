@@ -14,7 +14,7 @@
 
 ## Supabase remoto — limites mantidos
 
-Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Leitura somente nesta CR-010B.2 confirmou as 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`; `inventory.minimum_on_hand` e os quatro comandos comerciais não existem; categorias/produtos/variantes/inventário mantêm policies AAL2 existentes; nenhum bucket nem policy em `storage.objects`. Nenhuma migration, bucket, policy ou dado foi escrito remotamente. Relatório de schema/rollback/storage: `docs/CR-010B2-SUPABASE-ACTIVATION-REVIEW.md`.
+Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Leitura somente na CR-010B.3 confirmou as 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`; `inventory.minimum_on_hand` e os quatro comandos comerciais continuam ausentes; policies/grants AAL2 existentes e triggers permanecem. Nenhuma migration, bucket, policy ou dado foi escrito remotamente. Aplicação CR-010B.3 **bloqueada antes de DDL**: não foi possível comprovar backup restaurável nem executar com timeout verificável no conector. Relatório: `docs/CR-010B3-REPORT.md`; auditoria B.2: `docs/CR-010B2-SUPABASE-ACTIVATION-REVIEW.md`.
 
 - Nenhum usuário, convite, bootstrap, produto/categoria/movimento de teste, bucket, objeto, configuração Auth, policy ou migration foi criado/aplicado remotamente.
 - Sem `service_role` no navegador. Checkout, pedidos e pagamentos continuam desabilitados; nenhuma loja oficial foi substituída e nenhum deploy/FTP/Locaweb foi executado.
