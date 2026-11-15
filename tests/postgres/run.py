@@ -135,6 +135,7 @@ def all_migrations():
     adicionadas ao APPROVED_MIGRATION_SHA256 antes de serem aceitas pelo CI."""
     migs = list((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr008c*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr009c1*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -153,6 +154,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261113120900_cr007b_media_privilege_hardening.sql':'683ffe938b3e88ee4eff88e65351770af87d42a9e984d44d3d6bd957c69d8ac7',
     '20261113121000_cr007b7_private_media_and_role_matrix.sql':'e22fdd131f09f860e21a4d22e51cdc9c9baa5e4584b06e8dbc6eb686686eb2c9',
     '20261114133000_cr008c_jwt_claims_and_aal.sql':'d6809d7011b8fa973d6322520e68343011dd54943a75b389ba168d35df1a9cbe',
+    '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
 }
 
 def verify_migration_integrity():
@@ -225,7 +227,8 @@ def cr009c1_rollback_cycle():
     global passed
     db = 'cr009c1_' + uuid.uuid4().hex[:12]
     migration_0011 = ROOT/'supabase/migrations/20261114133000_cr008c_jwt_claims_and_aal.sql'
-    foundation = [m for m in all_migrations() if m != migration_0011]
+    pg17_repair = ROOT/'supabase/migrations/20261114133100_cr009c1_pg17_advisory_lock.sql'
+    foundation = [m for m in all_migrations() if m.name < migration_0011.name]
     precheck = ROOT/'docs/sql/01-precheck-capture-state.sql'
     rollback = ROOT/'docs/sql/03-rollback-cr008c-aal.sql'
     owner = str(uuid.uuid5(uuid.NAMESPACE_URL,'cr009c1/owner'))
@@ -265,6 +268,7 @@ def cr009c1_rollback_cycle():
         passed += 1
         print('PASS CR-009C.1 rollback restores policies, functions and grants',flush=True)
         execute(db, migration_0011.read_text())
+        execute(db, pg17_repair.read_text())
         check(db,'CR-009C.1 migration 0011 reapplies after rollback',
               "SELECT to_regprocedure('public.require_aal2()') IS NOT NULL",'t')
     finally:

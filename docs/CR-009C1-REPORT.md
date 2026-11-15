@@ -45,6 +45,7 @@ Assim, as implementações anteriores permanecem presentes sem merge em `main`.
 - `docs/sql/03-rollback-cr008c-aal.sql`
 - `tests/postgres/run.py`
 - `.github/workflows/ci.yml`
+- `supabase/migrations/20261114133100_cr009c1_pg17_advisory_lock.sql`
 - `docs/CR-009C1-REPORT.md`
 
 ## Evidências locais
@@ -77,6 +78,12 @@ O terceiro ciclo identificou que o `REVOKE` percorria apenas tabelas com uma
 policy-alvo capturada. A migration concede privilégios a um conjunto maior. O
 rollback passou a percorrer explicitamente todas as 23 tabelas afetadas e agora
 compara grants nos dois sentidos antes do `COMMIT`.
+
+Depois de o ciclo CR-009C.1 passar, o harness completo encontrou um defeito
+anterior da migration 0010: `pg_advisory_xact_lock(integer, bigint)` não
+existe no PostgreSQL 17. Como a 0010 já está aplicada remotamente, ela foi
+preservada e uma migration incremental corrige `check_private_media()` usando
+a assinatura `(integer, integer)`.
 
 ## PostgreSQL 17 e CI
 
