@@ -475,7 +475,7 @@ def cr010b1_schema_state(db):
         FROM information_schema.role_table_grants WHERE table_schema='public'
     """)
     policy_exprs = execute(db, """
-      SELECT string_agg(tablename||':'||policyname||':'||cmd||':'||roles||':'||
+      SELECT string_agg(tablename||':'||policyname||':'||cmd||':'||roles::text||':'||
                         coalesce(qual,'')||':'||coalesce(with_check,''),
                         ',' ORDER BY tablename,policyname)
         FROM pg_policies WHERE schemaname='public'
