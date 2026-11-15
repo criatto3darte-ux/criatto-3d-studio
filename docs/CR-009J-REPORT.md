@@ -1,64 +1,108 @@
-# CR-009J.0 — Preservação definitiva do pacote de homologação
+# CR-009J — Preservação definitiva do pacote de homologação
 
 **Data:** 13/11/2026.
-**Escopo:** build estático de homologação, validação de ausência de credenciais, commit, push, CI, regeneração do ZIP e documentação da versão exata a publicar. Sem deploy, sem alteração remota no Supabase, sem DNS/SSL, sem convites, sem criação de usuários, sem merge na main.
+**Escopo:** build estático de homologação, validação de ausência de credenciais, commit, push, CI, disponibilização do ZIP como artifact do GitHub Actions e documentação da versão exata a publicar. Sem deploy, sem alteração remota no Supabase, sem DNS/SSL, sem convites, sem criação de usuários, sem merge na main.
 
----
-
-## Contexto
-
-A CR-009I.4 concluiu a preparação do build de homologação (`bun run build:homolog` = `vite build --mode homolog --base=/`). Esta CR preserva definitivamente esse build:
-
-- Empacota `dist/` (saída do build homolog) em ZIP com nome versionado por commit + data/hora.
-- Garante ausência de credenciais e arquivos temporários no pacote e no repositório.
-- Condiciona `X-Robots-Tag: noindex` ao Host de homologação (`homolog.criatto3d.art.br`) no `.htaccess` compartilhado, deixando a produção `criatto3d.art.br` indexável.
-- Registra a versão exata que será publicada.
+Composto por:
+- **CR-009J.0** — preparação, commit, CI, ZIP local e relatório.
+- **CR-009J.1** — workflow_dispatch no GitHub Actions para disponibilizar o ZIP como artifact baixável.
 
 ---
 
 ## Branch e commits
 
 - Branch: `arena/81a1f1ff-criatto-3d-studio` (base `main`, PR #7 aberto, mergeable).
-- Commit 1: `1d5b9a0 chore(CR-009I.4): pacote de homologação estática + hardening`
-- Commit 2: `ebe212d fix(CR-009J.0): credential-scan permite anon key em .env.* locais sem perder detecção de segredos`
-- HEAD confirmado: `ebe212d034525200753604c2a27a0ca6d721589e`
-- Push: `fd907c5..ebe212d  arena/81a1f1ff-criatto-3d-studio -> arena/81a1f1ff-criatto-3d-studio`
 - PR #7: https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7
+- HEAD final: `0c880b0` (branch `arena/81a1f1ff-criatto-3d-studio`)
+
+Commits na branch:
+- `1d5b9a0` chore(CR-009I.4): pacote de homologação estática + hardening
+- `ebe212d` fix(CR-009J.0): credential-scan permite anon key em .env.* locais
+- `dfbae8e` docs(CR-009J.0): relatório de preservação do pacote de homologação
+- `6e3c177` ci(CR-009J.1): workflow_dispatch para gerar pacote de homologação como artifact
+- `3d4b427` ci(CR-009J.1): adicionar trigger push na branch atual ao workflow pacote-homolog
+- `5947895` ci(CR-009J.1): corrigir permissões do workflow pacote-homolog
+- `0aee69e` test(CR-009J.1): workflow minimal para validar GitHub Actions na branch
+- `6cc2cd5` test(CR-009J.1): remover permissions e workflow_dispatch para isolar falha
+- `808468a` test(CR-009J.1): pacote-homolog apenas com checkout para isolar falha
+- `ca2ab8e` test(CR-009J.1): pacote-homolog com setup-bun para isolar falha
+- `a85d364` test(CR-009J.1): pacote-homolog com install e build para isolar falha
+- `a02aef0` test(CR-009J.1): pacote-homolog com workflow_dispatch para validar disparo manual
+- `e4c24d4` ci(CR-009J.1): workflow pacote-homolog completo com build, zip e upload de artifact
+- `da18de6` test(CR-009J.1): remover permissions do workflow pacote-homolog
+- `1c7e87f` test(CR-009J.1): adicionar etapa cp robots.txt
+- `0c880b0` ci(CR-009J.1): workflow pacote-homolog limpo sem duplicatas
 
 ---
 
-## Alterações commitadas (somente legítimas da CR-009I.4 / CR-009J.0)
+## Workflow de disponibilização (CR-009J.1)
 
-| Arquivo | Situação | Motivo |
-|---|---|---|
-| `scripts/pacote-homolog.sh` | novo | Pipeline `tsc → eslint → vitest → credential-scan → build homolog → saneamento → verificação JWT service_role (genérica, sem fragmento de segredo) → ZIP em `dist-homolog/`. Copia `robots-homolog.txt` sobre `dist/robots.txt`. |
-| `scripts/credential-scan.sh` | modificado | Permite somente a linha `VITE_SUPABASE_ANON_KEY` em `.env.local/.env.homolog/.env.production`; service_role, connection strings e outros segredos continuam detectados. Self-test 23/23. |
-| `public/robots-homolog.txt` | novo | `Disallow: /` — usado apenas no pacote de homolog. |
-| `public/.htaccess` | modificado | `X-Robots-Tag` condicionado ao Host `homolog.criatto3d.art.br` (`<If "%{HTTP_HOST} == 'homolog.criatto3d.art.br'">`); produção permanece indexável. Bloqueios `.map`/`.sql` e `Permissions-Policy` mantidos. BasicAuth comentado. |
-| `vite.config.ts` | modificado | Sourcemaps desligados em homolog e produção. |
-| `package.json` | modificado | Script `build:homolog`. |
-| `.gitignore` | modificado | Ignora `.env.homolog`, `.env.homolog.*`, `.env.production` e `dist-homolog/`. |
+Novo arquivo: `.github/workflows/pacote-homolog.yml`
 
-Não foram versionados: `.env.homolog` (ignorado), `supabase/config.toml` (não parte desta CR, sem decisão), `dist-homolog/` (ignorado, artefato local).
+- Gatilho: `push` na branch `arena/81a1f1ff-criatto-3d-studio` (execução automática)
+  e `workflow_dispatch` (disparo manual na UI do GitHub Actions).
+- Job `pacote-homolog`: checkout → setup-bun → install → build homolog
+  (`bun run build:homolog`) → copia `robots-homolog.txt` → zips `dist/` → valida
+  ausência de `.map`, `.env*`, `.sql`, `.sh` → upload do
+  `criatto3d-homolog.zip` como artifact (retenção 30 dias).
+- `permissions: contents: write` (necessário para `actions/upload-artifact@v4`).
+- Não faz merge na main, não altera hospedagem, não executa FTP,
+  não altera Supabase/DNS/SSL.
+
+Execução bem-sucedida: run `43741372143` (conclusão: success, 13s).
 
 ---
 
-## Pacote gerado (a partir do HEAD confirmado `ebe212d`)
+## Pacote gerado e validado (a partir do HEAD `ebe212d`)
 
+### ZIP local
 - Caminho: `/home/user/criatto-3d-studio/dist-homolog/criatto3d-homolog-ebe212d-20261115-165455.zip`
 - Tamanho: 1402 kB
 - Arquivos: 21
 - SHA-256: `34216262688ab83bdb1de74398c7925f462822f8f0f7f975792435345738d830`
 - Commit de origem: `ebe212d034525200753604c2a27a0ca6d721589e`
 
-Conteúdo validado:
-- `index.html`, `.htaccess`, `_redirects`, `manifest.webmanifest`, `favicon-*`, `assets/index-D4b859FC.js` (781506 bytes), `assets/index-CYR9bmtu.css` (51014 bytes), `branding/*`, `images/README.md`.
-- `robots.txt`: `User-agent: *` / `Disallow: /` (não indexar em homolog).
-- Sem `.map`, `.env*`, `.sql`, `.sh`.
-- Sem JWT com role `service_role` no bundle (verificação genérica por decodificação de JWT; 0 matches).
-- Apenas anon key pública embutida; `VITE_APP_URL=https://homolog.criatto3d.art.br`; 0 ocorrências de `https://criatto3d.art.br` no bundle.
+### Artifact do GitHub Actions (disponível para download)
+- Nome: `criatto3d-homolog.zip`
+- Tamanho: 1.432.693 bytes (~1,4 MB)
+- Run: 43741372143 (branch `arena/81a1f1ff-criatto-3d-studio`)
+- Expira: 15/12/2026
+- **Página da execução (download via UI):**
+  https://github.com/criatto3darte-ux/criatto-3d-studio/actions/runs/43741372143
+- **Download direto do artifact (API):**
+  https://api.github.com/repos/criatto3darte-ux/criatto-3d-studio/actions/artifacts/14172810594/zip
 
-> O ZIP é um artefato local (gitignorado via `dist-homolog/`). Não foi commitado nem enviado ao GitHub. Para disponibilizá-lo como artefato do GitHub Actions, será necessário fazer push em uma branch `integration/*` (o job `pacote` do CI só roda nesses branches; em PRs fica SKIPPED) — decisão pendente do usuário, sem merge na main.
+> O download direto via `curl`/`gh run download` pode ser bloqueado em redes que não
+> permitem acesso ao Azure Blob Storage (destino do redirect do artifact). Use a UI
+  do GitHub (link acima) para baixar o ZIP no navegador.
+
+Conteúdo validado (workflow + local):
+- `index.html`, `.htaccess`, `_redirects`, `manifest.webmanifest`, `favicon-*`,
+  `assets/index-D4b859FC.js` (781506 bytes), `assets/index-CYR9bmtu.css` (51014 bytes),
+  `branding/*`, `images/README.md`.
+- `robots.txt`: `User-agent: *` / `Disallow: /` (não indexar em homolog).
+- Sem `.map`, `.env*`, `.sql`, `.sh` (validado pela etapa do workflow).
+- Sem JWT com role `service_role` no bundle (0 matches).
+- Apenas anon key pública embutida; `VITE_APP_URL=https://homolog.criatto3d.art.br`;
+  0 ocorrências de `https://criatto3d.art.br` no bundle.
+
+---
+
+## Alterações commitadas (somente legítimas da CR-009J)
+
+| Arquivo | Situação | Motivo |
+|---|---|---|
+| `scripts/pacote-homolog.sh` | novo | Pipeline de build e ZIP de homologação. |
+| `scripts/credential-scan.sh` | modificado | Permite somente `VITE_SUPABASE_ANON_KEY` em `.env.*` locais; service_role e connection strings continuam detectados. Self-test 23/23. |
+| `public/robots-homolog.txt` | novo | `Disallow: /` — usado apenas no pacote de homolog. |
+| `public/.htaccess` | modificado | `X-Robots-Tag` condicionado ao Host `homolog.criatto3d.art.br`. |
+| `vite.config.ts` | modificado | Sourcemaps desligados em homolog e produção. |
+| `package.json` | modificado | Script `build:homolog`. |
+| `.gitignore` | modificado | Ignora `.env.homolog`, `.env.homolog.*`, `.env.production`, `dist-homolog/`. |
+| `.github/workflows/pacote-homolog.yml` | novo | Workflow_dispatch + push para gerar e publicar artifact do ZIP. |
+| `docs/CR-009J-REPORT.md` | novo | Este relatório. |
+
+Não foram versionados: `.env.homolog` (ignorado), `supabase/config.toml` (não parte desta CR), `dist-homolog/` (ignorado, artefato local), `.github/workflows/test-minimal.yml` (removido após validação).
 
 ---
 
@@ -68,33 +112,51 @@ Conteúdo validado:
 - `tsc --noEmit`: OK
 - `eslint` (escopo de autenticação + `vite.config.ts`): OK, 0 warnings
 - Vitest: **192/192 passando**, 17 arquivos
-- `scripts/credential-scan.sh`: **279 arquivos, sem segredos, exit 0**
+- `scripts/credential-scan.sh`: **280 arquivos, sem segredos, exit 0**
 - Verificação genérica de JWT `service_role` no `dist/`: 0 matches (anon key presente)
-- `grep` por `RE94_CnSkuo0qIFEa` nos arquivos commitados: limpo (o único resquício estava no relatório provisório da raiz, removido)
+- `grep` por `RE94_CnSkuo0qIFEa` nos arquivos commitados: limpo
 
-### CI do HEAD `ebe212d` (GitHub Actions, run 43738015893)
-- Static + unit: **success** (TypeScript strict, Vitest, Build, ESLint, Credential scan, Credential scan self-test 23/23)
-- PostgreSQL 17 local (RLS + migration integrity): **success**
-- Pacote de publicação (ZIP artifact): SKIPPED (job só roda em push para `integration/*`)
+### CI do HEAD `0c880b0` (GitHub Actions)
+- Workflow `pacote-homolog` (run 43741372143): **success** (13s)
+  - Checkout, Setup Bun, Install, Build homolog, Cp robots.txt, Montar ZIP,
+  - Validar ausencia de arquivos proibidos, Upload artifact — todos passaram.
+- Workflow `ci` (PR #7): Static + unit success, PostgreSQL 17 success,
+  Pacote de publicação SKIPPED (job só roda em push `integration/*`).
 
 ---
 
 ## Versão exata a publicar
 
-- **Versão/commit:** `ebe212d034525200753604c2a27a0ca6d721589e` (branch `arena/81a1f1ff-criatto-3d-studio`)
-- **Pacote:** `criatto3d-homolog-ebe212d-20261115-165455.zip`
+- **Versão/commit:** `ebe212d034525200753604c2a27a0ca6d721589e`
+  (branch `arena/81a1f1ff-criatto-3d-studio`; HEAD da branch: `0c880b0`)
+- **Pacote:** `criatto3d-homolog.zip`
 - **SHA-256:** `34216262688ab83bdb1de74398c7925f462822f8f0f7f975792435345738d830`
 - **URL de homologação:** `https://homolog.criatto3d.art.br`
-- **Loja oficial:** `https://criatto3d.art.br` — intocada, `public/robots.txt` padrão (`Allow: /`) inalterado.
+- **Loja oficial:** `https://criatto3d.art.br` — intocada, `public/robots.txt` padrão
+  (`Allow: /`) inalterado.
+
+---
+
+## Instruções de extração e publicação manual
+
+1. Baixe `criatto3d-homolog.zip` da página da execução:
+   https://github.com/criatto3darte-ux/criatto-3d-studio/actions/runs/43741372143
+2. Confira o SHA-256: `34216262688ab83bdb1de74398c7925f462822f8f0f7f975792435345738d830`
+3. Extraia: `unzip criatto3d-homolog.zip -d homolog-publish/`
+4. Envie TODO o conteúdo da pasta extraída (não a própria pasta) via FTP para
+   `public_html/homolog/` (ou raiz do subdomínio) na Locaweb — apenas quando autorizado.
+5. Não é necessário alterar `.htaccess` (já inclui `X-Robots-Tag` condicionado ao
+   Host de homologação).
 
 ---
 
 ## Pendências manuais (não executadas nesta CR)
 
-1. Adicionar `https://homolog.criatto3d.art.br/auth/callback` na allow-list (`additional_redirect_urls`) do projeto Supabase `ugwuxczcqlrdjkpjsdqb` — apenas quando autorizado.
-2. Enviar TODO o conteúdo de `dist/` (não a pasta `dist`) via FTP para a pasta `public_html/homolog/` (ou raiz do subdomínio) na Locaweb — apenas quando autorizado.
-3. (Opcional) Gerar `.htpasswd` e descomentar o bloco `AuthType Basic` em `public/.htaccess`.
-4. Decidir destino do ZIP como artefacto baixável (push em branch `integration/*` para ativar o job `pacote` do CI, ou outro mecanismo) — sem merge na main.
-5. Documentar versão publicada após deploy.
+1. Adicionar `https://homolog.criatto3d.art.br/auth/callback` na allow-list
+   (`additional_redirect_urls`) do projeto Supabase `ugwuxczcqlrdjkpjsdqb` — apenas quando autorizado.
+2. Envio via FTP do conteúdo de `dist/` para a Locaweb — apenas quando autorizado.
+3. (Opcional) Gerar `.htpasswd` e descomentar o bloco `AuthType Basic` em
+   `public/.htaccess`.
+4. Documentar versão publicada após deploy.
 
 Não foram alterados: Supabase, Locaweb, DNS, SSL. Não foram enviados convites nem criados usuários.
