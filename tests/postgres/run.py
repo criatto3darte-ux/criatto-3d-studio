@@ -96,7 +96,15 @@ CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SE
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public,auth TO anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION auth.uid(),auth.role(),auth.jwt() TO anon,authenticated,service_role;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- pgcrypto ships with the official Postgres images used in CI and Supabase.
+-- In stripped-down embedded builds it may be absent; migrations only use
+-- gen_random_uuid() which has been built-in since PostgreSQL 13, so pgcrypto
+-- is not required for correctness. Silently skip if unavailable.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name='pgcrypto') THEN
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+  END IF;
+END $$;
 """
 ids = {k: str(uuid.uuid5(uuid.NAMESPACE_URL,'cr007b-test/'+k)) for k in ['owner','editor','operator','finance','roleless','inactive','revoked','category','draft-category','product','draft','hidden','variant','group','option','media','customer','order','item','history','payment','movement','request','request-history','audit','private-media','coupon','second-owner','newm']}
 def q(k): return "'"+ids[k]+"'"
@@ -272,6 +280,10 @@ def cr009c1_rollback_cycle():
               actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal1'),'0')
         check(db,'CR-009C.1 AAL2 owner allowed admin profile',
               actor_sql(owner,'SELECT count(*) FROM admin_profiles','aal2'),'1')
+        # rollback_cycle seeds ONE owner + product/category only, so admin_profiles
+        # count must be 1 here (different from the full-role-matrix path below
+        # which seeds 7 admin users). Keep the two assertions aligned.
+
         check(db,'CR-009C.1 authenticated hook execution denied',
               actor_sql(owner,"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
               error='permission denied')
@@ -629,6 +641,13 @@ COMMIT;
     assert any('cr007b_coupons_requests' in m.name for m in rest), 'rest list must include 0006 coupons'
     for migration in pre:
         execute(db, migration.read_text())
+    # 0001 identity(2) + 0002 catalog(7: categories, products,
+    # product_attribute_groups, product_attribute_options, product_variants,
+    # variant_option_values, product_images) + 0003 media(2: media_assets,
+    # category_images) + 0004 orders(6: customers, orders, order_items,
+    # order_status_history, order_allocations, payments) + 0005
+    # inventory(2: inventory, inventory_movements) = 19 base tables at the
+    # resume boundary. coupon_redemptions lives in 0006 coupons.
     check(db,'pre-resume: 19 tables applied by 0001-0005',
           "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",'19')
     for migration in rest:
