@@ -409,7 +409,7 @@ INSERT INTO coupon_redemptions(coupon_id,order_id,discount_cents,state) VALUES({
 INSERT INTO media_assets(id,bucket,object_key,mime,byte_size,width,height,checksum,state) VALUES({q('private-media')},'private','private.webp','image/webp',12,1,1,'test','verified');
 INSERT INTO custom_request_images VALUES({q('request')},{q('private-media')},0);
 INSERT INTO banners(title,button_text,button_url,active) VALUES('Synthetic','Test','/catalogo',true);
-INSERT INTO store_settings(id,name,whatsapp_number,privacy_notice_version) VALUES(1,'Synthetic','5521999999999','test');
+INSERT INTO store_settings(id,name,whatsapp_number,privacy_notice_version) VALUES(1,'Synthetic','5521987640769','test');
 COMMIT;
 """)
         # Full role matrix. The migration 0010 changed coupons/banners/payments.
