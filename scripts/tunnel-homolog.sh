@@ -1,63 +1,76 @@
 #!/usr/bin/env bash
-# CR-009H: Procedimento para abrir um TÚNEL HTTPS temporário de homologação.
+# CR-009I: Levantar túnel HTTPS temporário para o teste real do primeiro
+# convite administrativo em dispositivo móvel.
 #
-# POR QUE:
-#   Para testar o convite administrativo em um dispositivo móvel diferente do
-#   notebook de desenvolvimento, o link do Supabase (PKCE) precisa apontar
-#   para uma origem HTTPS pública válida durante o fluxo. Um túnel evita
-#   publicar DNS, alterar a loja pública ou configurar domínios próprios.
+# USO (ordem):
+#   1. Em um terminal:
+#        cp .env.homolog.example .env.local   # preencher VITE_SUPABASE_ANON_KEY
+#        # editar VITE_APP_URL abaixo, depois:
+#        bash scripts/tunnel-homolog.sh vite
+#      (sobe o Vite em modo túnel: sem sourcemaps / @fs, 0.0.0.0:5173)
 #
-# COMO USAR:
-#   1. Garanta que Vite está rodando em localhost:5173 (ou a porta configurada).
-#   2. Rode um dos comandos abaixo (cloudflared é a opção recomendada, sem login).
-#   3. Copie a URL HTTPS retornada (ex.: https://xxx-yyy.trycloudflare.com).
-#   4. Adicione ESSA URL + /auth/callback ao allow-list do Supabase
+#   2. Em outro terminal, NA MESMA VITE_APP_URL que o vite está servindo:
+#        bash scripts/tunnel-homolog.sh cloudflared
+#      Copie a URL https://xxxx-yyy.trycloudflare.com impressa no console.
+#
+#   3. Adicione ESSA URL + "/auth/callback" ao allow-list do Supabase
 #      (Authentication → URL Configuration → Redirect URLs).
-#   5. Inicie o Vite com VITE_APP_URL=<URL> para que getRedirectUrl() SSR-safe
-#      e PKCE redirectTo apontem para o túnel.
-#   6. Abra o convite no celular; fluxo funciona de ponta a ponta.
-#   7. Ao finalizar o teste, REMOVA a URL do allow-list e pare o túnel.
+#      Ajuste VITE_APP_URL em .env.local para a URL do túnel e reinicie o Vite.
 #
-# REGRAS DE SEGURANÇA:
-#   • Nunca deixe a URL temporária no allow-list após o teste (abuso do OAuth).
-#   • Não adicione wildcards (ex.: https://*.trycloudflare.com).
-#   • Nunca exponha credenciais/segredos no terminal que rode o túnel.
-#   • Este script NÃO inicia o túnel automaticamente — só imprime instruções.
+#   4. Adicione também a URL à variável allow-list imediatamente antes do
+#      convite; REMOVA logo após o teste.
+#
+# REGRA DE SEGURANÇA:
+#   • Encerre o túnel (Ctrl+C) e remova a URL do allow-list ao final.
+#   • Nunca adicione wildcard *.trycloudflare.com — sempre a URL EXATA.
+#   • O servidor Vite é iniciado com CR009I_TUNNEL=1, que:
+#       - desliga sourcemaps (esbuild + CSS);
+#       - bloqueia /@fs/* e *.map via middleware.
+#   • Não rode este script em redes públicas com dados sensíveis — é uma
+#     ferramenta de homologação de curta duração.
 
 set -euo pipefail
 
-cat <<'EOF'
-==============================================================
-  TÚNEL HTTPS TEMPORÁRIO PARA HOMOLOGAÇÃO DE CONVITE (CR-009H)
-==============================================================
+CMD="${1:-}"
+PORT="${PORT:-5173}"
 
-Opção A — cloudflared (recomendada; gratuita, sem login):
-  npx --yes cloudflared tunnel --url http://localhost:5173
-  # Copie a URL https://*.trycloudflare.com que aparecer.
+case "$CMD" in
+  vite)
+    echo "[cr009i] iniciando Vite em modo túnel (CR009I_TUNNEL=1, port ${PORT})"
+    echo "[cr009i] sourcemaps e /@fs serão bloqueados"
+    exec bun run dev:tunnel
+    ;;
 
-Opção B — localtunnel (leve, sem instalação):
-  npx --yes localtunnel --port 5173 --subdomain criatto3d-cr009h
-  # Retorna https://criatto3d-cr009h.loca.lt
-  # ATENÇÃO: ao abrir no celular pela primeira vez, localtunnel pede a
-  # página "Click to Continue" (IP do túnel). Navegadores embutidos de
-  # apps de e-mail podem falhar — prefira cloudflared.
+  cloudflared|cf)
+    # cloudflared quick tunnel:
+    #   - Sem login/cadastro, sem cobrança.
+    #   - URL muda a cada execução (a não ser que use `cloudflared tunnel create`
+    #     com conta, mas para homologação de 30 min a URL volátil é aceitável).
+    #   - Para estabilidade de URL durante o teste usamos --url e deixamos o
+    #     processo em primeiro plano para que Ctrl+C encerre.
+    echo "[cr009i] levantando túnel cloudflared → http://localhost:${PORT}"
+    echo "[cr009i] copie a URL https://*.trycloudflare.com que aparecer."
+    exec npx --yes cloudflared tunnel --url "http://localhost:${PORT}" --no-autoupdate
+    ;;
 
-Opção C — ngrok (requer conta gratuita e token):
-  # ngrok http 5173
+  lt|localtunnel)
+    # Alternativa se cloudflared falhar. Retorna subdomínio determinístico.
+    SUB="${TUNNEL_SUBDOMAIN:-criatto3d-cr009i}"
+    echo "[cr009i] levantando localtunnel --subdomain ${SUB} → http://localhost:${PORT}"
+    exec npx --yes localtunnel --port "${PORT}" --subdomain "${SUB}" --local-host localhost
+    ;;
 
-Após levantar o túnel, configure a sessão de homologação:
-  export VITE_APP_URL="<URL-HTTPS-DO-TUNEL>"
-  bun run dev --host 0.0.0.0
+  *)
+    cat <<'EOF'
+Uso:
+  bash scripts/tunnel-homolog.sh vite          # sobe o Vite em modo túnel
+  bash scripts/tunnel-homolog.sh cloudflared   # sobe o túnel (em outro terminal)
+  bash scripts/tunnel-homolog.sh lt            # alternativa localtunnel
 
-Adicione no Supabase Dashboard (Authentication → URL Configuration):
-  Redirect URLs:
-    <URL-HTTPS-DO-TUNEL>/auth/callback
-  Site URL pode continuar http://localhost:5173; o redirectTo enviado
-  em invite/recovery usa VITE_APP_URL do cliente.
-
-Encerramento:
-  - Ctrl+C no túnel.
-  - Remova a URL temporária de Redirect URLs no Supabase.
-  - Unset VITE_APP_URL (ou feche o terminal).
-
+Variáveis:
+  PORT=5173              porta do Vite
+  TUNNEL_SUBDOMAIN=...   (apenas localtunnel)
 EOF
+    exit 1
+    ;;
+esac

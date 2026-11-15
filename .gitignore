@@ -40,3 +40,4 @@ scripts/vendor/package-lock.json
 package-lock.json
 .env
 .env.local
+supabase/.temp/
