@@ -47,7 +47,7 @@ export function CatalogPage() {
   }, [term, search.q, update]);
 
   const key = JSON.stringify(search);
-  // The shared demo catalog is synchronous: no simulated request or loading timer.
+  // The remote Supabase snapshot is stateful; only the visible page slice resets here.
   useEffect(() => {
     setVisible(PAGE_SIZE);
   }, [key]);

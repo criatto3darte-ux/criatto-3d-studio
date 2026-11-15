@@ -218,6 +218,9 @@ APPROVED_MIGRATION_SHA256 = {
     '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
     '20261115120000_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
 }
+APPROVED_ROLLBACK_SHA256 = {
+    '20261115120000_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
+}
 
 def verify_migration_integrity():
     """Fail fast if any on-disk migration differs from its approved hash,
@@ -233,6 +236,18 @@ def verify_migration_integrity():
         if actual != expected:
             sys.stderr.write(
                 f'MIGRATION TAMPERED: {mig.name}\n'
+                f'  expected {expected}\n'
+                f'  actual   {actual}\n')
+            sys.exit(3)
+    for name, expected in APPROVED_ROLLBACK_SHA256.items():
+        rollback = ROOT/'supabase/rollback'/name
+        if not rollback.exists():
+            sys.stderr.write(f'MISSING ROLLBACK: {rollback.name}\n')
+            sys.exit(3)
+        actual = hashlib.sha256(rollback.read_bytes()).hexdigest()
+        if actual != expected:
+            sys.stderr.write(
+                f'ROLLBACK TAMPERED: {rollback.name}\n'
                 f'  expected {expected}\n'
                 f'  actual   {actual}\n')
             sys.exit(3)
@@ -451,6 +466,70 @@ def structural_fingerprint(db):
     trig = execute(db, "SELECT string_agg(event_object_table||'.'||trigger_name,',' ORDER BY event_object_table,trigger_name) FROM information_schema.triggers WHERE event_object_schema='public'")
     views = execute(db, "SELECT string_agg(table_name,',' ORDER BY table_name) FROM information_schema.views WHERE table_schema='public'")
     return '|'.join([cols, cons, idx, pol, trig, views])
+
+def cr010b1_schema_state(db):
+    """Fingerprint the schema surfaces touched by the commercial migration."""
+    table_grants = execute(db, """
+      SELECT string_agg(table_name||':'||grantee||':'||privilege_type||':'||is_grantable,
+                        ',' ORDER BY table_name,grantee,privilege_type)
+        FROM information_schema.role_table_grants WHERE table_schema='public'
+    """)
+    policy_exprs = execute(db, """
+      SELECT string_agg(tablename||':'||policyname||':'||cmd||':'||roles||':'||
+                        coalesce(qual,'')||':'||coalesce(with_check,''),
+                        ',' ORDER BY tablename,policyname)
+        FROM pg_policies WHERE schemaname='public'
+    """)
+    return '|'.join([structural_fingerprint(db), table_grants, policy_exprs])
+
+def cr010b1_rollback_cycle():
+    """Apply the exact CR-010B.1 migration and guarded rollback on PG17."""
+    global passed
+    db = 'cr010b1_rollback_' + uuid.uuid4().hex[:12]
+    migration = ROOT/'supabase/migrations/20261115120000_cr010b1_catalog_stock_commands.sql'
+    rollback = ROOT/'supabase/rollback/20261115120000_cr010b1_catalog_stock_commands.sql'
+    try:
+        createdb(db)
+        execute(db, setup)
+        for foundation_migration in all_migrations():
+            if foundation_migration.name < migration.name:
+                execute(db, foundation_migration.read_text())
+        execute(db, """
+          INSERT INTO public.categories(id,slug,name,active)
+            VALUES('10000000-0000-0000-0000-000000000001','rollback-test','Rollback test',true);
+          INSERT INTO public.products(id,category_id,slug,name,regular_price_cents,production_mode,active)
+            VALUES('10000000-0000-0000-0000-000000000002',
+                   '10000000-0000-0000-0000-000000000001',
+                   'rollback-test-product','Rollback test product',1000,'pronta-entrega',true);
+        """)
+        before = cr010b1_schema_state(db)
+        execute(db, migration.read_text())
+        check(db,'CR-010B.1 apply adds only expected column and four commands',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '1:4')
+        execute(db, "INSERT INTO public.inventory(product_id,on_hand,allocated,minimum_on_hand) VALUES('10000000-0000-0000-0000-000000000002',0,0,5)")
+        check(db,'rollback refuses to discard configured inventory minima',
+              rollback.read_text(),error='rollback blocked: non-default inventory minimums exist')
+        check(db,'guarded rollback refusal leaves migration objects intact',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '1:4')
+        execute(db, "UPDATE public.inventory SET minimum_on_hand=0 WHERE product_id='10000000-0000-0000-0000-000000000002'")
+        execute(db, rollback.read_text())
+        after = cr010b1_schema_state(db)
+        if after != before:
+            raise AssertionError('CR-010B.1 rollback did not restore the pre-migration schema, policies and table grants')
+        check(db,'CR-010B.1 rollback removes only added column and commands',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '0:0')
+        passed += 1
+        print('PASS CR-010B.1 apply + guarded rollback restores pre-migration state',flush=True)
+    finally:
+        try:
+            dropdb(db)
+        except Exception as ex:
+            sys.stderr.write(f'warning: failed to drop {db}: {ex}\\n')
+
+cr010b1_rollback_cycle()
 
 fingerprint = None
 try:

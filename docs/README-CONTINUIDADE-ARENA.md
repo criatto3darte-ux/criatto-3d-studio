@@ -1,6 +1,6 @@
 # CRIATTO 3D — Continuidade de engenharia
 
-**Atualizado:** 2026-11-15 (UTC) · **Etapa:** CR-010B.1, implementação local em revisão
+**Atualizado:** 2026-11-15 (UTC) · **Etapa:** CR-010B.2, preparação da ativação comercial
 **Branch ativo/fixo:** `arena/1f32d4fc-criatto-3d-studio`
 **PR #7:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7
 
@@ -14,7 +14,7 @@
 
 ## Supabase remoto — limites mantidos
 
-Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Última leitura remota registrada na etapa anterior: 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`, signup desabilitado, TOTP habilitado, custom access-token hook habilitado; zero usuários Auth, categorias, produtos, inventário, assets e buckets. Nenhuma consulta de escrita ou alteração remota foi feita nesta etapa CR-010B.1.
+Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Leitura somente nesta CR-010B.2 confirmou as 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`; `inventory.minimum_on_hand` e os quatro comandos comerciais não existem; categorias/produtos/variantes/inventário mantêm policies AAL2 existentes; nenhum bucket nem policy em `storage.objects`. Nenhuma migration, bucket, policy ou dado foi escrito remotamente. Relatório de schema/rollback/storage: `docs/CR-010B2-SUPABASE-ACTIVATION-REVIEW.md`.
 
 - Nenhum usuário, convite, bootstrap, produto/categoria/movimento de teste, bucket, objeto, configuração Auth, policy ou migration foi criado/aplicado remotamente.
 - Sem `service_role` no navegador. Checkout, pedidos e pagamentos continuam desabilitados; nenhuma loja oficial foi substituída e nenhum deploy/FTP/Locaweb foi executado.
@@ -29,9 +29,9 @@ Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-
 - Estoque segue leitura do saldo/histórico pela RLS. Foi acrescentado no código um ajuste por movimento append-only com lock, versão otimista, chave idempotente, validação de saldo/alocação, motivo, AAL2 e papel. Estoque mínimo é por produto. **Essas operações ainda não existem no remoto**: dependem da migration local aditiva.
 - Imagens/upload/galeria ainda não estão implementados: homolog não tem bucket e `media_assets` reserva criação/verificação de metadados a canal confiável; não criar upload direto no navegador nem abrir policy para contornar isso.
 
-## Migration local CR-010B.1
+## Migration e rollback local CR-010B.1 / B.2
 
-`supabase/migrations/20261115120000_cr010b1_catalog_stock_commands.sql`, sem aplicação remota. Após verificar as migrations/funções existentes (nenhuma RPC equivalente de catálogo/estoque), esta proposta local acrescenta apenas coluna em `inventory` e comandos de swap de categoria, substituição transacional do grafo de variantes, ajuste de saldo/ledger e estoque mínimo. Não acrescenta tabela, bucket ou policy, nem reabre grants de escrita direta em inventário/media. Hash fixado no harness PG17.
+`supabase/migrations/20261115120000_cr010b1_catalog_stock_commands.sql` continua sem aplicação remota. Leitura remota atual confirmou schema e ausência das quatro funções. A proposta adiciona apenas `inventory.minimum_on_hand` e quatro comandos transacionais; sem tabela, bucket, trigger ou policy nova. SHA fixado no harness PG17. Rollback específico agora está em `supabase/rollback/20261115120000_cr010b1_catalog_stock_commands.sql`; bloqueia se qualquer minimum for diferente de zero. Harness foi ampliado para aplicar/recusar/rollback e comparar schema/grants/policies; CI deste novo ciclo está pendente.
 
 ## Validação desta etapa
 
@@ -41,7 +41,7 @@ Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-
 - `npm run build`: passou com warning de chunk JS (824.51 kB > 500 kB).
 - Credential scan passou; autotestes 23/23; `git diff --check`, parser de SQL e compilação de sintaxe Python passaram.
 - Harness PostgreSQL 17 foi ampliado para testar migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. Sandbox sem `psql`, servidor PG17, Docker/Podman.
-- GitHub Actions run `43753010833` no head `721c755`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity) **PASS**; pacote de publicação foi skipped. Run anterior `43752621332` também passou em `a3d3f66`. A primeira execução de PG17 falhou porque o teste do trigger diferido fazia rollback; corrigido para commitar antes de verificar rejeição, e reruns passaram.
+- GitHub Actions run `43753155315` no head `8a22a50`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity) **PASS**; pacote de publicação foi skipped. Run anterior `43753010833` também passou em `721c755`. A primeira execução PG17 falhou porque o teste do trigger diferido fazia rollback; corrigido para commitar antes de verificar rejeição, e reruns passaram. O teste adicional de rollback CR-010B.2 está pendente no CI atual.
 - #9 ainda é draft; o CI green não torna a migration remota aplicada nem conclui Storage/imagens. Os checks antigos de PR #7 continuam sendo do head `bdf895b`.
 - `npm run lint` global tinha dívida preexistente ampla (860 problemas, majoritariamente Prettier); não formatar o repo inteiro para limpar esse baseline.
 
