@@ -28,11 +28,17 @@ export const Route = createFileRoute("/auth/set-password")({
   beforeLoad: () => {
     if (!isSupabaseConfigured()) return; // erro mostrado pelo componente
   },
+  validateSearch: (search: Record<string, unknown>) => ({
+    /** Where to go after password is set and MFA completes. */
+    next:
+      typeof search.next === "string" && search.next.startsWith("/") ? search.next : "/auth/done",
+  }),
 });
 
 function SetPasswordPage() {
   const session = useSession();
   const navigate = Route.useNavigate();
+  const { next } = Route.useSearch();
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +67,7 @@ function SetPasswordPage() {
       if (error) throw error;
       setInfo("Senha definida com sucesso. Encaminhando para MFA…");
       await new Promise((r) => setTimeout(r, 600));
-      await navigate({ to: "/auth/mfa", replace: true });
+      await navigate({ to: "/auth/mfa", replace: true, search: { next } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao definir senha.");
     } finally {

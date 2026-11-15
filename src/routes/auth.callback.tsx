@@ -34,6 +34,7 @@ export const Route = createFileRoute("/auth/callback")({
     for (const k of ["code", "token_hash", "error", "error_description", "type"] as const) {
       if (typeof search[k] === "string") out[k] = search[k];
     }
+    // recoveryTokenType flow uses "type"; normalize.
     return out as Record<string, string | undefined>;
   },
 });
@@ -74,7 +75,12 @@ function AuthCallback() {
         }
         if (cancelled) return;
         // Sucesso: seguir para definição de senha/MFA.
-        await navigate({ to: "/auth/set-password", replace: true });
+        // Fluxos de recovery (redefinição de senha) e convite (invite/signup)
+        // compartilham a mesma rota; após concluir a senha, recovery volta ao
+        // /admin/login (porque o usuário já tinha MFA) e invite vai para /auth/done
+        // via MFA (onboarding).
+        const nextAfterPw = search.type === "recovery" ? "/admin/login" : "/auth/done";
+        await navigate({ to: "/auth/set-password", replace: true, search: { next: nextAfterPw } });
       } catch (err) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);

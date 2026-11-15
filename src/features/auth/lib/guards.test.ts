@@ -4,8 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 
 // Helper: cria um JWT fake (apenas base64url do header.payload; assinatura irrelevante para o cliente).
 function makeJwt(payload: Record<string, unknown>): string {
-  const b64 = (s: string) =>
-    btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const b64 = (s: string) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return `${b64('{"alg":"HS256","typ":"JWT"}')}.${b64(JSON.stringify(payload))}.sig`;
 }
 
@@ -40,14 +39,15 @@ describe("jwt decode", () => {
   });
 
   it("lê as roles da claim roles", () => {
-    expect(sessionRoles(makeSession({ aal: "aal2", roles: ["proprietario"] }))).toEqual(["proprietario"]);
+    expect(sessionRoles(makeSession({ aal: "aal2", roles: ["proprietario"] }))).toEqual([
+      "proprietario",
+    ]);
     expect(sessionRoles(makeSession({ aal: "aal2", roles: [] }))).toEqual([]);
     expect(sessionRoles(makeSession({ aal: "aal2" }))).toEqual([]);
-    expect(
-      sessionRoles(
-        makeSession({ aal: "aal2", roles: ["proprietario", "editor"] }),
-      ),
-    ).toEqual(["proprietario", "editor"]);
+    expect(sessionRoles(makeSession({ aal: "aal2", roles: ["proprietario", "editor"] }))).toEqual([
+      "proprietario",
+      "editor",
+    ]);
   });
 });
 
@@ -74,6 +74,8 @@ describe("isAdminAuthorized", () => {
     expect(isAdminAuthorized(makeSession({ aal: "aal2", roles: ["financeiro"] }))).toBe(true);
   });
   it("permite múltiplas roles contendo ao menos uma admin", () => {
-    expect(isAdminAuthorized(makeSession({ aal: "aal2", roles: ["editor", "qualquer-outra"] }))).toBe(true);
+    expect(
+      isAdminAuthorized(makeSession({ aal: "aal2", roles: ["editor", "qualquer-outra"] })),
+    ).toBe(true);
   });
 });

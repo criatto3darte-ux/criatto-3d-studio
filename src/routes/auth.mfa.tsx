@@ -15,7 +15,7 @@
 //
 // NOTA: o MFA de TOTP em GoTrue requer verificação antes de marcar como verificado.
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AuthCard, ErrorBox, InfoBox, SuccessBox } from "@/features/auth/ui/AuthCard";
 import { getSupabase, isSupabaseConfigured, useSession } from "@/lib/supabase/client";
 import { Button } from "@/shared/ui/Button";
@@ -29,6 +29,12 @@ export const Route = createFileRoute("/auth/mfa")({
     ],
   }),
   component: MfaPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    /** Where to send the user after successful MFA verification.
+     *  Used by /admin/login (AAL1 -> AAL2 challenge) and by onboarding. */
+    next:
+      typeof search.next === "string" && search.next.startsWith("/") ? search.next : "/auth/done",
+  }),
 });
 
 interface TotpSecret {
@@ -71,13 +77,22 @@ async function enrollTotp(): Promise<TotpSecret> {
 function MfaPage() {
   const session = useSession();
   const navigate = Route.useNavigate();
+  const { next } = Route.useSearch();
+  const [enrollMode, setEnrollMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [secret, setSecret] = useState<TotpSecret | null>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [challengeFactorId, setChallengeFactorId] = useState<string | null>(null);
   const initialized = useRef(false);
+
+  const goNext = useCallback(() => {
+    // next sempre é um path local (validado em validateSearch), sem abrir
+    // brecha para open redirect.
+    void navigate({ to: next as "/admin" | "/auth/done", replace: true });
+  }, [navigate, next]);
 
   useEffect(() => {
     if (session.status === "unauthenticated") {
@@ -90,15 +105,32 @@ function MfaPage() {
     (async () => {
       try {
         const supabase = getSupabase();
-        // Check existing factors
         const { data, error } = await supabase.auth.mfa.listFactors();
         if (error) throw error;
-        const existing = (data?.totp ?? []).find((f) => f.status === "verified");
-        if (existing) {
-          setSuccess("TOTP já configurado.");
-          setTimeout(() => navigate({ to: "/auth/done", replace: true }), 500);
+        const verified = (data?.totp ?? []).filter((f) => f.status === "verified");
+        // Se vem de /admin/login (next=/admin) e já tem um TOTP verificado,
+        // apresentamos o desafio (AAL1 -> AAL2) — não é onboarding.
+        const firstVerified = verified[0];
+        if (next.startsWith("/admin") && firstVerified) {
+          setChallengeFactorId(firstVerified.id);
+          setLoading(false);
           return;
         }
+        // Se vem de /admin/login e NÃO tem TOTP, avisa e oferece onboarding.
+        if (next.startsWith("/admin") && verified.length === 0) {
+          setEnrollMode(true);
+          const s = await enrollTotp();
+          setSecret(s);
+          setLoading(false);
+          return;
+        }
+        // Fluxo onboarding (convite): se já há TOTP verificado, concluímos.
+        if (verified.length > 0) {
+          setSuccess("TOTP já configurado.");
+          setTimeout(goNext, 500);
+          return;
+        }
+        setEnrollMode(true);
         const s = await enrollTotp();
         setSecret(s);
       } catch (err) {
@@ -107,29 +139,38 @@ function MfaPage() {
         setLoading(false);
       }
     })();
-  }, [session.status, navigate]);
+  }, [session.status, navigate, next, goNext]);
 
   const otpUri = secret?.uri;
   const secretText = secret?.secret;
-  const canVerify = code.length === 6 && /^\d{6}$/.test(code) && secret && !verifying;
+  const activeFactor = challengeFactorId ?? secret?.id ?? null;
+  const isEnroll = enrollMode || secret !== null;
+  const canVerify =
+    code.length === 6 && /^\d{6}$/.test(code) && activeFactor !== null && !verifying;
 
   async function onVerify(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!secret || !canVerify) return;
+    if (!activeFactor || !canVerify) return;
     setVerifying(true);
     setError(null);
     try {
       const supabase = getSupabase();
-      const { data: chal, error: ce } = await supabase.auth.mfa.challenge({ factorId: secret.id });
+      const { data: chal, error: ce } = await supabase.auth.mfa.challenge({
+        factorId: activeFactor,
+      });
       if (ce) throw ce;
       const { error: ve } = await supabase.auth.mfa.verify({
-        factorId: secret.id,
+        factorId: activeFactor,
         challengeId: chal.id,
         code,
       });
       if (ve) throw ve;
-      setSuccess("Autenticação de dois fatores configurada com sucesso!");
-      setTimeout(() => navigate({ to: "/auth/done", replace: true }), 800);
+      setSuccess(
+        isEnroll
+          ? "Autenticação de dois fatores configurada com sucesso!"
+          : "Segundo fator confirmado. Entrando…",
+      );
+      setTimeout(goNext, 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Código inválido ou expirado.");
     } finally {
@@ -137,18 +178,60 @@ function MfaPage() {
     }
   }
 
+  const isChallengeFlow = !isEnroll && !!challengeFactorId;
+  const cardTitle = isChallengeFlow
+    ? "Confirme seu segundo fator"
+    : "Autenticação de dois fatores (TOTP)";
+  const cardSubtitle = isChallengeFlow
+    ? "Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para concluir o acesso."
+    : "Adicione uma segunda camada de proteção usando um aplicativo autenticador (Authy, Google Authenticator, 1Password, etc.).";
+
   return (
     <AuthCard
-      title="Autenticação de dois fatores (TOTP)"
-      subtitle="Adicione uma segunda camada de proteção usando um aplicativo autenticador (Authy, Google Authenticator, 1Password, etc.)."
+      title={cardTitle}
+      subtitle={cardSubtitle}
       step="mfa"
+      hideSteps={isChallengeFlow}
+      badge={isChallengeFlow ? "Verificação MFA · painel administrativo" : undefined}
     >
       {error && <ErrorBox>{error}</ErrorBox>}
       {success && <SuccessBox>{success}</SuccessBox>}
 
-      {loading && <InfoBox>Gerando seu segredo MFA…</InfoBox>}
+      {loading && <InfoBox>Preparando autenticação…</InfoBox>}
 
-      {!loading && secret && (
+      {!loading && isChallengeFlow && (
+        <form
+          onSubmit={onVerify}
+          style={{ display: "grid", gap: "0.85rem" }}
+          autoComplete="one-time-code"
+        >
+          <Input
+            label="Código de 6 dígitos"
+            inputMode="numeric"
+            pattern="\d{6}"
+            maxLength={6}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            required
+            autoFocus
+            data-testid="mfa-challenge-code"
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button type="submit" disabled={!canVerify} data-testid="mfa-challenge-submit">
+              {verifying ? (
+                <>
+                  <span className="spinner" /> Verificando…
+                </>
+              ) : (
+                "Confirmar e entrar"
+              )}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {!loading && secret && isEnroll && (
         <>
           <InfoBox>
             No aplicativo autenticador, escolha <strong>Adicionar conta</strong> e uma das opções:
