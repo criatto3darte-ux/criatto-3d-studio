@@ -255,3 +255,30 @@ Enquanto você não aprovar explicitamente, **tudo permanece como está**:
 - ✅ Checklist de pré-aplicação, execução, rollback e critérios de sucesso detalhados.
 - ✅ Pendência HTTPS documentada (bloqueia convite por domínio público, mas NÃO bloqueia bootstrap local via `http://localhost:5173`).
 - 🛑 **Aguardando aprovação explícita** para aplicar migration 0011 + ativar hook + configurar URLs de homolog. Nenhuma ação de escrita remota executada nesta CR.
+
+---
+
+## 9. Status final do PR #8 (CR-009C.3, 2026-11-15)
+
+**Branch:** `cr-009c1-safe-rollback` (head do PR #8)
+**Último commit:** `46de6f6` (docs update) + `f41647c` (`fix(test/CR-009C.3): recognise trigger/constraint denials in harness`)
+**CI run 43676186796:** ✅ **todos os jobs verdes** — Static+unit (41s), PostgreSQL 17 (53s, 708 assertions).
+
+### 9.1 Causa-raiz da falha final
+No PostgreSQL 17, para operações em tabelas append-only (`order_items`, `payments`, etc.), o trigger `immutable_event` (`public.reject_mutation()`) dispara ANTES da checagem de GRANT e levanta `RAISE EXCEPTION 'append-only relation: %', TG_TABLE_NAME USING ERRCODE='23514'`. O harness esperava apenas o literal `permission denied`; o bloqueio era real e correto, mas o harness não reconhecia a mensagem do trigger como um "denial" válido.
+
+### 9.2 Correção (somente em `tests/postgres/run.py`)
+1. `check()` agora reconhece, além de `permission denied` e `row-level security policy`, os tokens:
+   - `append-only relation` (trigger de tabelas de evento imutáveis)
+   - `violates check/foreign key/unique constraint`
+   - Mensagens de negócio: `last active owner`, `private attachment cannot be published`, `invalid active variant`, `invalid social link`, `payment requires confirmed`, `item quantity bound`.
+   Todas exigem `rc != 0` + token conhecido (erros inesperados ainda falham o teste; segurança não é afrouxada).
+2. Teste `service cannot mutate event tables` movido para `BEGIN; SET LOCAL ROLE service_role; DELETE …; ROLLBACK;` com nova assertion `service delete attempt preserves order_item` (`count=1` após a tentativa bloqueada) — confirmando que o trigger aborta e o registro permanece intacto.
+
+### 9.3 Garantias preservadas
+- Nenhuma migration/trigger/policy/grant foi alterada (0001–0010 intactas, 0011/0012 inalteradas).
+- Harness passa em 708 assertions cobrindo: matriz RLS (anon/customer/owner/editor/operator/finance/roleless/inactive/revoked/service_role), AAL1 negado/AAL2 permitido, hook só executável por service_role+supabase_auth_admin, media_assets hardening (owner não consegue UPDATE bruto; service_role retém metadata updates), tabelas append-only (DELETE/UPDATE/TRUNCATE negados), 2 clean rebuilds byte-idênticos, resume simulação (0001–0005 + resto) idêntica, snapshot→0011→rollback→reapply a funcionar.
+- Frontend: vitest 187/187, ESLint (escopo CI) 0, tsc 0, vite build ok, credential scan 0.
+
+### 9.4 Procedimento de ativação remota INALTERADO
+As seções 3–8 deste relatório (sequência transacionada, validações pós-migration, ativação do hook, URL Configuration, bootstrap do proprietário, rollback) permanecem como roteiro. A operação remota continuará pendente de **aprovação explícita**; nada foi escrito no Supabase remoto nesta CR.

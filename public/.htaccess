@@ -1,0 +1,68 @@
+# SPA fallback — Apache / Locaweb.
+#
+# Regras:
+#   0. Desabilita listagem de diretórios (caso a Locaweb deixe ativado).
+#   1. Se o request aponta para um arquivo ou diretório real, serve o arquivo.
+#   2. Caso contrário, reescreve para /index.html (status 200) para que o
+#      TanStack Router resolva a rota no cliente.
+#
+# Esta configuração foi validada no servidor Apache da Locaweb com a
+# publicação da CR-008F (https://criatto3d.art.br). Não substitui nenhuma
+# diretiva de segurança já existente — apenas acrescenta hardening.
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+
+  # Bloqueia acesso direto a arquivos sensíveis que porventura sejam
+  # enviados por engano ao FTP (.git, .env, .htaccess, .htpasswd, backups).
+  RewriteRule (^|/)\.(git|env|htaccess|htpasswd) - [F,L,NC]
+  RewriteRule ~$ - [F,L]
+
+  # SPA fallback: qualquer outro caminho vai para index.html com status 200.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Segurança básica
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+  # Permite que o PWA seja instalável e que o service worker controle o escopo raiz.
+  <FilesMatch "\.webmanifest$">
+    Header set Content-Type "application/manifest+json"
+  </FilesMatch>
+</IfModule>
+
+# Cache agressivo de assets hasheados; index.html sempre revalidado.
+# Assets do Vite têm hash no nome (ex.: index-COb9FjeE.js) então um cache
+# de 1 ano é seguro: quando o conteúdo mudar, o nome muda também.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html                 "access plus 0 seconds"
+  ExpiresByType text/css                  "access plus 1 year"
+  ExpiresByType application/javascript    "access plus 1 year"
+  ExpiresByType application/manifest+json "access plus 0 seconds"
+  ExpiresByType image/png                 "access plus 1 year"
+  ExpiresByType image/jpeg                "access plus 1 year"
+  ExpiresByType image/webp                "access plus 1 year"
+  ExpiresByType image/avif                "access plus 1 year"
+  ExpiresByType image/svg+xml             "access plus 1 year"
+  ExpiresByType image/x-icon              "access plus 1 year"
+  ExpiresByType application/font-woff2    "access plus 1 year"
+</IfModule>
+
+# MIME types que a Locaweb pode não reconhecer corretamente.
+<IfModule mod_mime.c>
+  AddType image/avif                    avif
+  AddType image/webp                    webp
+  AddType application/manifest+json     webmanifest
+  AddType application/wasm              wasm
+  AddType font/woff2                    woff2
+</IfModule>

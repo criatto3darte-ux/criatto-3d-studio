@@ -1,112 +1,180 @@
--- =====================================================================
--- CRIATTO 3D — ROLLBACK da migration 0011 (cr008c_jwt_claims_and_aal).
---
--- Use SOMENTE se a aplicação da migration causar problemas (ex. nenhum
--- login funciona, erro 500 em todas as queries, etc.).
---
--- PASSOS:
---   1. DESATIVE o Custom Access Token Hook no painel (Auth → Hooks →
---      Custom Access Token → Disable) ANTES de rodar este script, para
---      que o GoTrue não tente chamar uma função que será removida.
---   2. Execute este script no SQL Editor do Supabase (service_role).
---   3. Reaplique as políticas administrativas originais (capturadas no
---      01-precheck-capture-state.sql) colando cada CREATE POLICY do output
---      da etapa 4 do precheck.
---
--- Este script:
---   - Remove as 3 funções criadas pela 0011 (my_roles,
---     custom_access_token_hook, require_aal2).
---   - Remove o grant extra de escrita em tabelas administrativas dado
---     pela migration (os grants para SELECT já existiam antes e são
---     mantidos; removemos apenas INSERT/UPDATE/DELETE adicionados).
---   - DROPa todas as policies reescritas pela 0011 para que você possa
---     recriar as originais a partir do snapshot capturado no precheck.
--- =====================================================================
-
--- 0. Garantir que o hook já foi desativado no painel antes.
--- Se você não desativou, PARE agora.
-
+-- CRIATTO 3D — CR-009C.1 ROLLBACK ATÔMICO DA MIGRATION 0011
+-- Pré-condição: snapshot criado por 01-precheck-capture-state.sql.
+-- Desative o Custom Access Token Hook antes de executar.
+\set ON_ERROR_STOP on
 BEGIN;
+SET LOCAL lock_timeout='10s';
+SET LOCAL statement_timeout='120s';
 
--- 1. Dropar as funções da 0011.
+DO $$ BEGIN
+  IF to_regclass('private.cr009c1_snapshot_meta') IS NULL
+     OR to_regclass('private.cr009c1_policy_snapshot') IS NULL
+     OR to_regclass('private.cr009c1_table_grant_snapshot') IS NULL
+     OR to_regclass('private.cr009c1_function_snapshot') IS NULL
+     OR to_regclass('private.cr009c1_function_grant_snapshot') IS NULL THEN
+    RAISE EXCEPTION 'CR-009C.1 snapshot incomplete; rollback aborted';
+  END IF;
+  IF (SELECT count(*) FROM private.cr009c1_snapshot_meta
+       WHERE migration_version='20261114133000')<>1
+     OR NOT EXISTS (SELECT 1 FROM private.cr009c1_policy_snapshot) THEN
+    RAISE EXCEPTION 'CR-009C.1 snapshot invalid; rollback aborted';
+  END IF;
+END $$;
+
+-- Policies dependem de require_aal2(), então são removidas primeiro.
+DO $$ DECLARE r record; BEGIN
+  FOR r IN SELECT * FROM private.cr009c1_policy_snapshot
+            ORDER BY schema_name,table_name,policy_name LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I',
+                   r.policy_name,r.schema_name,r.table_name);
+  END LOOP;
+END $$;
+
 DROP FUNCTION IF EXISTS public.my_roles();
 DROP FUNCTION IF EXISTS public.custom_access_token_hook(jsonb);
 DROP FUNCTION IF EXISTS public.require_aal2();
 
--- 2. Revoga os grants INSERT/UPDATE/DELETE extra dados pela 0011 a authenticated.
--- (SELECT para tabelas de leitura admin como admin_profiles/user_roles/payments/
--- order_items/order_status_history/inventory_movements já existia antes;
--- não tocamos neles para não quebrar a matriz de permissões anterior.)
-REVOKE INSERT, UPDATE, DELETE ON public.banners                 FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.coupons                 FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.categories              FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.products                FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.product_attribute_groups FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.product_attribute_options FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.product_variants        FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.variant_option_values   FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.media_assets            FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.product_images          FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.category_images         FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.customers               FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.orders                  FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.inventory               FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.store_settings          FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.custom_requests         FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.custom_request_images   FROM authenticated;
-
--- 3. Apaga as policies que foram reescritas pela 0011 (elas contêm
---    require_aal2() em USING / WITH CHECK). Depois você vai recriar as
---    políticas originais colando o DDL capturado no precheck.
-DO $$
-DECLARE r record;
-BEGIN
-  FOR r IN
-    SELECT pol.polname AS policy, c.relname AS tbl
-      FROM pg_policy pol
-      JOIN pg_class c ON c.oid = pol.polrelid
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-     WHERE n.nspname = 'public'
-       AND c.relname IN (
-         'admin_profiles','user_roles',
-         'categories','products','product_attribute_groups','product_attribute_options',
-         'product_variants','variant_option_values',
-         'media_assets','product_images','category_images',
-         'customers','orders','order_items','order_status_history','payments',
-         'inventory','inventory_movements','coupons','banners',
-         'custom_requests','custom_request_images','store_settings')
-       AND pol.polname IN ('admin_read','admin_write',
-                           'coupon_rw','coupon_read_operador','coupon_editor',
-                           'banner_rw','banner_editor',
-                           'payments_owner','payments_finance','finance_read',
-                           'settings_owner','own_profile','own_roles')
-       AND (pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) ILIKE '%require_aal2%'
-            OR pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) ILIKE '%require_aal2%')
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', r.policy, r.tbl);
-    RAISE NOTICE 'Dropped policy %.%', r.tbl, r.policy;
+-- Se alguma função existia antes da 0011, sua definição e owner são restaurados.
+DO $$ DECLARE r record; BEGIN
+  FOR r IN SELECT * FROM private.cr009c1_function_snapshot WHERE existed LOOP
+    EXECUTE r.definition;
+    EXECUTE format('ALTER FUNCTION %I.%I(%s) OWNER TO %I',
+                   r.schema_name,r.function_name,r.identity_arguments,r.owner_name);
   END LOOP;
 END $$;
 
--- 4. Neste ponto o banco está com as policies REMOVIDAS para as tabelas
---    administrativas — nenhum usuário autenticado consegue ler ou escrever
---    nelas, o que é um modo seguro (fail-closed).
---    AGORA cole o DDL das policies originais capturadas no passo 4 do
---    precheck (cada CREATE POLICY ...; do output). Depois COMMIT.
+-- Policies voltam com modo, comando, roles, USING e WITH CHECK originais.
+DO $$
+DECLARE r record; cmd text; roles_sql text; ddl text;
+BEGIN
+  FOR r IN SELECT * FROM private.cr009c1_policy_snapshot
+            ORDER BY schema_name,table_name,policy_name LOOP
+    cmd:=CASE r.command WHEN 'r' THEN 'SELECT' WHEN 'a' THEN 'INSERT'
+         WHEN 'w' THEN 'UPDATE' WHEN 'd' THEN 'DELETE' WHEN '*' THEN 'ALL' END;
+    IF cmd IS NULL THEN RAISE EXCEPTION 'Unsupported policy command %',r.command; END IF;
+    SELECT string_agg(CASE WHEN role_name='PUBLIC' THEN 'PUBLIC'
+                           ELSE quote_ident(role_name) END,', ' ORDER BY role_name)
+      INTO roles_sql FROM unnest(r.role_names) role_name;
+    ddl:=format('CREATE POLICY %I ON %I.%I AS %s FOR %s TO %s',
+      r.policy_name,r.schema_name,r.table_name,
+      CASE WHEN r.permissive THEN 'PERMISSIVE' ELSE 'RESTRICTIVE' END,
+      cmd,roles_sql);
+    IF r.using_expression IS NOT NULL
+      THEN ddl:=ddl||format(' USING (%s)',r.using_expression); END IF;
+    IF r.check_expression IS NOT NULL
+      THEN ddl:=ddl||format(' WITH CHECK (%s)',r.check_expression); END IF;
+    EXECUTE ddl;
+  END LOOP;
+END $$;
 
+-- A migration 0011 altera apenas ACLs de authenticated nas tabelas alvo.
+DO $$ DECLARE r record; BEGIN
+  FOR r IN
+    SELECT 'public'::name schema_name,table_name::name
+      FROM (VALUES
+       ('admin_profiles'),('user_roles'),('categories'),('products'),
+       ('product_attribute_groups'),('product_attribute_options'),('product_variants'),
+       ('variant_option_values'),('media_assets'),('product_images'),('category_images'),
+       ('customers'),('orders'),('order_items'),('order_status_history'),('payments'),
+       ('inventory'),('inventory_movements'),('coupons'),('banners'),('custom_requests'),
+       ('custom_request_images'),('store_settings')
+      ) target(table_name)
+  LOOP
+    EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE %I.%I FROM authenticated',
+                   r.schema_name,r.table_name);
+  END LOOP;
+  FOR r IN SELECT * FROM private.cr009c1_table_grant_snapshot
+            ORDER BY schema_name,table_name,privilege_type LOOP
+    EXECUTE format('GRANT %s ON TABLE %I.%I TO %I%s',
+      r.privilege_type,r.schema_name,r.table_name,r.grantee,
+      CASE WHEN r.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END);
+  END LOOP;
+END $$;
+
+DO $$ DECLARE r record; BEGIN
+  FOR r IN SELECT * FROM private.cr009c1_function_snapshot WHERE existed LOOP
+    EXECUTE format('REVOKE ALL PRIVILEGES ON FUNCTION %I.%I(%s) FROM PUBLIC, anon, authenticated, service_role, supabase_auth_admin',
+                   r.schema_name,r.function_name,r.identity_arguments);
+  END LOOP;
+  FOR r IN SELECT * FROM private.cr009c1_function_grant_snapshot
+            ORDER BY schema_name,function_name,identity_arguments,grantee LOOP
+    EXECUTE format('GRANT %s ON FUNCTION %I.%I(%s) TO %s%s',
+      r.privilege_type,r.schema_name,r.function_name,r.identity_arguments,
+      CASE WHEN r.grantee='PUBLIC' THEN 'PUBLIC' ELSE quote_ident(r.grantee) END,
+      CASE WHEN r.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END);
+  END LOOP;
+END $$;
+
+-- Validação antes do COMMIT. Qualquer divergência aborta toda a transação.
+DO $$
+DECLARE expected integer; actual integer; mismatches integer;
+BEGIN
+  SELECT count(*) INTO expected FROM private.cr009c1_policy_snapshot;
+  SELECT count(*) INTO actual
+    FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    JOIN private.cr009c1_policy_snapshot s
+      ON s.schema_name=n.nspname AND s.table_name=c.relname AND s.policy_name=p.polname;
+  IF actual<>expected THEN
+    RAISE EXCEPTION 'Policy count mismatch: expected %, got %',expected,actual;
+  END IF;
+  SELECT count(*) INTO mismatches
+    FROM private.cr009c1_policy_snapshot s
+    JOIN pg_namespace n ON n.nspname=s.schema_name
+    JOIN pg_class c ON c.relnamespace=n.oid AND c.relname=s.table_name
+    JOIN pg_policy p ON p.polrelid=c.oid AND p.polname=s.policy_name
+   WHERE p.polpermissive IS DISTINCT FROM s.permissive
+      OR p.polcmd IS DISTINCT FROM s.command
+      OR pg_get_expr(p.polqual,p.polrelid) IS DISTINCT FROM s.using_expression
+      OR pg_get_expr(p.polwithcheck,p.polrelid) IS DISTINCT FROM s.check_expression
+      OR (CASE WHEN p.polroles=ARRAY[0::oid] THEN ARRAY['PUBLIC']::name[]
+               ELSE ARRAY(SELECT rolname::name FROM pg_roles
+                          WHERE oid=ANY(p.polroles) ORDER BY rolname) END)
+         IS DISTINCT FROM s.role_names;
+  IF mismatches<>0 THEN RAISE EXCEPTION '% policies differ from snapshot',mismatches; END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM private.cr009c1_function_snapshot s
+      LEFT JOIN pg_namespace n ON n.nspname=s.schema_name
+      LEFT JOIN pg_proc p
+        ON p.pronamespace=n.oid
+       AND p.proname=s.function_name
+       AND pg_get_function_identity_arguments(p.oid)=s.identity_arguments
+     WHERE s.existed IS DISTINCT FROM (p.oid IS NOT NULL)
+  ) THEN RAISE EXCEPTION 'Function set differs from snapshot'; END IF;
+
+  IF EXISTS (
+    WITH target_tables(table_name) AS (VALUES
+      ('admin_profiles'),('user_roles'),('categories'),('products'),
+      ('product_attribute_groups'),('product_attribute_options'),('product_variants'),
+      ('variant_option_values'),('media_assets'),('product_images'),('category_images'),
+      ('customers'),('orders'),('order_items'),('order_status_history'),('payments'),
+      ('inventory'),('inventory_movements'),('coupons'),('banners'),('custom_requests'),
+      ('custom_request_images'),('store_settings')
+    ), actual_grants AS (
+      SELECT n.nspname::name schema_name,c.relname::name table_name,
+             'authenticated'::name grantee,x.privilege_type,x.is_grantable
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        JOIN target_tables t ON t.table_name=c.relname
+       CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) x
+       WHERE n.nspname='public'
+         AND x.grantee=(SELECT oid FROM pg_roles WHERE rolname='authenticated')
+    ), differences AS (
+      (SELECT * FROM private.cr009c1_table_grant_snapshot
+       EXCEPT SELECT * FROM actual_grants)
+      UNION ALL
+      (SELECT * FROM actual_grants
+       EXCEPT SELECT * FROM private.cr009c1_table_grant_snapshot)
+    )
+    SELECT 1 FROM differences
+  ) THEN RAISE EXCEPTION 'Authenticated table grants differ from snapshot'; END IF;
+END $$;
 COMMIT;
 
--- 5. Verificação final: após recriar as policies originais, confira:
-SELECT c.relname AS table_name, pol.polname AS policy_name,
-       pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS qual
-  FROM pg_policy pol
-  JOIN pg_class c ON c.oid = pol.polrelid
-  JOIN pg_namespace n ON n.oid = c.relnamespace
- WHERE n.nspname='public'
-   AND pol.polname IN ('admin_read','payments_owner','payments_finance','coupon_rw','banner_rw')
- ORDER BY c.relname, pol.polname;
--- Esperado: as policies listadas NÃO devem conter 'require_aal2' no qual.
+SELECT 'rollback_complete' status,clock_timestamp() completed_at;
 
--- 6. Teste rápido: um usuário autenticado com role proprietário consegue
--- SELECT em admin_profiles (como antes da 0011), mesmo com JWT aal1
--- (comportamento anterior à CR-008C).
+-- Histórico:
+-- SQL Editor não registra a 0011. Se ela foi aplicada pelo Supabase CLI,
+-- depois deste rollback execute, fora do SQL:
+--   supabase migration repair 20261114133000 --status reverted --linked
+-- Confirme o project ref antes. Não edite supabase_migrations manualmente.

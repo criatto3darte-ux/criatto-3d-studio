@@ -1,0 +1,4 @@
+903d364f2dcba3b6960dc51b610fdf4808dc3bbe feat(db): add CR-007B schema, RLS and access invariants
+41403490357084e6b5eeeff0ea06ed88a6267adc feat(contracts): define typed backend DTOs and async repositories
+3e10efb4cafa6a8f3e0e4fb93c66830c360032a7 test(security): verify PostgreSQL 17 RLS and backend contracts
+c6b229c68a3862e4b2e192bab3a47ab4a0c9a15a docs(cr007b): record architecture, verification and approval gates

@@ -1,5 +1,10 @@
 import type { Category, Product } from "@/shared/types/catalog";
-import type { DemoBanner, DemoCustomer, DemoOrder, StoreSettings } from "@/features/demo-data/model";
+import type {
+  DemoBanner,
+  DemoCustomer,
+  DemoOrder,
+  StoreSettings,
+} from "@/features/demo-data/model";
 import type { OrderStatus } from "@/shared/types/order";
 
 /**
@@ -43,3 +48,7 @@ export interface StoreSettingsRepository {
   get(): Promise<StoreSettings>;
   save(settings: StoreSettings): Promise<StoreSettings>;
 }
+
+// CR-007B: explicit backend contracts coexist with legacy demo contracts above.
+export type * from "./foundation";
+export type * from "./backend-repositories";
