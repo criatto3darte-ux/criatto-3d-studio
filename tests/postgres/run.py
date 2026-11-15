@@ -375,12 +375,12 @@ INSERT INTO product_images VALUES({q('product')},{q('media')},0,true);
 INSERT INTO customers(id,name,phone_e164) VALUES({q('customer')},'Synthetic','+5521999999999');
 INSERT INTO orders(id,customer_id,customer_name_snapshot,customer_phone_snapshot,subtotal_cents,discount_cents,shipping_cents,total_cents,idempotency_key,payload_hash,privacy_notice_version,status) VALUES({q('order')},{q('customer')},'Synthetic','+5521999999999',1000,0,0,1000,gen_random_uuid(),repeat('a',64),'test','confirmado');
 INSERT INTO order_items(id,order_id,product_id,variant_id,product_name_snapshot,unit_price_cents,quantity,line_discount_cents) VALUES({q('item')},{q('order')},{q('product')},{q('variant')},'Snapshot',1000,1,0);
-INSERT INTO order_status_history(id,order_id,to_status,from_status,operation_key) VALUES({q('history')},{q('order')},'aguardando-contato',NULL,'history-test');
+INSERT INTO order_status_history(id,order_id,from_status,to_status,actor_id,operation_key) VALUES({q('history')},{q('order')},NULL,'aguardando-contato',{q('owner')},'history-test');
 INSERT INTO payments(id,order_id,amount_cents,kind,method,confirmed_by,confirmed_at,operation_key) VALUES({q('payment')},{q('order')},100,'receipt','synthetic',{q('owner')},now(),gen_random_uuid());
 INSERT INTO inventory(product_id,on_hand,allocated) VALUES({q('product')},2,1);
-INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2,0,'Synthetic','movement-test');
-INSERT INTO custom_requests(id,customer_name_snapshot,customer_phone_snapshot,description,quantity,idempotency_key,payload_hash) VALUES({q('request')},'Synthetic','+5521999999999','Test',1,gen_random_uuid(),repeat('b',64));
-INSERT INTO custom_request_history(id,request_id,to_status,operation_key) VALUES({q('request-history')},{q('request')},'recebida','test');
+INSERT INTO inventory_movements(id,product_id,kind,quantity,delta_on_hand,delta_allocated,reason,actor_id,operation_key) VALUES({q('movement')},{q('product')},'adjust',2,2,0,'Synthetic',{q('owner')},'movement-test');
+INSERT INTO custom_requests(id,customer_id,customer_name_snapshot,customer_phone_snapshot,description,quantity,idempotency_key,payload_hash) VALUES({q('request')},{q('customer')},'Synthetic','+5521999999999','Test',1,gen_random_uuid(),repeat('b',64));
+INSERT INTO custom_request_history(id,request_id,from_status,to_status,actor_id,operation_key) VALUES({q('request-history')},{q('request')},NULL,'recebida',{q('owner')},'test');
 INSERT INTO admin_audit_events(id,action,entity_type,actor_id,request_id,reason) VALUES({q('audit')},'test','synthetic',{q('owner')},gen_random_uuid(),'test');
 """)
         execute(db,f"""
