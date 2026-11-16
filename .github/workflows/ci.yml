@@ -174,13 +174,13 @@ jobs:
           mkdir -p _pkg
           cp -r dist/. _pkg/
           cd _pkg
-          zip -qr ../criatto3d-homolog-login-fix.zip .
+          zip -qr ../criatto3d-homolog-commercial.zip .
           cd ..
-          sha256sum criatto3d-homolog-login-fix.zip
+          sha256sum criatto3d-homolog-commercial.zip
 
       - name: Upload artifact para publicação manual
         uses: actions/upload-artifact@v4
         with:
-          name: criatto3d-homolog-login-fix
-          path: criatto3d-homolog-login-fix.zip
+          name: criatto3d-homolog-commercial
+          path: criatto3d-homolog-commercial.zip
           retention-days: 14
