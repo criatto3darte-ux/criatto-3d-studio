@@ -70,6 +70,8 @@ export async function listPublicCatalogImages(): Promise<Map<string, CatalogImag
     .from("public_catalog_images")
     .select("product_id,media_id,object_key,alt,position,is_primary")
     .order("position");
+  // Existing deployments without the new view must keep showing the catalog.
+  if (error?.code === "PGRST205" || error?.code === "42P01") return new Map();
   if (error) throw new Error("Não foi possível carregar as fotos dos produtos.");
   const result = new Map<string, CatalogImage[]>();
   for (const row of data ?? []) {
@@ -126,4 +128,30 @@ export async function deleteCatalogImage(productId: string, mediaId: string): Pr
 
 export async function makePrimaryCatalogImage(productId: string, mediaId: string): Promise<void> {
   await invokeMedia({ operation: "primary", productId, mediaId });
+}
+
+/** Administrative gallery also sees photos attached to an unpublished product. */
+export async function listAdminCatalogImages(productId: string): Promise<CatalogImage[]> {
+  const client = getSupabase();
+  const { data: links, error: linkError } = await client.from("product_images")
+    .select("product_id,media_id,position,is_primary")
+    .eq("product_id", productId).order("position");
+  if (linkError) throw new Error("Não foi possível consultar a galeria do produto.");
+  if (!links?.length) return [];
+
+  const { data: assets, error: assetError } = await client.from("media_assets")
+    .select("id,object_key,alt,bucket,state")
+    .in("id", links.map((link) => link.media_id));
+  if (assetError) throw new Error("Não foi possível consultar as imagens do produto.");
+  const byId = new Map((assets ?? []).map((asset) => [asset.id, asset]));
+  return links.flatMap((link) => {
+    const asset = byId.get(link.media_id);
+    if (!asset || asset.bucket !== BUCKET || asset.state !== "published" ||
+        !/^products\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/i.test(asset.object_key)) return [];
+    const { data: url } = client.storage.from(BUCKET).getPublicUrl(asset.object_key);
+    return [{
+      productId: link.product_id, mediaId: link.media_id, url: url.publicUrl,
+      alt: asset.alt ?? "", position: link.position, primary: link.is_primary,
+    }];
+  }).sort((a, b) => Number(b.primary) - Number(a.primary) || a.position - b.position);
 }
