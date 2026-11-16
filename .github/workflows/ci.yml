@@ -161,6 +161,7 @@ jobs:
           VITE_SUPABASE_URL: https://ugwuxczcqlrdjkpjsdqb.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_D4Dwx1chy9FlFLuxvwMecg_7DpACnPf
           VITE_APP_URL: https://homolog.criatto3d.art.br
+          VITE_ENABLE_LIVE_CHECKOUT: "true"
         run: |
           set -euo pipefail
           test -n "$VITE_SUPABASE_URL"
