@@ -128,11 +128,7 @@ export async function uploadCatalogImage(productId: string, file: File, alt: str
  * the same authenticated upload endpoint stores a local copy in Supabase Storage.
  * Third-party sites may block CORS; the user can save the file and upload it.
  */
-export async function uploadCatalogImageFromUrl(
-  productId: string,
-  inputUrl: string,
-  alt: string,
-): Promise<void> {
+export async function fetchPublicImageFile(inputUrl: string): Promise<File> {
   const raw = inputUrl.trim();
   if (!raw || raw.length > 2048) throw new Error("Informe uma URL de imagem válida.");
   let url: URL;
@@ -182,7 +178,7 @@ export async function uploadCatalogImageFromUrl(
       chunks.push(value);
     }
     const blob = new Blob(chunks as BlobPart[], { type: contentType });
-    await uploadCatalogImage(productId, new File([blob], "imagem-importada", { type: contentType }), alt);
+    return new File([blob], "imagem-importada", { type: contentType });
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(
@@ -196,6 +192,15 @@ export async function uploadCatalogImageFromUrl(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function uploadCatalogImageFromUrl(
+  productId: string,
+  inputUrl: string,
+  alt: string,
+): Promise<void> {
+  const file = await fetchPublicImageFile(inputUrl);
+  await uploadCatalogImage(productId, file, alt);
 }
 
 export async function deleteCatalogImage(productId: string, mediaId: string): Promise<void> {
