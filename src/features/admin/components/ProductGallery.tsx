@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { ImagePlus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
+import { invalidatePublicCatalog } from "@/features/catalog/supabase-catalog";
 import {
   deleteCatalogImage, listAdminCatalogImages, makePrimaryCatalogImage,
   uploadCatalogImage, type CatalogImage,
@@ -45,6 +46,7 @@ export function ProductGallery({ productId, productName }: Props) {
     setNotice("");
     try {
       await action();
+      invalidatePublicCatalog();
       setNotice(success);
       await reload();
     } catch (cause) {
