@@ -138,15 +138,14 @@ BEGIN
     END IF;
   END LOOP;
 
-  v_number := nextval('public.orders_number_seq');
   INSERT INTO public.orders(
-    number, customer_name_snapshot, customer_phone_snapshot,
+    customer_name_snapshot, customer_phone_snapshot,
     subtotal_cents, discount_cents, shipping_cents, total_cents, notes,
     idempotency_key, payload_hash, privacy_notice_version
   ) VALUES (
-    v_number,v_name,v_phone,v_subtotal,0,NULL,NULL,v_notes,
+    v_name,v_phone,v_subtotal,0,NULL,NULL,v_notes,
     v_key,v_hash,'checkout-homolog-v1'
-  ) RETURNING id INTO v_order_id;
+  ) RETURNING id, number INTO v_order_id, v_number;
 
   FOR v_line IN SELECT value FROM jsonb_array_elements(p_payload->'items')
                 ORDER BY value->>'productId', value->>'sku' LOOP

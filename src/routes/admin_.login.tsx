@@ -85,9 +85,20 @@ function AdminLoginPage() {
       return;
     }
     if (sessionAal(session.session) === "aal1") {
-      void navigate({ to: "/auth/mfa", replace: true, search: { next: "/admin" } });
+      // Aguarde o submit se estiver em andamento: a resposta do login
+      // determina se o segundo fator deve ser cadastrado ou desafiado.
+      if (submitting) return;
+      void getSupabase().auth.mfa.listFactors().then(({ data, error }) => {
+        if (error) return;
+        const verified = (data?.totp ?? []).some((factor) => factor.status === "verified");
+        void navigate({
+          to: "/auth/mfa",
+          replace: true,
+          search: { next: verified ? "/admin" : "/auth/done" },
+        });
+      });
     }
-  }, [session.status, session.session, navigate]);
+  }, [session.status, session.session, navigate, submitting]);
 
   useEffect(() => {
     emailRef.current?.focus();
@@ -123,11 +134,15 @@ function AdminLoginPage() {
       if (fErr) throw fErr;
       const hasVerifiedTotp = (factors?.totp ?? []).some((f) => f.status === "verified");
       if (!hasVerifiedTotp) {
-        // Usuário provavelmente ainda não completou onboarding (sem MFA).
-        setError(
-          "Esta conta não possui um segundo fator configurado. Use o link de convite recebido por e-mail para concluir o cadastro, ou solicite um novo convite.",
-        );
-        await supabase.auth.signOut();
+        // A conta já autenticou por senha, mas ainda precisa cadastrar TOTP.
+        // Não encerramos a sessão: /auth/mfa precisa dela para enroll().
+        // Depois da primeira configuração, /auth/done orienta sobre a
+        // liberação administrativa, que depende de role separada no banco.
+        await navigate({
+          to: "/auth/mfa",
+          replace: true,
+          search: { next: "/auth/done" },
+        });
         return;
       }
       await navigate({ to: "/auth/mfa", replace: true, search: { next: "/admin" } });
