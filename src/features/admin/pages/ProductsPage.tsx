@@ -677,14 +677,16 @@ export function ProductsPage() {
               }
             />
             <section className={s.full} aria-label="Variações e SKUs">
-              <h3>Variações e SKUs</h3>
+              <h3>Fotos e opções do produto</h3>
+              <p className={s.muted}>Se o produto não tiver cores ou tamanhos diferentes, você não precisa configurar variações.</p>
               {draft.isNew ? (
                 <p role="note">
                   Salve o produto primeiro; depois abra Editar para cadastrar cores, tamanhos e
                   SKUs.
                 </p>
               ) : (
-                <>
+                <details>
+                  <summary>Configuração avançada de cores, tamanhos e SKUs (opcional)</summary>
                   <p className={s.muted}>
                     Formato JSON para grupos de atributos, opções e combinações de SKU. A gravação
                     utiliza a migration transacional CR-010B.1 já aplicada no Supabase;
@@ -715,7 +717,7 @@ export function ProductsPage() {
                   >
                     {savingVariants ? "Salvando variações…" : "Salvar variações e SKUs"}
                   </Button>
-                </>
+                </details>
               )}
               {draft.isNew ? (
                 <p role="note">Salve o produto primeiro para habilitar o envio de fotos.</p>
