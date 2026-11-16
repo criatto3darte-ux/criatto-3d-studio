@@ -727,10 +727,30 @@ export function ProductsPage() {
             <section className={s.full} aria-label="Variações e SKUs">
               <h3>Fotos e opções do produto</h3>
               <p className={s.muted}>Se o produto não tiver cores ou tamanhos diferentes, você não precisa configurar variações.</p>
+              <div className={s.formGrid}>
+                <Input
+                  label="Cores disponíveis (separe por vírgulas)"
+                  placeholder="Azul, Vermelho, Preto"
+                  value={draft.colors}
+                  hint="Opcional. Cada cor cadastrada será uma opção selecionável na loja."
+                  onChange={(event) => setDraft((value) => value && {
+                    ...value, colors: event.target.value, variantsTouched: true,
+                  })}
+                />
+                <Input
+                  label="Tamanhos disponíveis (separe por vírgulas)"
+                  placeholder="Pequeno, Médio, Grande"
+                  value={draft.sizes}
+                  hint="Opcional. O sistema gera automaticamente as combinações e os SKUs."
+                  onChange={(event) => setDraft((value) => value && {
+                    ...value, sizes: event.target.value, variantsTouched: true,
+                  })}
+                />
+              </div>
               {draft.isNew ? (
                 <p role="note">
-                  Salve o produto primeiro; depois abra Editar para cadastrar cores, tamanhos e
-                  SKUs.
+                  Você pode cadastrar cores e tamanhos antes de salvar. As opções serão vinculadas
+                  automaticamente ao novo produto.
                 </p>
               ) : (
                 <details>
@@ -767,9 +787,46 @@ export function ProductsPage() {
                   </Button>
                 </details>
               )}
-              {draft.isNew ? (
-                <p role="note">Salve o produto primeiro para habilitar o envio de fotos.</p>
-              ) : (
+              <section className={s.full} aria-label="Anexar foto do produto">
+                <h3>Imagem do produto</h3>
+                <p className={s.muted}>Escolha uma foto do computador ou uma URL HTTPS. A imagem será enviada
+                  ao Supabase quando você salvar o produto.</p>
+                <label htmlFor="product-upload-file">Escolher foto do computador</label>
+                <input id="product-upload-file" type="file" accept="image/png,image/jpeg,image/webp"
+                  disabled={busy}
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null;
+                    setStagedPhoto(selected);
+                    if (selected) setPhotoUrl("");
+                  }}
+                />
+                <Input label="Ou importar imagem por URL HTTPS"
+                  type="url" placeholder="https://exemplo.com/foto.webp"
+                  value={photoUrl} disabled={busy}
+                  onChange={(event) => {
+                    setPhotoUrl(event.target.value);
+                    if (event.target.value) setStagedPhoto(null);
+                  }}
+                />
+                {stagedPhoto && <Button variant="outline" disabled={busy}
+                  onClick={() => setEditingPhoto(stagedPhoto)}>
+                  <Crop size={16}/> Ajustar foto (zoom e posição)
+                </Button>}
+                {editingPhoto && (
+                  <ImageCropEditor file={editingPhoto} shape="product"
+                    onCancel={() => setEditingPhoto(null)}
+                    onApply={(file) => {
+                      setStagedPhoto(file);
+                      setPhotoUrl("");
+                      setEditingPhoto(null);
+                    }}
+                  />
+                )}
+                {stagedPhoto && <p role="status" className={s.muted}>
+                  Foto selecionada: {stagedPhoto.name}
+                </p>}
+              </section>
+              {!draft.isNew && (
                 <ProductGallery productId={draft.product.id} productName={draft.product.name} />
               )}
               {actionError && <p role="status">{actionError}</p>}
