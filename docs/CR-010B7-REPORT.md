@@ -30,3 +30,23 @@
 ## Próximo passo recomendado
 
 Ajustar as referências de CI se necessário, confirmar os novos checks do PR #9, implementar serviço de mídia com política de autorização no backend **sem deploy remoto**, e depois ativar o Storage com autorização específica. Não executar novamente a migration de estoque.
+
+## Continuação — galeria comercial (código preparado; NÃO ativado remotamente)
+
+- `src/features/catalog/catalog-media.ts`: validação de PNG/JPEG/WebP, redução para no máximo 1600 px, codificação WebP, limite de 5 MB após otimização, consultas de imagens públicas e administrativas e comandos para upload/remoção/foto principal.
+- `src/features/admin/components/ProductGallery.tsx` e `.module.css`: galeria responsiva integrada ao modal de edição, com texto alternativo, envio e seleção de foto principal. Produtos novos devem ser gravados antes de anexar imagens.
+- `src/features/admin/pages/ProductsPage.tsx`: galeria conectada à edição; avisos desatualizados de migration corrigidos.
+- `src/features/catalog/supabase-catalog.ts`: fotos publicadas incorporadas ao catálogo público. Ausência da nova view durante transição mantém produtos sem imagem sem substituição fictícia.
+- `supabase/functions/catalog-media/index.ts`: serviço **não implantado**, com Auth verificado pelo GoTrue, MFA AAL2, perfil ativo e papel atual proprietário/editor; usa service role **somente dentro da função**; valida upload WebP, registra metadados e relações e aceita remoção/definição da foto principal. Configurar `CATALOG_MEDIA_ALLOWED_ORIGINS` em ambiente de homologação e produção antes de deploy.
+- `supabase/migrations/20261116030000_cr010b7_public_catalog_media.sql`: migration **nova ainda não aplicada**. Contém view `public_catalog_images` restrita a imagens publicadas de produtos publicados no bucket `catalog-images`, e RPC transacional `set_catalog_primary_media` para uso exclusivo do serviço.
+- `src/test/cr010b7-media.test.ts`: testes de rejeição de formato, arquivo vazio e tamanho excessivo.
+
+**Escolha de armazenamento:** as fotos editoriais e dos produtos são destinadas à divulgação pública; por isso o bucket `catalog-images` deverá ser público. Isso **não autoriza** acesso público a credenciais, cadastro de clientes, endereços, pedidos, comprovantes ou anexos futuros.
+
+### Limites e próximos passos
+
+1. Nenhum bucket Storage foi criado e a função não foi implantada; o upload e a exibição de fotos **não funcionam remotamente ainda**.
+2. Ainda é necessária autorização explícita para criar o bucket público `catalog-images`, implantar `catalog-media`, aplicar **somente** a nova migration de mídia e configurar origens. Não executar mudanças remotas sem autorização.
+3. CI está sendo executado na branch, mas o PostgreSQL 17 atual **não testa a migration nova de mídia**; o harness aplica apenas migrations da série até CR-010B.1. É necessário validar a nova SQL com PostgreSQL 17 antes de aplicação remota e expandir os testes.
+4. Validar ponta a ponta com usuário real AAL2, incluindo upload, publicação, remoção, foto principal, limites de arquivo, restrição AAL1 e não divulgação de imagens de produtos não publicados.
+5. Quando ativo, adicionar limpeza programada de mídias órfãs/reparação de exclusões interrompidas. O serviço tenta compensar falhas no upload mas operações de Storage não são transacionais com o PostgreSQL.
