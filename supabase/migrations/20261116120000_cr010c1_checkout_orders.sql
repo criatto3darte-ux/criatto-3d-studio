@@ -196,4 +196,101 @@ $$;
 REVOKE ALL ON FUNCTION public.create_checkout_order(jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(jsonb) TO service_role;
 
+
+-- AAL2-only order transitions atomically release or consume reserved stock.
+CREATE FUNCTION public.transition_checkout_order(
+  p_order_id uuid, p_expected_version integer, p_new_status public.order_status,
+  p_reason text DEFAULT ''
+)
+RETURNS TABLE(order_id uuid, status public.order_status, version integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE
+  current_status public.order_status;
+  current_version integer;
+  row_item record;
+BEGIN
+  IF NOT public.require_aal2()
+     OR NOT public.has_role(ARRAY['proprietario','operador']::public.admin_role[]) THEN
+    RAISE EXCEPTION 'AAL2 order authorization required' USING ERRCODE='42501';
+  END IF;
+  IF p_order_id IS NULL OR p_expected_version IS NULL OR p_expected_version < 1
+     OR p_new_status IS NULL OR length(coalesce(p_reason,'')) > 500 THEN
+    RAISE EXCEPTION 'invalid status transition input' USING ERRCODE='22023';
+  END IF;
+  SELECT o.status,o.version INTO current_status,current_version
+  FROM public.orders o WHERE o.id=p_order_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'order not found' USING ERRCODE='23503'; END IF;
+  IF current_version <> p_expected_version THEN
+    RAISE EXCEPTION 'order version changed' USING ERRCODE='40001';
+  END IF;
+  IF NOT (
+    (current_status='aguardando-contato' AND p_new_status IN ('em-atendimento','cancelado')) OR
+    (current_status='em-atendimento' AND p_new_status IN ('confirmado','cancelado')) OR
+    (current_status='confirmado' AND p_new_status IN ('em-producao','pronto-para-entrega','cancelado')) OR
+    (current_status='em-producao' AND p_new_status IN ('pronto-para-entrega','cancelado')) OR
+    (current_status='pronto-para-entrega' AND p_new_status IN ('enviado','concluido','cancelado')) OR
+    (current_status='enviado' AND p_new_status='concluido')
+  ) THEN
+    RAISE EXCEPTION 'invalid order status transition' USING ERRCODE='23514';
+  END IF;
+  IF p_new_status IN ('cancelado','concluido') THEN
+    FOR row_item IN
+      SELECT product_id,SUM(quantity)::integer AS quantity
+      FROM public.order_items oi
+      JOIN public.products p ON p.id=oi.product_id
+      WHERE oi.order_id=p_order_id AND p.production_mode='pronta-entrega'
+      GROUP BY product_id ORDER BY product_id
+    LOOP
+      IF p_new_status='cancelado' THEN
+        UPDATE public.inventory SET allocated=allocated-row_item.quantity
+        WHERE product_id=row_item.product_id AND allocated>=row_item.quantity;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'inventory reservation not found' USING ERRCODE='23514';
+        END IF;
+        INSERT INTO public.inventory_movements(
+          product_id,order_id,kind,quantity,delta_on_hand,delta_allocated,
+          reason,actor_id,operation_key
+        ) VALUES (
+          row_item.product_id,p_order_id,'release',row_item.quantity,0,
+          -row_item.quantity,'Pedido cancelado',auth.uid(),
+          p_order_id::text||':'||row_item.product_id::text||':cancel'
+        );
+      ELSE
+        UPDATE public.inventory SET on_hand=on_hand-row_item.quantity,
+          allocated=allocated-row_item.quantity
+        WHERE product_id=row_item.product_id
+          AND allocated>=row_item.quantity AND on_hand>=row_item.quantity;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'inventory cannot be consumed' USING ERRCODE='23514';
+        END IF;
+        INSERT INTO public.inventory_movements(
+          product_id,order_id,kind,quantity,delta_on_hand,delta_allocated,
+          reason,actor_id,operation_key
+        ) VALUES (
+          row_item.product_id,p_order_id,'consume',row_item.quantity,
+          -row_item.quantity,-row_item.quantity,
+          'Pedido concluido',auth.uid(),
+          p_order_id::text||':'||row_item.product_id::text||':complete'
+        );
+      END IF;
+    END LOOP;
+  END IF;
+  UPDATE public.orders o SET status=p_new_status,
+    confirmed_at=CASE WHEN p_new_status='confirmado' THEN now() ELSE confirmed_at END
+  WHERE o.id=p_order_id RETURNING o.version INTO current_version;
+  INSERT INTO public.order_status_history(
+    order_id,from_status,to_status,actor_id,note,operation_key
+  ) VALUES(
+    p_order_id,current_status,p_new_status,auth.uid(),
+    left(coalesce(p_reason,''),500),
+    p_order_id::text||':status:'||current_version::text
+  );
+  RETURN QUERY SELECT p_order_id,p_new_status,current_version;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.transition_checkout_order(uuid,integer,public.order_status,text)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.transition_checkout_order(uuid,integer,public.order_status,text)
+  TO authenticated;
+
 COMMIT;
