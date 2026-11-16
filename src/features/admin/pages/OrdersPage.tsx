@@ -3,7 +3,7 @@ import { Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
 import { formatBRL } from "@/shared/utils/format";
-import { listRealOrders, listRealOrderItems, type RealOrder, type RealOrderItem } from "@/features/orders/real-orders.service";
+import { listRealOrders, listRealOrderItems, transitionRealOrder, ORDER_TRANSITIONS, type OrderStatus, type RealOrder, type RealOrderItem } from "@/features/orders/real-orders.service";
 import { DataTable, Modal, adminStyles as s } from "../ui/AdminUI";
 
 const statusLabel: Record<RealOrder["status"], string> = {
@@ -24,6 +24,9 @@ export function OrdersPage() {
   const [items, setItems] = useState<RealOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<OrderStatus | "">("");
+  const [statusNote, setStatusNote] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function reload() {
@@ -44,12 +47,30 @@ export function OrdersPage() {
   }, [orders, search]);
 
   async function open(order: RealOrder) {
+    setStatusDraft("");
+    setStatusNote("");
     setSelected(order);
     setItems([]);
     setLoadingItems(true);
     try { setItems(await listRealOrderItems(order.id)); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Erro ao consultar itens."); }
     finally { setLoadingItems(false); }
+  }
+
+  async function changeStatus() {
+    if (!selected || !statusDraft ||
+        !ORDER_TRANSITIONS[selected.status].includes(statusDraft)) return;
+    setStatusBusy(true);
+    setError("");
+    try {
+      await transitionRealOrder(selected, statusDraft, statusNote);
+      setSelected(null);
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível atualizar o pedido.");
+    } finally {
+      setStatusBusy(false);
+    }
   }
 
   return (
@@ -109,10 +130,28 @@ export function OrdersPage() {
             ))}</ul>
           )}
           <p><strong>Subtotal:</strong> {formatBRL(selected.subtotalCents)}</p>
-          <p className={s.muted}>
-            A transição de status exigirá a função de gestão de pedidos,
-            com liberação ou consumo do estoque reservado e auditoria.
-          </p>
+          {ORDER_TRANSITIONS[selected.status].length > 0 && (
+            <fieldset className={s.stack} disabled={statusBusy}>
+              <legend>Atualizar andamento do pedido</legend>
+              <label htmlFor="order-next-status">Próxima etapa</label>
+              <select id="order-next-status" value={statusDraft}
+                onChange={(event) => setStatusDraft(event.target.value as OrderStatus | "")}>
+                <option value="">Selecione um status</option>
+                {ORDER_TRANSITIONS[selected.status].map((status) =>
+                  <option value={status} key={status}>{statusLabel[status]}</option>)}
+              </select>
+              <label htmlFor="order-change-note">Motivo ou observação</label>
+              <textarea id="order-change-note" value={statusNote} maxLength={500}
+                onChange={(event) => setStatusNote(event.target.value)} />
+              <p className={s.muted}>
+                Cancelar libera o estoque reservado; concluir consome a reserva.
+                A alteração é registrada em histórico auditável.
+              </p>
+              <Button disabled={!statusDraft || statusBusy} onClick={() => void changeStatus()}>
+                {statusBusy ? "Atualizando…" : "Atualizar status"}
+              </Button>
+            </fieldset>
+          )}
         </div>}
       </Modal>
     </div>
