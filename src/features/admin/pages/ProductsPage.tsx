@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2, Crop } from "lucide-react";
 import type { Product, ProductAvailability } from "@/shared/types/catalog";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
@@ -20,7 +20,9 @@ import {
 } from "@/features/catalog/supabase-catalog";
 import { slugify, validateProduct, type Errors } from "@/features/demo-data/rules";
 import { ProductGallery } from "../components/ProductGallery";
-import { cleanupArchivedProductImages } from "@/features/catalog/catalog-media";
+import { cleanupArchivedProductImages, fetchPublicImageFile, uploadCatalogImage } from "@/features/catalog/catalog-media";
+import { ImageCropEditor } from "../components/ImageCropEditor";
+import { buildSimpleVariants, extractSimpleVariants } from "@/features/catalog/product-variants.form";
 import {
   Check,
   ConfirmDialog,
@@ -39,6 +41,9 @@ interface Draft {
   promo: string;
   productionDays: string;
   openingStock: string;
+  colors: string;
+  sizes: string;
+  variantsTouched: boolean;
   isNew: boolean;
   slugTouched: boolean;
   variantGroupsJson: string;
@@ -59,6 +64,9 @@ function toDraft(product: Product, isNew: boolean, version?: number): Draft {
     promo: centsToInput(product.promoPriceCents),
     productionDays: product.productionDays ? String(product.productionDays) : "",
     openingStock: "0",
+    colors: "",
+    sizes: "",
+    variantsTouched: false,
     isNew,
     slugTouched: !isNew,
     variantGroupsJson: "[]",
@@ -81,6 +89,9 @@ export function ProductsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [toArchive, setToArchive] = useState<AdminProduct | null>(null);
+  const [stagedPhoto, setStagedPhoto] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [editingPhoto, setEditingPhoto] = useState<File | null>(null);
 
   async function reload() {
     setState("loading");
@@ -112,6 +123,9 @@ export function ProductsPage() {
   const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
 
   function openNew() {
+    setStagedPhoto(null);
+    setPhotoUrl("");
+    setEditingPhoto(null);
     setErrors({});
     setActionError("");
     setDraft(
@@ -137,6 +151,9 @@ export function ProductsPage() {
   }
 
   async function openEdit(product: AdminProduct) {
+    setStagedPhoto(null);
+    setPhotoUrl("");
+    setEditingPhoto(null);
     setErrors({});
     setActionError("");
     setBusy(true);
@@ -145,6 +162,7 @@ export function ProductsPage() {
       const next = toDraft(product, false, product.version);
       setDraft({
         ...next,
+        ...extractSimpleVariants(config.groups),
         variantGroupsJson: JSON.stringify(config.groups, null, 2),
         variantsJson: JSON.stringify(config.variants, null, 2),
       });
@@ -251,6 +269,15 @@ export function ProductsPage() {
       setActionError("Selecione uma categoria válida.");
       return;
     }
+    let simpleVariations: ReturnType<typeof buildSimpleVariants> | null = null;
+    if (draft.variantsTouched) {
+      try {
+        simpleVariations = buildSimpleVariants({ colors: draft.colors, sizes: draft.sizes }, product.slug);
+      } catch (cause) {
+        setActionError(cause instanceof Error ? cause.message : "Revise as cores e tamanhos.");
+        return;
+      }
+    }
     setBusy(true);
     setActionError("");
     try {
@@ -270,6 +297,27 @@ export function ProductsPage() {
         badge: product.badge ? (badgeValue[product.badge] ?? null) : null,
       });
       setDraft(null);
+      if (simpleVariations) {
+        try {
+          await replaceAdminVariantConfiguration(
+            savedId, simpleVariations.groups, simpleVariations.variants,
+          );
+        } catch (cause) {
+          setActionError("Produto salvo, mas as cores e tamanhos não foram confirmados: " +
+            (cause instanceof Error ? cause.message : "Tente novamente em Editar."));
+        }
+      }
+      if (stagedPhoto || photoUrl.trim()) {
+        try {
+          const file = stagedPhoto ?? await fetchPublicImageFile(photoUrl);
+          await uploadCatalogImage(savedId, file, product.name);
+          setStagedPhoto(null);
+          setPhotoUrl("");
+        } catch (cause) {
+          setActionError("Produto salvo, mas o envio da imagem não foi concluído: " +
+            (cause instanceof Error ? cause.message : "Tente novamente em Editar."));
+        }
+      }
       if (draft.isNew && product.availability === "pronta-entrega" &&
           Number(draft.openingStock) > 0) {
         try {
@@ -679,10 +727,30 @@ export function ProductsPage() {
             <section className={s.full} aria-label="Variações e SKUs">
               <h3>Fotos e opções do produto</h3>
               <p className={s.muted}>Se o produto não tiver cores ou tamanhos diferentes, você não precisa configurar variações.</p>
+              <div className={s.formGrid}>
+                <Input
+                  label="Cores disponíveis (separe por vírgulas)"
+                  placeholder="Azul, Vermelho, Preto"
+                  value={draft.colors}
+                  hint="Opcional. Cada cor cadastrada será uma opção selecionável na loja."
+                  onChange={(event) => setDraft((value) => value && {
+                    ...value, colors: event.target.value, variantsTouched: true,
+                  })}
+                />
+                <Input
+                  label="Tamanhos disponíveis (separe por vírgulas)"
+                  placeholder="Pequeno, Médio, Grande"
+                  value={draft.sizes}
+                  hint="Opcional. O sistema gera automaticamente as combinações e os SKUs."
+                  onChange={(event) => setDraft((value) => value && {
+                    ...value, sizes: event.target.value, variantsTouched: true,
+                  })}
+                />
+              </div>
               {draft.isNew ? (
                 <p role="note">
-                  Salve o produto primeiro; depois abra Editar para cadastrar cores, tamanhos e
-                  SKUs.
+                  Você pode cadastrar cores e tamanhos antes de salvar. As opções serão vinculadas
+                  automaticamente ao novo produto.
                 </p>
               ) : (
                 <details>
@@ -719,9 +787,46 @@ export function ProductsPage() {
                   </Button>
                 </details>
               )}
-              {draft.isNew ? (
-                <p role="note">Salve o produto primeiro para habilitar o envio de fotos.</p>
-              ) : (
+              <section className={s.full} aria-label="Anexar foto do produto">
+                <h3>Imagem do produto</h3>
+                <p className={s.muted}>Escolha uma foto do computador ou uma URL HTTPS. A imagem será enviada
+                  ao Supabase quando você salvar o produto.</p>
+                <label htmlFor="product-upload-file">Escolher foto do computador</label>
+                <input id="product-upload-file" type="file" accept="image/png,image/jpeg,image/webp"
+                  disabled={busy}
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null;
+                    setStagedPhoto(selected);
+                    if (selected) setPhotoUrl("");
+                  }}
+                />
+                <Input label="Ou importar imagem por URL HTTPS"
+                  type="url" placeholder="https://exemplo.com/foto.webp"
+                  value={photoUrl} disabled={busy}
+                  onChange={(event) => {
+                    setPhotoUrl(event.target.value);
+                    if (event.target.value) setStagedPhoto(null);
+                  }}
+                />
+                {stagedPhoto && <Button variant="outline" disabled={busy}
+                  onClick={() => setEditingPhoto(stagedPhoto)}>
+                  <Crop size={16}/> Ajustar foto (zoom e posição)
+                </Button>}
+                {editingPhoto && (
+                  <ImageCropEditor file={editingPhoto} shape="product"
+                    onCancel={() => setEditingPhoto(null)}
+                    onApply={(file) => {
+                      setStagedPhoto(file);
+                      setPhotoUrl("");
+                      setEditingPhoto(null);
+                    }}
+                  />
+                )}
+                {stagedPhoto && <p role="status" className={s.muted}>
+                  Foto selecionada: {stagedPhoto.name}
+                </p>}
+              </section>
+              {!draft.isNew && (
                 <ProductGallery productId={draft.product.id} productName={draft.product.name} />
               )}
               {actionError && <p role="status">{actionError}</p>}
