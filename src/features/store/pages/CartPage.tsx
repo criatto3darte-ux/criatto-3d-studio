@@ -209,18 +209,26 @@ export function CartPage() {
               <span>Total estimado</span>
               <span className={styles.total}>{formatBRL(subtotalCents)}</span>
             </div>
-            <Button
-              size="lg"
-              disabled
-              className={styles.checkoutBtn}
-              title="Checkout transacional será habilitado na etapa CR-010C"
-            >
-              <MessageCircle size={20} /> Checkout em preparação
-            </Button>
-            <p className={styles.muted}>
-              O resumo local não cria nem confirma um pedido. O checkout será liberado após
-              validação transacional dos preços e estoque (CR-010C).
-            </p>
+            {import.meta.env.VITE_ENABLE_LIVE_CHECKOUT === "true" ? (
+              <Link to="/checkout"
+                className={buttonClass("primary", "lg")}
+                aria-disabled={blocked || catalogState !== "ready" || count === 0}
+                onClick={(event) => {
+                  if (blocked || catalogState !== "ready" || count === 0) event.preventDefault();
+                }}>
+                <MessageCircle size={20}/> Finalizar pedido pelo WhatsApp
+              </Link>
+            ) : (
+              <>
+                <Button size="lg" disabled className={styles.checkoutBtn}>
+                  <MessageCircle size={20}/> Checkout em preparação
+                </Button>
+                <p className={styles.muted}>
+                  O resumo local não cria um pedido. A finalização será habilitada somente
+                  após os testes transacionais com o Supabase.
+                </p>
+              </>
+            )}
           </aside>
         </div>
       )}
