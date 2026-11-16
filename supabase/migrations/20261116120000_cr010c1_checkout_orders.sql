@@ -2,6 +2,9 @@
 -- PREPARED ONLY. Do not apply to remote Supabase before PG17 + security checks.
 BEGIN;
 
+CREATE SCHEMA IF NOT EXISTS private;
+REVOKE ALL ON SCHEMA private FROM PUBLIC;
+
 CREATE TABLE private.checkout_rate_limits (
   fingerprint text PRIMARY KEY,
   window_started_at timestamptz NOT NULL DEFAULT now(),
