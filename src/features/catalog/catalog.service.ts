@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listPublishedBanners } from "@/features/catalog/banners.service";
 import type { Category, Product } from "@/shared/types/catalog";
 import { resolveContactSettings } from "@/config/contacts";
 import { useRemoteCatalog } from "@/features/catalog/supabase-catalog";
@@ -45,7 +46,17 @@ export function useStoreSettings(): StoreSettings {
   };
 }
 
-/** No public banner has a published media URL yet; do not substitute demo media. */
+/** Read the public-only banner view; never show demo banners in live mode. */
 export function useHeroBanner(): DemoBanner | undefined {
-  return undefined;
+  const [banner, setBanner] = useState<DemoBanner | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    void listPublishedBanners().then((items) => {
+      if (active) setBanner(items[0]);
+    }).catch(() => {
+      if (active) setBanner(undefined);
+    });
+    return () => { active = false; };
+  }, []);
+  return banner;
 }
