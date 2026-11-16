@@ -221,7 +221,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
     '20261116034611_cr010b7_public_catalog_media.sql':'50fdb4f8ea540feb6e0f30d507ad4ef598bf28acb376d9fc579b2d3ec24f4f1d',
     '20261116034643_cr010b10_public_site_banners.sql':'d16f891df310886c1548efab0167ccbdaa9df69709282ef39b276c3636396f48',
-    '20261116120000_cr010c1_checkout_orders.sql':'2c45960b168453588bd5aab2fa2de49450fd55dabcf2e180fbff6cd617a26ff4',
+    '20261116120000_cr010c1_checkout_orders.sql':'fe8da61976a3ec1493fb593d73e8f96b2246915a844a4898730a1372270a5e9d',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
