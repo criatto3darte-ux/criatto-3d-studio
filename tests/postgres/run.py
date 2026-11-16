@@ -580,6 +580,23 @@ try:
               "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
               "AND table_name='public_site_banners' AND column_name IN ('created_by','internal_notes','version'))",
               't')
+        check(db,'checkout creation must not be callable by anon or authenticated',
+              "SELECT NOT has_function_privilege('anon','public.create_checkout_order(jsonb)','EXECUTE') "
+              "AND NOT has_function_privilege('authenticated','public.create_checkout_order(jsonb)','EXECUTE') "
+              "AND has_function_privilege('service_role','public.create_checkout_order(jsonb)','EXECUTE')",
+              't')
+        check(db,'checkout rate limiter restricted to service role',
+              "SELECT NOT has_function_privilege('anon','public.check_checkout_rate_limit(text)','EXECUTE') "
+              "AND has_function_privilege('service_role','public.check_checkout_rate_limit(text)','EXECUTE')",
+              't')
+        check(db,'order transitions require authenticated role, not anon',
+              "SELECT NOT has_function_privilege('anon','public.transition_checkout_order(uuid,integer,public.order_status,text)','EXECUTE') "
+              "AND has_function_privilege('authenticated','public.transition_checkout_order(uuid,integer,public.order_status,text)','EXECUTE')",
+              't')
+        check(db,'private checkout throttling table never public',
+              "SELECT NOT has_table_privilege('anon','private.checkout_rate_limits','SELECT') "
+              "AND NOT has_table_privilege('authenticated','private.checkout_rate_limits','INSERT')",
+              't')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
         # Seed auth users FIRST so that FK columns (confirmed_by, actor_id,
