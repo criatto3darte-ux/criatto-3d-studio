@@ -105,13 +105,24 @@ export function ProductGallery({ productId, productName }: Props) {
         <input
           id={fileId} type="file" accept="image/jpeg,image/png,image/webp"
           disabled={busy}
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          onChange={(event) => {
+            const selected = event.target.files?.[0] ?? null;
+            setFile(selected);
+            if (selected) setImageUrl("");
+          }}
         />
         <Input
           label="URL pública HTTPS (alternativa ao arquivo local)"
           type="url" inputMode="url" placeholder="https://exemplo.com/imagem.jpg"
           value={imageUrl} disabled={busy}
-          onChange={(event) => setImageUrl(event.target.value)}
+          onChange={(event) => {
+            setImageUrl(event.target.value);
+            if (event.target.value) {
+              setFile(null);
+              const local = document.getElementById(fileId) as HTMLInputElement | null;
+              if (local) local.value = "";
+            }
+          }}
         />
         <Input
           label="Texto alternativo da foto" maxLength={200} value={alt}
