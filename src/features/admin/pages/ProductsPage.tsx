@@ -8,6 +8,7 @@ import { formatBRL } from "@/shared/utils/format";
 import { AVAILABILITY_LABEL, normalize } from "@/features/catalog/catalog.logic";
 import {
   archiveAdminProduct,
+  adjustAdminInventory,
   getAdminVariantConfiguration,
   replaceAdminVariantConfiguration,
   listAdminCategories,
@@ -37,6 +38,7 @@ interface Draft {
   price: string;
   promo: string;
   productionDays: string;
+  openingStock: string;
   isNew: boolean;
   slugTouched: boolean;
   variantGroupsJson: string;
@@ -56,6 +58,7 @@ function toDraft(product: Product, isNew: boolean, version?: number): Draft {
     price: centsToInput(product.priceCents || null),
     promo: centsToInput(product.promoPriceCents),
     productionDays: product.productionDays ? String(product.productionDays) : "",
+    openingStock: "0",
     isNew,
     slugTouched: !isNew,
     variantGroupsJson: "[]",
@@ -235,6 +238,12 @@ export function ProductsPage() {
     delete validation.stock;
     delete validation.images;
     delete validation.description;
+    if (draft.isNew && product.availability === "pronta-entrega") {
+      const qty = Number(draft.openingStock);
+      if (!Number.isSafeInteger(qty) || qty < 0 || qty > 99999) {
+        validation.stock = "Informe uma quantidade inicial entre 0 e 99999.";
+      }
+    }
     setErrors(validation);
     if (Object.keys(validation).length) return;
     const category = categoryBySlug.get(product.category);
@@ -245,7 +254,7 @@ export function ProductsPage() {
     setBusy(true);
     setActionError("");
     try {
-      await saveAdminProduct({
+      const savedId = await saveAdminProduct({
         ...(draft.isNew ? {} : { id: draft.product.id, version: draft.version }),
         slug: product.slug,
         name: product.name,
@@ -261,6 +270,21 @@ export function ProductsPage() {
         badge: product.badge ? (badgeValue[product.badge] ?? null) : null,
       });
       setDraft(null);
+      if (draft.isNew && product.availability === "pronta-entrega" &&
+          Number(draft.openingStock) > 0) {
+        try {
+          await adjustAdminInventory({
+            productId: savedId,
+            delta: Number(draft.openingStock),
+            reason: "Estoque inicial no cadastro do produto",
+            operationKey: crypto.randomUUID(),
+            expectedVersion: 0,
+          });
+        } catch (cause) {
+          setActionError("Produto salvo no Supabase, mas o estoque inicial não foi confirmado. " +
+            (cause instanceof Error ? cause.message : "Registre a entrada em Estoque."));
+        }
+      }
       await reload();
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "Não foi possível salvar o produto.");
@@ -500,9 +524,10 @@ export function ProductsPage() {
               }}
             />
             <Input
-              label="Slug (URL)"
+              label="Endereço do produto (URL)"
               value={draft.product.slug}
               error={errors.slug}
+              hint="Gerado automaticamente pelo nome. Ex.: chaveiro-personalizado. Altere somente se necessário."
               onChange={(event) =>
                 setDraft(
                   (value) =>
@@ -572,6 +597,20 @@ export function ProductsPage() {
                 setDraft((value) => value && { ...value, promo: event.target.value })
               }
             />
+            {draft.isNew && draft.product.availability === "pronta-entrega" && (
+              <Input
+                label="Quantidade inicial em estoque"
+                type="number"
+                min={0}
+                max={99999}
+                step={1}
+                value={draft.openingStock}
+                error={errors.stock}
+                hint="Ex.: 10 peças prontas. Com zero unidades, a loja mostra Indisponível."
+                onChange={(event) => setDraft((value) =>
+                  value && { ...value, openingStock: event.target.value })}
+              />
+            )}
             {draft.product.availability === "sob-demanda" && (
               <Input
                 label="Prazo estimado (dias úteis)"
