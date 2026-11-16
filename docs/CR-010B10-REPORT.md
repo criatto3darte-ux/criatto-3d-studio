@@ -30,7 +30,7 @@
 ## CI e código
 
 - PR #9: GitHub CI **43800250443** com **Static + unit** e **PostgreSQL 17** aprovados para a conciliação de migrations.
-- Nova branch `integration/homolog-commercial-cr010b10`: contém o mesmo catálogo comercial, hotfix MFA, fluxo de banners, galeria e workflow de geração do pacote `criatto3d-homolog-login-fix` (nome herdado do workflow, mas **contendo o build comercial**).
+- Nova branch `integration/homolog-commercial-cr010b10`: contém o mesmo catálogo comercial, hotfix MFA, fluxo de banners, galeria e workflow de geração do pacote `criatto3d-homolog-commercial` (build comercial exclusivo de homologação).
 - O ZIP é produzido pelo job `Pacote homologação (ZIP artifact)` em push para `integration/*`. **Confirmar que o run mais recente e o artifact existem e foram aprovados antes de usar.**
 - A branch de integração não está mesclada com main e não foi enviada à Locaweb neste procedimento.
 
