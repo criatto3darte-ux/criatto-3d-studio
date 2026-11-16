@@ -122,6 +122,82 @@ export async function uploadCatalogImage(productId: string, file: File, alt: str
   await invokeMedia(body);
 }
 
+/**
+ * Browser-side import for image URLs that explicitly permit CORS.
+ * External URLs are never kept as the catalog image source: after downloading,
+ * the same authenticated upload endpoint stores a local copy in Supabase Storage.
+ * Third-party sites may block CORS; the user can save the file and upload it.
+ */
+export async function uploadCatalogImageFromUrl(
+  productId: string,
+  inputUrl: string,
+  alt: string,
+): Promise<void> {
+  const raw = inputUrl.trim();
+  if (!raw || raw.length > 2048) throw new Error("Informe uma URL de imagem válida.");
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("A URL da imagem não é válida.");
+  }
+  const hostname = url.hostname.toLowerCase();
+  if (url.protocol !== "https:" || url.username || url.password || url.port ||
+      hostname === "localhost" || hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") || hostname.endsWith(".localhost") ||
+      /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(hostname) ||
+      hostname.includes(":")) {
+    throw new Error("Use uma URL pública HTTPS, com nome de domínio, sem credenciais.");
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url.href, {
+      method: "GET",
+      mode: "cors",
+      redirect: "error",
+      credentials: "omit",
+      signal: controller.signal,
+      headers: { Accept: "image/webp,image/png,image/jpeg" },
+    });
+    if (!response.ok) throw new Error("A imagem não está disponível nessa URL.");
+    const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (!["image/webp", "image/png", "image/jpeg"].includes(contentType)) {
+      throw new Error("A URL deve retornar uma imagem PNG, JPEG ou WebP.");
+    }
+    const declaredSize = Number(response.headers.get("content-length") ?? 0);
+    if (declaredSize > MAX_UPLOAD_BYTES) throw new Error("A imagem ultrapassa 12 MB.");
+    if (!response.body) throw new Error("O navegador não conseguiu receber a imagem.");
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_UPLOAD_BYTES) {
+        await reader.cancel();
+        throw new Error("A imagem ultrapassa 12 MB.");
+      }
+      chunks.push(value);
+    }
+    const blob = new Blob(chunks as BlobPart[], { type: contentType });
+    await uploadCatalogImage(productId, new File([blob], "imagem-importada", { type: contentType }), alt);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        "O servidor da imagem não permite importação direta (CORS). Salve a foto e envie pelo computador.",
+      );
+    }
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("A imagem demorou demais para responder. Tente outro endereço.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function deleteCatalogImage(productId: string, mediaId: string): Promise<void> {
   await invokeMedia({ operation: "delete", productId, mediaId });
 }
