@@ -1,5 +1,6 @@
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-width: 0; max-width: 100%;
   border: 1px solid transparent; border-radius: var(--radius-pill);
   font-family: var(--font-display); font-weight: 600; cursor: pointer; white-space: nowrap;
   transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition), color var(--transition);
@@ -8,8 +9,16 @@
 .button:active:not(:disabled) { transform: translateY(1px); }
 .sm { height: 36px; padding: 0 14px; font-size: 13px; }
 .md { height: 44px; padding: 0 20px; font-size: 14px; }
-.lg { height: 54px; padding: 0 30px; font-size: 17px; }
-.icon { width: 42px; height: 42px; padding: 0; }
+.lg {
+  min-height: 54px;
+  height: auto;
+  padding: 12px 30px;
+  font-size: 17px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+.icon { width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
 .primary { background: var(--color-primary); color: var(--color-primary-contrast); box-shadow: var(--shadow-glow); }
 .primary:hover:not(:disabled) { background: var(--color-primary-hover); }
 .outline { background: transparent; border-color: var(--color-primary); color: var(--color-primary); }
@@ -19,5 +28,9 @@
 .ghost { background: transparent; color: var(--color-text); }
 .ghost:hover:not(:disabled) { background: var(--color-surface-elevated); }
 .danger { background: var(--color-danger); color: #fff; }
-.block { width: 100%; }
+.block { width: 100%; white-space: normal; }
 .square { border-radius: var(--radius-md); }
+@media (max-width: 420px) {
+  .md { padding-inline: 16px; }
+  .lg { width: 100%; padding-inline: 18px; font-size: 15px; }
+}
