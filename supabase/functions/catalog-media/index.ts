@@ -84,9 +84,64 @@ Deno.serve(async (request) => {
     const productId = text(form.get("productId"));
     if (!UUID.test(productId)) reject("Produto inválido.");
     const { data: product, error: productError } = await service
-      .from("products").select("id").eq("id", productId).is("archived_at", null).maybeSingle();
+      .from("products").select("id,archived_at").eq("id", productId).maybeSingle();
     if (productError) reject("Erro ao validar produto.", 503);
     if (!product) reject("Produto não encontrado.", 404);
+    if (operation !== "cleanup-product" && product.archived_at) {
+      reject("Produto arquivado não pode receber novas imagens.", 409);
+    }
+
+    async function removeAssociatedImage(mediaId: string): Promise<void> {
+      const { data: linked, error: linkError } = await service.from("product_images")
+        .select("media_id").eq("product_id", productId).eq("media_id", mediaId).maybeSingle();
+      if (linkError) reject("Erro ao consultar vínculo da imagem.", 503);
+      if (!linked) return;
+
+      const { data: asset, error: assetError } = await service.from("media_assets")
+        .select("id,bucket,object_key").eq("id", mediaId).maybeSingle();
+      if (assetError || !asset || asset.bucket !== BUCKET) {
+        reject("Arquivo da imagem não localizado.", 503);
+      }
+      const [productRefs, bannerRefs] = await Promise.all([
+        service.from("product_images").select("media_id", { count: "exact", head: true }).eq("media_id", mediaId),
+        service.from("banners").select("id", { count: "exact", head: true }).eq("media_id", mediaId),
+      ]);
+      if (productRefs.error || bannerRefs.error) reject("Erro ao verificar compartilhamento.", 503);
+      const shared = (productRefs.count ?? 0) + (bannerRefs.count ?? 0) > 1;
+      if (shared) {
+        const detached = await service.from("product_images").delete()
+          .eq("product_id", productId).eq("media_id", mediaId);
+        if (detached.error) reject("Erro ao desvincular imagem compartilhada.", 503);
+        return;
+      }
+      // Hide first; Storage and Postgres are distinct services and cannot be
+      // one ACID transaction. A failed delete leaves an explicit retryable
+      // delete-pending asset instead of a published ghost image.
+      const mark = await service.from("media_assets")
+        .update({ state: "delete-pending" }).eq("id", mediaId);
+      if (mark.error) reject("Não foi possível preparar exclusão.", 503);
+      const removed = await service.storage.from(BUCKET).remove([asset.object_key]);
+      if (removed.error) reject("Exclusão física pendente; tente novamente.", 503);
+      const detach = await service.from("product_images").delete()
+        .eq("product_id", productId).eq("media_id", mediaId);
+      if (detach.error) reject("Exclusão de vínculo pendente; tente novamente.", 503);
+      const deleteMeta = await service.from("media_assets").delete().eq("id", mediaId);
+      if (deleteMeta.error) reject("Exclusão dos metadados pendente; tente novamente.", 503);
+    }
+
+    if (operation === "cleanup-product") {
+      if (!product.archived_at) reject("Arquive o produto antes de excluir suas imagens.", 409);
+      const { data: links, error } = await service.from("product_images")
+        .select("media_id").eq("product_id", productId);
+      if (error) reject("Não foi possível localizar imagens do produto.", 503);
+      let pending = 0;
+      for (const link of links ?? []) {
+        try { await removeAssociatedImage(link.media_id); } catch { pending++; }
+      }
+      return response(request, pending ? 202 : 200, {
+        ok: true, cleanupPending: pending > 0, failedItems: pending,
+      });
+    }
 
     if (operation === "upload") {
       const file = form.get("file");
@@ -156,26 +211,16 @@ Deno.serve(async (request) => {
       return response(request, 200, { ok: true });
     }
     if (operation === "delete") {
-      const { data: asset, error: assetError } = await service.from("media_assets")
-        .select("id,bucket,object_key").eq("id", mediaId).maybeSingle();
-      if (assetError || !asset || asset.bucket !== BUCKET) reject("Imagem não encontrada.", 404);
-      const { error: detachError } = await service.from("product_images")
-        .delete().eq("product_id", productId).eq("media_id", mediaId);
-      if (detachError) reject("Não foi possível remover a foto.", 503);
-      if (image.is_primary) {
-        const { data: remaining } = await service.from("product_images")
-          .select("media_id").eq("product_id", productId).order("position").limit(1);
-        if (remaining?.length) {
-          const { error: primaryError } = await service.rpc("set_catalog_primary_media", {
-            p_product_id: productId, p_media_id: remaining[0].media_id,
-          });
-          if (primaryError) reject("Foto removida, mas a definição da principal precisa ser refeita.", 503);
-        }
+      await removeAssociatedImage(mediaId);
+      const { data: remaining } = await service.from("product_images")
+        .select("media_id").eq("product_id", productId)
+        .order("position").limit(1);
+      if (image.is_primary && remaining?.length) {
+        const result = await service.rpc("set_catalog_primary_media", {
+          p_product_id: productId, p_media_id: remaining[0].media_id,
+        });
+        if (result.error) reject("Foto removida; atualização da principal pendente.", 503);
       }
-      const { error: metadataError } = await service.from("media_assets").delete().eq("id", mediaId);
-      if (metadataError) reject("Foto desvinculada; limpeza de metadados pendente.", 503);
-      const { error: removeError } = await service.storage.from(BUCKET).remove([asset.object_key]);
-      if (removeError) reject("Foto desvinculada; limpeza do arquivo pendente.", 503);
       return response(request, 200, { ok: true });
     }
     reject("Operação de imagem desconhecida.");
