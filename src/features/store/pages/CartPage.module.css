@@ -1,21 +1,33 @@
-.layout { display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start; }
-.list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
-.item { display: grid; grid-template-columns: 88px 1fr auto; gap: var(--space-4); align-items: center; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: clamp(var(--space-4), 3vw, var(--space-6)); align-items: start; }
+.layout > * { min-width: 0; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); min-width: 0; }
+.item { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; min-width: 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.item > * { min-width: 0; }
 .thumb { border-radius: var(--radius-md); overflow: hidden; }
-.name { font-weight: 700; }
+.name { display: inline-block; max-width: 100%; font-weight: 700; overflow-wrap: anywhere; }
 .name:hover { color: var(--color-primary); }
-.variants { font-size: 13px; color: var(--color-text-muted); }
+.variants { font-size: 13px; color: var(--color-text-muted); overflow-wrap: anywhere; }
 .unit { font-size: 13px; color: var(--color-text-muted); }
-.right { display: grid; justify-items: end; gap: 8px; }
-.line { font-family: var(--font-display); font-weight: 800; }
+.right { display: grid; justify-items: end; gap: 8px; min-width: 0; }
+.line { font-family: var(--font-display); font-weight: 800; white-space: nowrap; }
 .controls { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-.summary { position: sticky; top: calc(var(--header-height) + 16px); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); display: grid; gap: var(--space-3); }
-.row { display: flex; justify-content: space-between; gap: 8px; }
-.total { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--color-primary); }
+.summary { position: sticky; top: calc(var(--header-height) + 16px); min-width: 0; max-width: 100%; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); display: grid; gap: var(--space-3); }
+.summary > * { min-width: 0; max-width: 100%; }
+.row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+.row > * { min-width: 0; overflow-wrap: anywhere; }
+.total { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--color-primary); white-space: nowrap; }
 .muted { color: var(--color-text-muted); font-size: 13px; }
 .empty { text-align: center; padding: var(--space-8) var(--space-5); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); display: grid; justify-items: center; gap: var(--space-3); }
+.checkoutBtn { width: 100%; white-space: normal; text-align: center; height: auto; min-height: 52px; padding-block: 10px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .summary { position: static; } }
-@media (max-width: 520px) { .item { grid-template-columns: 64px 1fr; } .right { grid-column: 1 / -1; justify-items: start; } }
-.checkoutBtn { width: 100%; }
-.layout > * { min-width: 0; }
-.checkoutBtn { white-space: normal; text-align: center; height: auto; min-height: 52px; padding-block: 10px; }
+@media (max-width: 520px) {
+  .item { grid-template-columns: 64px minmax(0, 1fr); padding: var(--space-3); gap: var(--space-3); }
+  .right { grid-column: 1 / -1; grid-template-columns: 1fr auto; width: 100%; justify-items: start; align-items: center; }
+  .right > :last-child { justify-self: end; }
+  .summary { padding: var(--space-4); }
+}
+@media (max-width: 360px) {
+  .item { grid-template-columns: 52px minmax(0, 1fr); }
+  .right { grid-template-columns: 1fr; }
+  .right > :last-child { justify-self: start; }
+}
