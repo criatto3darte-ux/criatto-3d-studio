@@ -95,7 +95,11 @@ export async function listPublicCatalogImages(): Promise<Map<string, CatalogImag
   return result;
 }
 
-async function invokeMedia(body: FormData | Record<string, string>) {
+async function invokeMedia(payload: FormData | Record<string, string>) {
+  const body = payload instanceof FormData ? payload : new FormData();
+  if (!(payload instanceof FormData)) {
+    for (const [name, value] of Object.entries(payload)) body.set(name, value);
+  }
   const { data, error } = await getSupabase().functions.invoke("catalog-media", {
     body,
   });
