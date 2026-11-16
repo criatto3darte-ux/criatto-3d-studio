@@ -219,6 +219,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
     '20261116014216_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
     '20261116030000_cr010b7_public_catalog_media.sql':'50fdb4f8ea540feb6e0f30d507ad4ef598bf28acb376d9fc579b2d3ec24f4f1d',
+    '20261116040000_cr010b10_public_site_banners.sql':'d16f891df310886c1548efab0167ccbdaa9df69709282ef39b276c3636396f48',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -566,6 +567,16 @@ try:
               "SELECT has_function_privilege('service_role','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
               "AND NOT has_function_privilege('anon','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
               "AND NOT has_function_privilege('authenticated','public.set_catalog_primary_media(uuid,uuid)','EXECUTE')",
+              't')
+        check(db,'public banners filter inactive entries',
+              "SELECT pg_get_viewdef('public.public_site_banners'::regclass) ILIKE '%active%'",
+              't')
+        check(db,'public banner view anonymous SELECT permitted',
+              "SELECT has_table_privilege('anon','public.public_site_banners','SELECT')",
+              't')
+        check(db,'public banners expose limited projection',
+              "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
+              "AND table_name='public_site_banners' AND column_name IN ('created_by','internal_notes','version'))",
               't')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
