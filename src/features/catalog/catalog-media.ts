@@ -110,7 +110,7 @@ async function invokeMedia(payload: FormData | Record<string, string>) {
   return data;
 }
 
-export async function uploadCatalogImage(productId: string, file: File, alt: string): Promise<void> {
+export async function uploadCatalogImage(productId: string, file: File, alt: string): Promise<string> {
   const processed = await prepareProductImage(file);
   const body = new FormData();
   body.set("operation", "upload");
@@ -119,7 +119,9 @@ export async function uploadCatalogImage(productId: string, file: File, alt: str
   body.set("width", String(processed.width));
   body.set("height", String(processed.height));
   body.set("file", processed.blob, "product.webp");
-  await invokeMedia(body);
+  const response = await invokeMedia(body);
+  if (typeof response?.mediaId !== "string") throw new Error("O serviço não confirmou o identificador da imagem.");
+  return response.mediaId;
 }
 
 /**
