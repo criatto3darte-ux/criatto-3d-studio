@@ -39,6 +39,12 @@ def _out(s):
     """psql can return None on stdout for DDL that returns no rows."""
     return (s or '').strip()
 
+def github_error(message):
+    """Publish concise failure detail as a Check Run annotation, not only logs."""
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        escaped = str(message).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        print(f'::error title=PostgreSQL harness::{escaped}', flush=True)
+
 def execute(db, sql):
     r = psql(db, sql)
     if r.returncode:
@@ -47,6 +53,7 @@ def execute(db, sql):
         sys.stderr.write('STDOUT: ' + (r.stdout or '') + '\n')
         sys.stderr.write('STDERR: ' + (r.stderr or '') + '\n')
         sys.stderr.flush()
+        github_error(f"SQL apply failed: {(r.stderr or 'psql failed').splitlines()[-1] if r.stderr else 'psql failed'}; statement={sql[:700]}")
         raise RuntimeError((r.stderr or 'psql failed').splitlines()[-1] if r.stderr else 'psql failed')
     return _out(r.stdout)
 
@@ -75,17 +82,20 @@ def check(db, label, sql, expected=None, error=None):
                  ('payment requires confirmed' in msg) or \
                  ('item quantity bound' in msg)
         if not (r.returncode != 0 and denied):
+            github_error(f"check failed: {label}; stderr={r.stderr}; stdout={r.stdout}")
             sys.stderr.write(f'CHECK FAILED: {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             sys.stderr.flush()
             raise AssertionError(label)
     else:
         if r.returncode != 0:
+            github_error(f"check failed (rc={r.returncode}): {label}; stderr={r.stderr}; stdout={r.stdout}")
             sys.stderr.write(f'CHECK FAILED (rc={r.returncode}): {label}\nstdout={r.stdout}\nstderr={r.stderr}\n')
             sys.stderr.flush()
             raise AssertionError(label)
         if expected is not None:
             last = _out(r.stdout).splitlines()[-1] if _out(r.stdout) else ''
             if last != expected:
+                github_error(f"check mismatch: {label}; expected={expected!r}; got={last!r}; stderr={r.stderr}; stdout={r.stdout}")
                 sys.stderr.write(f'CHECK FAILED: {label}\nexpected={expected!r}\ngot={last!r}\nstdout={r.stdout}\nstderr={r.stderr}\n')
                 sys.stderr.flush()
                 raise AssertionError(label)
@@ -137,6 +147,15 @@ def actor(k,sql, aal='aal2'):
             f"SET LOCAL request.jwt.claims='{claims}'; "
             f"{sql}; ROLLBACK;")
 
+def actor_commit(k,sql, aal='aal2'):
+    """Run a mutating RPC as an actor and commit to the disposable test DB."""
+    claims = json.dumps({'sub': ids[k], 'aal': aal, 'roles': []},
+                       separators=(',', ':'))
+    return (f"BEGIN; SET LOCAL ROLE authenticated; "
+            f"SET LOCAL request.jwt.claim.sub='{ids[k]}'; "
+            f"SET LOCAL request.jwt.claims='{claims}'; "
+            f"{sql}; COMMIT;")
+
 def createdb(name):
     """Create an empty test database. Use psql (always present) instead of
     relying on createdb/dropdb binaries which might not be in PATH in CI."""
@@ -175,6 +194,10 @@ def all_migrations():
     migs = list((ROOT/'supabase/migrations').glob('*_cr007*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr008c*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr009c1*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr009f*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr010b1*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr010b7*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr010c1*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -195,6 +218,13 @@ APPROVED_MIGRATION_SHA256 = {
     '20261114133000_cr008c_jwt_claims_and_aal.sql':'18acfd79b6625f98d6caf2a824e315d52556f9850f70ed28ad2d4719874689ea',
     '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
     '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
+    '20261116014216_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
+    '20261116034611_cr010b7_public_catalog_media.sql':'50fdb4f8ea540feb6e0f30d507ad4ef598bf28acb376d9fc579b2d3ec24f4f1d',
+    '20261116034643_cr010b10_public_site_banners.sql':'d16f891df310886c1548efab0167ccbdaa9df69709282ef39b276c3636396f48',
+    '20261116120000_cr010c1_checkout_orders.sql':'c4433f1214b3875ad57bffdfd3f4c75b771a374f737ffaa58d6abed912cea533',
+}
+APPROVED_ROLLBACK_SHA256 = {
+    '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
 }
 
 def verify_migration_integrity():
@@ -211,6 +241,18 @@ def verify_migration_integrity():
         if actual != expected:
             sys.stderr.write(
                 f'MIGRATION TAMPERED: {mig.name}\n'
+                f'  expected {expected}\n'
+                f'  actual   {actual}\n')
+            sys.exit(3)
+    for name, expected in APPROVED_ROLLBACK_SHA256.items():
+        rollback = ROOT/'supabase/rollback'/name
+        if not rollback.exists():
+            sys.stderr.write(f'MISSING ROLLBACK: {rollback.name}\n')
+            sys.exit(3)
+        actual = hashlib.sha256(rollback.read_bytes()).hexdigest()
+        if actual != expected:
+            sys.stderr.write(
+                f'ROLLBACK TAMPERED: {rollback.name}\n'
                 f'  expected {expected}\n'
                 f'  actual   {actual}\n')
             sys.exit(3)
@@ -430,6 +472,70 @@ def structural_fingerprint(db):
     views = execute(db, "SELECT string_agg(table_name,',' ORDER BY table_name) FROM information_schema.views WHERE table_schema='public'")
     return '|'.join([cols, cons, idx, pol, trig, views])
 
+def cr010b1_schema_state(db):
+    """Fingerprint the schema surfaces touched by the commercial migration."""
+    table_grants = execute(db, """
+      SELECT string_agg(table_name||':'||grantee||':'||privilege_type||':'||is_grantable,
+                        ',' ORDER BY table_name,grantee,privilege_type)
+        FROM information_schema.role_table_grants WHERE table_schema='public'
+    """)
+    policy_exprs = execute(db, """
+      SELECT string_agg(tablename||':'||policyname||':'||cmd||':'||roles::text||':'||
+                        coalesce(qual,'')||':'||coalesce(with_check,''),
+                        ',' ORDER BY tablename,policyname)
+        FROM pg_policies WHERE schemaname='public'
+    """)
+    return '|'.join([structural_fingerprint(db), table_grants, policy_exprs])
+
+def cr010b1_rollback_cycle():
+    """Apply the exact CR-010B.1 migration and guarded rollback on PG17."""
+    global passed
+    db = 'cr010b1_rollback_' + uuid.uuid4().hex[:12]
+    migration = ROOT/'supabase/migrations/20261116014216_cr010b1_catalog_stock_commands.sql'
+    rollback = ROOT/'supabase/rollback/20261116014216_cr010b1_catalog_stock_commands.sql'
+    try:
+        createdb(db)
+        execute(db, setup)
+        for foundation_migration in all_migrations():
+            if foundation_migration.name < migration.name:
+                execute(db, foundation_migration.read_text())
+        execute(db, """
+          INSERT INTO public.categories(id,slug,name,active)
+            VALUES('10000000-0000-0000-0000-000000000001','rollback-test','Rollback test',true);
+          INSERT INTO public.products(id,category_id,slug,name,regular_price_cents,production_mode,active)
+            VALUES('10000000-0000-0000-0000-000000000002',
+                   '10000000-0000-0000-0000-000000000001',
+                   'rollback-test-product','Rollback test product',1000,'pronta-entrega',true);
+        """)
+        before = cr010b1_schema_state(db)
+        execute(db, migration.read_text())
+        check(db,'CR-010B.1 apply adds only expected column and four commands',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '1:4')
+        execute(db, "INSERT INTO public.inventory(product_id,on_hand,allocated,minimum_on_hand) VALUES('10000000-0000-0000-0000-000000000002',0,0,5)")
+        check(db,'rollback refuses to discard configured inventory minima',
+              rollback.read_text(),error='rollback blocked: non-default inventory minimums exist')
+        check(db,'guarded rollback refusal leaves migration objects intact',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '1:4')
+        execute(db, "UPDATE public.inventory SET minimum_on_hand=0 WHERE product_id='10000000-0000-0000-0000-000000000002'")
+        execute(db, rollback.read_text())
+        after = cr010b1_schema_state(db)
+        if after != before:
+            raise AssertionError('CR-010B.1 rollback did not restore the pre-migration schema, policies and table grants')
+        check(db,'CR-010B.1 rollback removes only added column and commands',
+              "SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='minimum_on_hand')||':'||(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('swap_category_order','replace_product_variants','adjust_inventory','set_inventory_minimum'))",
+              '0:0')
+        passed += 1
+        print('PASS CR-010B.1 apply + guarded rollback restores pre-migration state',flush=True)
+    finally:
+        try:
+            dropdb(db)
+        except Exception as ex:
+            sys.stderr.write(f'warning: failed to drop {db}: {ex}\\n')
+
+cr010b1_rollback_cycle()
+
 fingerprint = None
 try:
     for iteration in range(2):
@@ -453,6 +559,44 @@ try:
               "SELECT bool_and(proconfig @> ARRAY['search_path=public, pg_temp']) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
         check(db,'no anon definer execution',
               "SELECT bool_and(NOT has_function_privilege('anon',p.oid,'EXECUTE')) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
+        check(db,'catalog image view contains only published catalog bucket links',
+              "SELECT pg_get_viewdef('public.public_catalog_images'::regclass) ILIKE '%catalog-images%'",
+              't')
+        check(db,'catalog image view anonymous SELECT permitted',
+              "SELECT has_table_privilege('anon','public.public_catalog_images','SELECT')",
+              't')
+        check(db,'catalog primary command restricted to service role',
+              "SELECT has_function_privilege('service_role','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
+              "AND NOT has_function_privilege('anon','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
+              "AND NOT has_function_privilege('authenticated','public.set_catalog_primary_media(uuid,uuid)','EXECUTE')",
+              't')
+        check(db,'public banners filter inactive entries',
+              "SELECT pg_get_viewdef('public.public_site_banners'::regclass) ILIKE '%active%'",
+              't')
+        check(db,'public banner view anonymous SELECT permitted',
+              "SELECT has_table_privilege('anon','public.public_site_banners','SELECT')",
+              't')
+        check(db,'public banners expose limited projection',
+              "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
+              "AND table_name='public_site_banners' AND column_name IN ('created_by','internal_notes','version'))",
+              't')
+        check(db,'checkout creation must not be callable by anon or authenticated',
+              "SELECT NOT has_function_privilege('anon','public.create_checkout_order(jsonb)','EXECUTE') "
+              "AND NOT has_function_privilege('authenticated','public.create_checkout_order(jsonb)','EXECUTE') "
+              "AND has_function_privilege('service_role','public.create_checkout_order(jsonb)','EXECUTE')",
+              't')
+        check(db,'checkout rate limiter restricted to service role',
+              "SELECT NOT has_function_privilege('anon','public.check_checkout_rate_limit(text)','EXECUTE') "
+              "AND has_function_privilege('service_role','public.check_checkout_rate_limit(text)','EXECUTE')",
+              't')
+        check(db,'order transitions require authenticated role, not anon',
+              "SELECT NOT has_function_privilege('anon','public.transition_checkout_order(uuid,integer,public.order_status,text)','EXECUTE') "
+              "AND has_function_privilege('authenticated','public.transition_checkout_order(uuid,integer,public.order_status,text)','EXECUTE')",
+              't')
+        check(db,'private checkout throttling table never public',
+              "SELECT NOT has_table_privilege('anon','private.checkout_rate_limits','SELECT') "
+              "AND NOT has_table_privilege('authenticated','private.checkout_rate_limits','INSERT')",
+              't')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
         # Seed auth users FIRST so that FK columns (confirmed_by, actor_id,
@@ -472,7 +616,7 @@ try:
         execute(db,f"INSERT INTO user_roles(user_id,role) VALUES({q('revoked')},'editor'); DELETE FROM user_roles WHERE user_id={q('revoked')};")
         # Catalog / media / orders / inventory / requests fixtures.
         seed_stmts = [
-            f"INSERT INTO categories(id,slug,name,active) VALUES({q('category')},'public','Public',true),({q('draft-category')},'draft','Draft',false)",
+            f"INSERT INTO categories(id,slug,name,active,display_order) VALUES({q('category')},'public','Public',true,1),({q('draft-category')},'draft','Draft',false,2)",
             f"INSERT INTO products(id,category_id,slug,name,regular_price_cents,promo_price_cents,production_mode,active,internal_notes) VALUES"
             f"({q('product')},{q('category')},'public-product','Public',1000,900,'pronta-entrega',true,'PRIVATE'),"
             f"({q('draft')},{q('category')},'draft-product','Draft',1000,NULL,'pronta-entrega',false,''),"
@@ -704,7 +848,133 @@ COMMIT;
         check(db,'auth exec custom_access_token_hook denied',
               actor('owner',"SELECT public.custom_access_token_hook('{}'::jsonb)",'aal2'),
               error='permission denied')
-        # ---- fim dos testes AAL2 ----
+        # ---- CR-010B.1: atomic catalog/stock commands under AAL2 ----
+        check(db,'aal1 editor cannot swap category order',
+              actor('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1)",'aal1'),
+              error='AAL2 editor authorization required')
+        check(db,'editor category swap is atomic and versioned',
+              actor_commit('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1); SELECT (SELECT display_order FROM categories WHERE id={q('category')})||':'||(SELECT display_order FROM categories WHERE id={q('draft-category')})||':'||(SELECT version FROM categories WHERE id={q('category')})||':'||(SELECT version FROM categories WHERE id={q('draft-category')})",'aal2'),
+              '2:1:2:2')
+        check(db,'category swap rejects stale versions',
+              actor('editor',f"SELECT public.swap_category_order({q('category')},1,{q('draft-category')},1)",'aal2'),
+              error='category changed; refresh')
+
+        variant_groups = json.dumps([
+            {'code':'cor','label':'Cor','position':0,'required':True,'options':[
+                {'code':'azul','label':'Azul','position':0,'active':True},
+                {'code':'branco','label':'Branco','position':1,'active':True}]},
+            {'code':'tamanho','label':'Tamanho','position':1,'required':True,'options':[
+                {'code':'p','label':'P','position':0,'active':True},
+                {'code':'m','label':'M','position':1,'active':True}]}
+        ],separators=(',',':'))
+        variant_rows = json.dumps([
+            {'sku':'DRAFT-AZUL-P','active':True,'selections':{'cor':'azul','tamanho':'p'}},
+            {'sku':'DRAFT-BRANCO-M','active':True,'selections':{'cor':'branco','tamanho':'m'}}
+        ],separators=(',',':'))
+        groups_sql = "'"+variant_groups.replace("'","''")+"'::jsonb"
+        variants_sql = "'"+variant_rows.replace("'","''")+"'::jsonb"
+        check(db,'AAL2 editor atomically saves color/size variants',
+              actor_commit('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},{variants_sql}); SELECT (SELECT count(*) FROM product_attribute_groups WHERE product_id={q('draft')})||':'||(SELECT count(*) FROM product_attribute_options o JOIN product_attribute_groups g ON g.id=o.group_id WHERE g.product_id={q('draft')})||':'||(SELECT count(*) FROM product_variants WHERE product_id={q('draft')})",'aal2'),
+              '2:4:2')
+        check(db,'variant save refuses historical references and rolls back',
+              actor('editor',f"SELECT public.replace_product_variants({q('product')},{groups_sql},{variants_sql})",'aal2'),
+              error='variant history is referenced by an order')
+        check(db,'failed variant replacement preserves old graph',
+              f"SELECT count(*) FROM product_variants WHERE product_id={q('draft')}",'2')
+        duplicate_sku = json.dumps([
+            {'sku':'SKU-TEST','active':True,'selections':{'cor':'azul','tamanho':'p'}}
+        ],separators=(',',':')).replace("'","''")
+        check(db,'variant save enforces global SKU uniqueness',
+              actor('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{duplicate_sku}'::jsonb)",'aal2'),
+              error='unique constraint')
+        incomplete_variant = json.dumps([
+            {'sku':'DRAFT-MISSING-SIZE','active':True,'selections':{'cor':'azul'}}
+        ],separators=(',',':')).replace("'","''")
+        check(db,'variant save enforces required color/size selections',
+              actor_commit('editor',f"SELECT public.replace_product_variants({q('draft')},{groups_sql},'{incomplete_variant}'::jsonb)",'aal2'),
+              error='invalid active variant')
+        check(db,'SKU and integrity rejections preserve persisted variants',
+              f"SELECT count(*) FROM product_variants WHERE product_id={q('draft')}",'2')
+        check(db,'public projections expose persisted active variants',
+              f"UPDATE products SET active=true WHERE id={q('draft')}; SET ROLE anon; SELECT count(*) FROM public_variants WHERE product_id={q('draft')}",'2')
+        check(db,'public projections expose variant attributes',
+              f"SET ROLE anon; SELECT count(*) FROM public_attribute_options o JOIN public_attribute_groups g ON g.id=o.group_id WHERE g.product_id={q('draft')}",'4')
+        check(db,'AAL1 editor cannot change variant graph',
+              actor('editor',f"SELECT public.replace_product_variants({q('draft')},'[]'::jsonb,'[]'::jsonb)",'aal1'),
+              error='AAL2 editor authorization required')
+
+        check(db,'AAL2 operator adjusts inventory and appends movement',
+              actor_commit('operator',f"SELECT on_hand||':'||allocated||':'||version||':'||replayed FROM public.adjust_inventory({q('product')},3,'Received batch','cr010b1-op-1',1)",'aal2'),
+              '5:1:2:false')
+        check(db,'inventory retry is idempotent',
+              actor('operator',f"SELECT on_hand||':'||allocated||':'||version||':'||replayed FROM public.adjust_inventory({q('product')},3,'Received batch','cr010b1-op-1',1)",'aal2'),
+              '5:1:2:true')
+        check(db,'inventory operation key rejects a changed payload',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},4,'Different batch','cr010b1-op-1',2)",'aal2'),
+              error='operation key was already used')
+        check(db,'inventory concurrent version is required',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Second','cr010b1-op-stale',1)",'aal2'),
+              error='inventory changed; refresh and retry')
+        check(db,'inventory cannot go below allocation',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},-5,'Bad decrease','cr010b1-op-bad',2)",'aal2'),
+              error='adjustment would reduce stock below allocated quantity')
+        check(db,'inventory rejection leaves balance and ledger unchanged',
+              f"SELECT (SELECT on_hand FROM inventory WHERE product_id={q('product')})||':'||(SELECT count(*) FROM inventory_movements WHERE operation_key='cr010b1-op-bad')",
+              '5:0')
+        check(db,'operator stores a per-product inventory minimum',
+              actor_commit('operator',f"SELECT minimum_on_hand||':'||version FROM public.set_inventory_minimum({q('product')},4,2)",'aal2'),
+              '4:3')
+        check(db,'inventory minimum rejects a stale version',
+              actor('operator',f"SELECT * FROM public.set_inventory_minimum({q('product')},9,2)",'aal2'),
+              error='inventory changed; refresh and retry')
+        check(db,'minimum and low-stock state persist',
+              f"SELECT minimum_on_hand||':'||((on_hand-allocated)<=minimum_on_hand)::text FROM inventory WHERE product_id={q('product')}",
+              '4:true')
+        check(db,'AAL1 operator cannot adjust inventory',
+              actor('operator',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Denied','cr010b1-op-aal1',2)",'aal1'),
+              error='AAL2 inventory authorization required')
+        check(db,'editor cannot adjust inventory',
+              actor('editor',f"SELECT * FROM public.adjust_inventory({q('product')},1,'Denied','cr010b1-op-editor',2)",'aal2'),
+              error='AAL2 inventory authorization required')
+        check(db,'anonymous cannot execute new commands',
+              "SET ROLE anon; SELECT public.adjust_inventory(gen_random_uuid(),1,'x','x',0)",
+              error='permission denied')
+        # CR-010C: live-order flow in disposable local PG17 only.
+        checkout_product = "'c0000000-0000-4000-8000-000000000001'"
+        checkout_key = "c1111111-1111-4111-8111-111111111111"
+        execute(db, f"""
+INSERT INTO products(id,category_id,slug,name,regular_price_cents,production_mode,active)
+VALUES({checkout_product},{q('category')},'checkout-integration','Checkout test',900,'pronta-entrega',true);
+INSERT INTO inventory(product_id,on_hand,allocated) VALUES({checkout_product},5,0);
+""")
+        payload = json.dumps({
+            'customerName':'Cliente Teste',
+            'customerPhone':'+5521987640769',
+            'privacyAccepted':True,
+            'idempotencyKey':checkout_key,
+            'items':[{'productId':'c0000000-0000-4000-8000-000000000001','quantity':1,'sku':None}],
+        },separators=(',',':'))
+        service_checkout = f"BEGIN; SET LOCAL ROLE service_role; SELECT subtotal_cents||':'||replayed FROM public.create_checkout_order('{payload}'::jsonb); COMMIT;"
+        check(db,'CR-010C public order created with server price',
+              service_checkout,'900:false')
+        check(db,'CR-010C stock reservation is atomic',
+              f"SELECT on_hand||':'||allocated FROM inventory WHERE product_id={checkout_product}",'5:1')
+        check(db,'CR-010C retry replays same real order',
+              service_checkout,'900:true')
+        check(db,'CR-010C retry does not insert another order',
+              f"SELECT count(*) FROM orders WHERE idempotency_key='{checkout_key}'",'1')
+        checkout_id = f"(SELECT id FROM orders WHERE idempotency_key='{checkout_key}')"
+        check(db,'CR-010C AAL1 operator cannot cancel order',
+              actor('operator',f"SELECT * FROM public.transition_checkout_order({checkout_id},1,'cancelado','test')",'aal1'),
+              error='AAL2 order authorization required')
+        check(db,'CR-010C AAL2 operator cancels and releases reservation',
+              actor_commit('operator',f"SELECT status||':'||version FROM public.transition_checkout_order({checkout_id},1,'cancelado','test')",'aal2'),
+              'cancelado:2')
+        check(db,'CR-010C cancel restores stock',
+              f"SELECT on_hand||':'||allocated FROM inventory WHERE product_id={checkout_product}",'5:0')
+        check(db,'CR-010C terminal status cannot transition again',
+              actor('operator',f"SELECT * FROM public.transition_checkout_order({checkout_id},2,'confirmado','invalid')",'aal2'),
+              error='invalid order status transition')
         # service_role NÃO consegue DELETE em order_items (trigger append-only
         # rejeita a mutação). Usamos transação explícita com ROLLBACK e, após a
         # tentativa bloqueada, verificamos que o registro continua intacto.

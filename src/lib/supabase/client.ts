@@ -53,53 +53,70 @@ type SessionState =
 
 let cached: SessionState = { status: "loading", session: null };
 const listeners = new Set<() => void>();
+let unsubscribeAuth: (() => void) | null = null;
+let subscriptionGeneration = 0;
 
-function emit() {
-  for (const l of listeners) l();
-}
-
-function subscribe() {
-  if (listeners.size > 0) return () => {};
-  // Install listener once, when the first subscriber arrives.
-  if (isSupabaseConfigured()) {
-    const supabase = getSupabase();
-    supabase.auth.getSession().then(({ data }) => {
-      cached = data.session
-        ? { status: "authenticated", session: data.session }
-        : { status: "unauthenticated", session: null };
-      emit();
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      cached = session
-        ? { status: "authenticated", session }
-        : { status: "unauthenticated", session: null };
-      emit();
-    });
-    return () => {
-      data.subscription.unsubscribe();
-    };
+function publishSession(session: Session | null): void {
+  if (session) {
+    if (cached.status === "authenticated" && cached.session === session) return;
+    cached = { status: "authenticated", session };
+  } else {
+    if (cached.status === "unauthenticated") return;
+    cached = { status: "unauthenticated", session: null };
   }
-  // No config: treat as unauthenticated (onboarding routes will error out).
-  cached = { status: "unauthenticated", session: null };
-  return () => {};
+  for (const listener of listeners) listener();
 }
 
-/** Hook que expõe a sessão atual (read-only). Não executa redirect. */
+function startSessionListener(): void {
+  const generation = ++subscriptionGeneration;
+  if (!isSupabaseConfigured()) {
+    publishSession(null);
+    return;
+  }
+
+  const supabase = getSupabase();
+  let authEventReceived = false;
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (generation !== subscriptionGeneration) return;
+    authEventReceived = true;
+    publishSession(session);
+  });
+  unsubscribeAuth = () => data.subscription.unsubscribe();
+
+  // INITIAL_SESSION usually initializes the store. getSession is a fallback
+  // for clients that do not emit it immediately; never overwrite a newer event.
+  void supabase.auth.getSession().then(({ data: result, error }) => {
+    if (generation !== subscriptionGeneration || authEventReceived) return;
+    publishSession(error ? null : result.session);
+  }).catch(() => {
+    if (generation === subscriptionGeneration && !authEventReceived) {
+      publishSession(null);
+    }
+  });
+}
+
+function subscribeSession(listener: () => void): () => void {
+  const first = listeners.size === 0;
+  listeners.add(listener);
+  if (first) startSessionListener();
+
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      ++subscriptionGeneration;
+      unsubscribeAuth?.();
+      unsubscribeAuth = null;
+      // Do not mutate cached on unmount. useSyncExternalStore requires a
+      // stable snapshot across React re-renders and StrictMode subscriptions.
+    }
+  };
+}
+
+function getSessionSnapshot(): SessionState {
+  return cached;
+}
+
+/** Hook que expõe a sessão atual sem reiniciar a autenticação ao digitar. */
 export function useSession(): SessionState {
-  return useSyncExternalStore(
-    (onChange) => {
-      listeners.add(onChange);
-      const unsub = subscribe();
-      return () => {
-        listeners.delete(onChange);
-        if (listeners.size === 0) {
-          unsub();
-          cached = { status: "loading", session: null };
-          _client = null; // drop singleton for easier HMR / resubscribes
-        }
-      };
-    },
-    () => cached,
-    () => cached,
-  );
+  return useSyncExternalStore(subscribeSession, getSessionSnapshot, getSessionSnapshot);
 }

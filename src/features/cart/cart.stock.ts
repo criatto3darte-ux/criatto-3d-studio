@@ -9,17 +9,46 @@ export function productQuantityLimit(product: Product): number {
   return product.availability === "sob-demanda" ? MAX_ITEM_QUANTITY : Math.max(0, product.stock);
 }
 
-export function quantityForProduct(items: CartItem[], productId: string, excludingKey?: string): number {
-  return items.reduce((sum, item) => sum + (item.productId === productId && item.key !== excludingKey ? item.quantity : 0), 0);
+export function quantityForProduct(
+  items: CartItem[],
+  productId: string,
+  excludingKey?: string,
+): number {
+  return items.reduce(
+    (sum, item) =>
+      sum + (item.productId === productId && item.key !== excludingKey ? item.quantity : 0),
+    0,
+  );
 }
 
-export function availableQuantity(items: CartItem[], product: Product, excludingKey?: string): number {
+export function availableQuantity(
+  items: CartItem[],
+  product: Product,
+  excludingKey?: string,
+): number {
   const limit = productQuantityLimit(product);
-  return product.availability === "sob-demanda" ? limit : Math.min(MAX_ITEM_QUANTITY, Math.max(0, limit - quantityForProduct(items, product.id, excludingKey)));
+  return product.availability === "sob-demanda"
+    ? limit
+    : Math.min(
+        MAX_ITEM_QUANTITY,
+        Math.max(0, limit - quantityForProduct(items, product.id, excludingKey)),
+      );
 }
 
 export function validVariants(product: Product, variants: Record<string, string>): boolean {
-  return Object.entries(variants).every(([group, label]) =>
-    product.variants.find((g) => g.name === group)?.options.some((o) => o.label === label),
-  ) && product.variants.every((g) => g.options.some((o) => o.label === variants[g.name]));
+  const matchesVisibleOptions = Object.entries(variants).every(([group, label]) =>
+    product.variants
+      .find((variantGroup) => variantGroup.name === group)
+      ?.options.some((option) => option.label === label),
+  );
+  const hasRequiredSelections = product.variants
+    .filter((group) => group.required !== false)
+    .every((group) => group.options.some((option) => option.label === variants[group.name]));
+  if (!matchesVisibleOptions || !hasRequiredSelections) return false;
+  if (product.variantCombinations === undefined) return true;
+  return product.variantCombinations.some(
+    (combination) =>
+      Object.keys(combination.selections).length === Object.keys(variants).length &&
+      Object.entries(combination.selections).every(([group, label]) => variants[group] === label),
+  );
 }

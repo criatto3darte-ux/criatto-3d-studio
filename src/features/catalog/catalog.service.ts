@@ -1,56 +1,67 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listPublishedBanners } from "@/features/catalog/banners.service";
 import type { Category, Product } from "@/shared/types/catalog";
-import { useDemoData } from "@/features/demo-data/repository";
-import { activeBanner, publicCategories, publicProducts } from "@/features/demo-data/rules";
+import { readPublicStoreSettings, DEFAULT_REAL_SETTINGS } from "@/features/catalog/store-settings.service";
+import { useRemoteCatalog } from "@/features/catalog/supabase-catalog";
 import type { DemoBanner, StoreSettings } from "@/features/demo-data/model";
-import { resolveContactSettings } from "@/config/contacts";
 
 export interface StoreCatalog {
   products: Product[];
   categories: Category[];
+  state: "loading" | "ready" | "error" | "unconfigured";
+  error: string | null;
   bySlug(slug: string): Product | undefined;
   featured(): Product[];
   newest(): Product[];
   categoryName(slug: string): string;
 }
 
-/** Public catalog: only active products in active categories (shared with the admin data layer). */
+/** Public catalog comes only from Supabase's narrow public projections. */
 export function useStoreCatalog(): StoreCatalog {
-  const data = useDemoData();
+  const snapshot = useRemoteCatalog();
   return useMemo(() => {
-    const products = publicProducts(data);
-    const categories = publicCategories(data);
-    const allCats = data.categories;
+    const products = [...snapshot.products];
+    const categories = [...snapshot.categories];
     return {
       products,
       categories,
-      bySlug: (slug) => products.find((p) => p.slug === slug),
-      featured: () => products.filter((p) => p.featured),
-      newest: () => products.filter((p) => p.badge === "Novo"),
-      categoryName: (slug) => allCats.find((c) => c.slug === slug)?.name ?? "Sem categoria",
+      state: snapshot.state,
+      error: snapshot.error,
+      bySlug: (slug) => products.find((product) => product.slug === slug),
+      featured: () => products.filter((product) => product.featured),
+      newest: () => products.filter((product) => product.badge === "Novo"),
+      categoryName: (slug) =>
+        categories.find((category) => category.slug === slug)?.name ?? "Sem categoria",
     };
-  }, [data]);
+  }, [snapshot]);
 }
 
+/** Public contact settings are loaded from the limited Supabase public view. */
 export function useStoreSettings(): StoreSettings {
-  const data = useDemoData();
-  // Aplica fallback para os canais oficiais: se o admin/demo não preencheu
-  // WhatsApp/e-mail/redes, usamos a configuração oficial hardcoded.
-  // Quando a loja estiver conectada ao Supabase, esta função continuará
-  // funcionando porque o StoreSettings persistido terá precedência.
-  const resolved = resolveContactSettings(data.settings);
-  return {
-    ...data.settings,
-    whatsappNumber: resolved.whatsappNumber,
-    email: resolved.email,
-    instagram: resolved.instagram,
-    tiktok: resolved.tiktok,
-    address: resolved.address,
-    serviceMessage: resolved.serviceMessage,
-    offersNationalShipping: resolved.offersNationalShipping,
-  };
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_REAL_SETTINGS);
+  useEffect(() => {
+    let active = true;
+    void readPublicStoreSettings().then((value) => {
+      if (active) setSettings(value);
+    }).catch(() => {
+      if (active) setSettings(DEFAULT_REAL_SETTINGS);
+    });
+    return () => { active = false; };
+  }, []);
+  return settings;
 }
 
+/** Read the public-only banner view; never show demo banners in live mode. */
 export function useHeroBanner(): DemoBanner | undefined {
-  return activeBanner(useDemoData().banners);
+  const [banner, setBanner] = useState<DemoBanner | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    void listPublishedBanners().then((items) => {
+      if (active) setBanner(items[0]);
+    }).catch(() => {
+      if (active) setBanner(undefined);
+    });
+    return () => { active = false; };
+  }, []);
+  return banner;
 }

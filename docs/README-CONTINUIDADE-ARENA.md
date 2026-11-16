@@ -1,116 +1,53 @@
-# README-CONTINUIDADE-ARENA.md — CR-009D.2 (runbook final, pré-autorização)
+# CRIATTO 3D — Continuidade de engenharia
 
-**Última atualização:** 2026-11-15
-**Branch:** `cr-009c1-safe-rollback` (head do PR #8)
-**PR:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/8
-**Último commit:** `6846876` / `CR-009D.2*` — docs + script de limpeza segura do snapshot, runbook final
-**CI aprovado (últimos 3 runs, todos success):** runs 43676186796, 43676511126, 43677090137 (Postgres 17 local + vitest + eslint + tsc)
-- Static + unit: ✅ PASS
-- PostgreSQL 17 local (RLS + migration integrity + rollback cycle): ✅ PASS (708 assertions)
-- Pacote (ZIP artifact): skipping (apenas para pushes `integration/*`, não PRs)
+**Atualizado:** 2026-11-15 (UTC) · **Etapa:** CR-010B.2, preparação da ativação comercial — testes PG17 passaram
+**Branch ativo/fixo:** `arena/1f32d4fc-criatto-3d-studio`
+**PR #7:** https://github.com/criatto3darte-ux/criatto-3d-studio/pull/7
 
-## Documentos de referência (atuais)
-- `docs/CR-009C-REPORT.md` — histórico CR-009C e conserto do harness PG17
-- `docs/CR-009D-PRECHECK-REPORT.md` — pré-check de leitura e bloqueios (bloqueio do callback público)
-- `docs/CR-009D.1-BACKUP-AND-ACTIVATION-PLAN.md` — backup comprovado e etapas E1-E11
-- **`docs/CR-009D.2-FINAL-RUNBOOK.md`** — runbook definitivo para autorização (este é o documento operacional principal)
-- `docs/cr009d-backup/README.md` — explicação backup/rollback, escopo de restauração, tratamento 0011 vs 0012
-- Scripts SQL em `docs/sql/`:
-  - `01-precheck-capture-state.sql` (escrita — cria snapshot `private.cr009c1_*`)
-  - `02-postcheck-verify.sql` (leitura — verifica estado pós-0011+0012)
-  - `03-rollback-cr008c-aal.sql` (escrita — reverte 0011 a partir do snapshot; preserva 0012)
-  - `04-cleanup-cr009c1-snapshot.sql` (escrita — remove APENAS as 5 tabelas cr009c1_*, sem DROP SCHEMA)
+## Estado das branches e integração
 
-## Pontos-chave (D.2)
-- Plano Supabase Free **não tem backups automáticos restauráveis**; backup por migrations 0001-0010 + rollback transacional 03 é o método provado.
-- **Não usar `DROP SCHEMA private CASCADE`** — limpeza seletiva via `04-cleanup`.
-- Rollback 03 reverte só a 0011; a 0012 (reparo PG17 de `check_private_media`) é preservada intencionalmente.
-- Todas as falhas preservam os controles de segurança (RLS, triggers append-only, grants); nenhum caminho de rollback concede privilégios extra.
-- Teste PG17 é provado pelo CI (imagem `postgres:17`), 708 assertions.
-- Callback de homolog: `http://localhost:5173/auth/callback`; callback público ainda não serve a rota.
+- Antes da retomada CR-010B.1, HEAD ativo e `origin/arena/1f32d4fc-criatto-3d-studio` eram `5e42fb0feb627f1ffe72d9fa5031485a58e97ffe` (`docs(CR-010B): clarify session branch and push status`).
+- A branch do PR #7 (`arena/81a1f1ff-criatto-3d-studio`) e `origin/pr/7` apontavam para `bdf895be12d110761c35d6a77faa92fdaeedc7bb`; era o merge-base. Não havia commits exclusivos na branch 81. O trabalho CR-010B recente já estava no branch ativo e não havia arquivos divergentes da outra branch a sobrescrever.
+- Commits de CR-010B no ativo: `43ddb43`, `84457bf`, `0a8d7ab`, `5e42fb0`. CR-010B.1: `c4910e9` implementação, `dfb5f8b` relatório/runbook, `c0f567d` diagnóstico CI, `a3d3f66` correção de teste diferido. Relatório detalhado: `docs/CR-010B1-REPORT.md`.
+- PR #7 permanece aberto contra `main`, head antigo `bdf895b`, mergeable/CLEAN no momento da consulta. Seus checks verdes pertencem àquele HEAD, não às mudanças novas.
+- PR dependente #9 está em draft do branch ativo para base `arena/81a1f1ff-criatto-3d-studio` (head CR-010B.2 `6e431a6`; documentação final pode avançar esse hash); pode ser integrado à branch base após revisão, atualizando então o head do #7. #7 ainda permanece no head `bdf895b`: não foi atualizado diretamente. A sessão exige permanecer no branch ativo fixo; não houve force-push, alteração em `main` ou envio de commits à branch 81.
 
-## Pendências reais de ativação remota
-1. Aguardar **autorização explícita** do usuário para executar E2–E5 (precheck + 0011 + 0012 + postcheck), depois E7 (hook), depois E8 (URL localhost).
-2. SMTP e convite ao proprietário são CR/autorizações separadas.
-3. Deploy produção em `admin.criatto3d.art.br` com fallback SPA + HTTPS é Fase B (CR futura).
+## Supabase remoto — limites mantidos
 
-## Correções efetuadas nesta iteração (CR-009C.3)
+Projeto de homologação `ugwuxczcqlrdjkpjsdqb` (`criatto3d-homolog`), `sa-east-1`, Postgres 17.11. Leitura somente na CR-010B.3 confirmou as 13 migrations até `20261115103000_cr009f_hook_type_fix_and_media_aal2`; `inventory.minimum_on_hand` e os quatro comandos comerciais continuam ausentes; policies/grants AAL2 existentes e triggers permanecem. Nenhuma migration, bucket, policy ou dado foi escrito remotamente. Aplicação CR-010B.3 **bloqueada antes de DDL**: não foi possível comprovar backup restaurável nem executar com timeout verificável no conector. Relatório: `docs/CR-010B3-REPORT.md`; auditoria B.2: `docs/CR-010B2-SUPABASE-ACTIVATION-REVIEW.md`.
 
-1. **Falha real identificada:** `service cannot mutate event tables` (linha 605/622) executava `SET ROLE service_role; DELETE FROM order_items WHERE id=...`. No PostgreSQL 17 o trigger `immutable_event` (`public.reject_mutation()`) dispara ANTES da checagem de GRANT e levanta `RAISE EXCEPTION 'append-only relation: %', TG_TABLE_NAME USING ERRCODE='23514'`, ao passo que a assertion esperava apenas o literal `permission denied`. O bloqueio era real e correto, mas o harness não reconhecia o texto do trigger como um "denial" válido.
-2. **Reconhecimento de negações por camada** em `check()`: além de `permission denied` e `row-level security policy`, o harness agora aceita como bloqueio bem-sucedido:
-   - `append-only relation` (trigger de tabelas de evento imutáveis)
-   - `violates check constraint` (CHECKs de domínio — preço, estoque, URLs, total_invariant, singleton settings, percentual de cupom)
-   - `violates foreign key constraint` (integridade referencial, ex. FKs compostas)
-   - `violates unique constraint` (idempotency keys, PKs, UKs)
-   - Mensagens de negócio: `last active owner`, `private attachment cannot be published`, `invalid active variant`, `invalid social link`, `payment requires confirmed`, `item quantity bound`.
-   Nenhum desses enfraquece a segurança — todos exigem `rc != 0` E a presença de um token conhecido de negação; um erro inesperado ainda falha o teste.
-3. **Transação explícita + verificação de persistência:** o teste `service cannot mutate event tables` agora roda em `BEGIN; SET LOCAL ROLE service_role; DELETE …; ROLLBACK;` (não depende de autocommit) e foi acrescentada a assertion `service delete attempt preserves order_item` que confere `SELECT count(*) FROM order_items WHERE id=… = 1` após a tentativa bloqueada — ou seja, o registro continua intacto (o trigger aborta a transação, nada é apagado).
-4. **Nenhuma migration/trigger/policy/grant foi alterada**; apenas o harness foi ajustado para reconhecer a forma correta de erro em PG17.
+- Nenhum usuário, convite, bootstrap, produto/categoria/movimento de teste, bucket, objeto, configuração Auth, policy ou migration foi criado/aplicado remotamente.
+- Sem `service_role` no navegador. Checkout, pedidos e pagamentos continuam desabilitados; nenhuma loja oficial foi substituída e nenhum deploy/FTP/Locaweb foi executado.
+- Alterações administrativas só podem ser usadas por sessão Auth + MFA AAL2 e políticas existentes. Testes remotos CRUD não foram executados porque não há usuário admin, conforme restrições.
 
-## Resultado dos testes (pós-f41647c)
+## Implementação local atual
 
-### Local
-- **Vitest:** 16 arquivos, **187 testes PASS** (22.8s).
-- **ESLint (escopo CI):** 0 erros.
-- **TypeScript (`tsc --noEmit`):** 0 erros.
-- **Build (`vite build`):** OK (773 kB bundle, warning de chunk size pré-existente).
-- **Credential scan:** 0 chaves/tokens hardcoded (as referências a `service_role` em `docs/*.md` são sobre o papel PostgreSQL, não a chave secreta).
-- **Harness PostgreSQL (pgserver 16.2 embutido, com casts PG17):** **708 assertions PASS**, 2 clean rebuilds idênticos, simulação de resume (0001–0005 + resto) byte-idêntica, ciclos snapshot→0011→rollback→reapply a funcionar, testes AAL1 negado / AAL2 permitido, isolamento entre personas, media hardening preservado (owner não consegue `UPDATE media_assets` bruto; service_role retém updates de metadata confiáveis), tabelas append-only (DELETE/UPDATE/TRUNCATE negados em order_items / order_status_history / payments / inventory_movements / custom_request_history / admin_audit_events), tentativa de DELETE do service_role em order_items bloqueada com registro preservado (count=1).
+- Vitrine, detalhe, carrinho e categorias lêem as projeções Supabase públicas sem fallback comercial de seed/LocalStorage; loading/erro/vazio são explícitos. Seleções públicas são reconciliadas com combinações de SKU publicadas; combinação inexistente não é aceita. Imagens continuam vazias até Storage seguro.
+- Administração de produto persiste campos que já existem (`products`): CRUD, publicação, preço/promoção, destaque e arquivamento seguro. Categorias: CRUD/ativação/exclusão com FK e atualização da vitrine.
+- Reordenação de categoria usa agora comando transacional com versões esperadas; não são mais dois updates independentes.
+- Administração de variantes/SKU carrega grupos/opções/combinações e as grava via comando atômico em migration local. Editor usa JSON avançado, valida SKU único e bloqueia alterações que removam variante referenciada por pedido.
+- Estoque segue leitura do saldo/histórico pela RLS. Foi acrescentado no código um ajuste por movimento append-only com lock, versão otimista, chave idempotente, validação de saldo/alocação, motivo, AAL2 e papel. Estoque mínimo é por produto. **Essas operações ainda não existem no remoto**: dependem da migration local aditiva.
+- Imagens/upload/galeria ainda não estão implementados: homolog não tem bucket e `media_assets` reserva criação/verificação de metadados a canal confiável; não criar upload direto no navegador nem abrir policy para contornar isso.
 
-### CI (GitHub Actions, run 43676186796)
-| Job | Resultado |
-|---|---|
-| Static + unit (bun install + tsc + eslint + vitest) | ✅ PASS (41s) |
-| PostgreSQL 17 local (provision + harness com 12 migrations + rollback cycle + 708 assertions) | ✅ PASS (53s) |
-| Pacote (ZIP artifact) | ⏭ skipping (apenas para push em `integration/*`, não PR) |
+## Migration e rollback local CR-010B.1 / B.2
 
-## Validação final (conforme checklist solicitado)
+`supabase/migrations/20261115120000_cr010b1_catalog_stock_commands.sql` continua sem aplicação remota. Leitura remota atual confirmou schema e ausência das quatro funções. A proposta adiciona apenas `inventory.minimum_on_hand` e quatro comandos transacionais; sem tabela, bucket, trigger ou policy nova. SHA fixado no harness PG17. Rollback específico agora está em `supabase/rollback/20261115120000_cr010b1_catalog_stock_commands.sql`; bloqueia se qualquer minimum for diferente de zero. Harness foi ampliado para aplicar/recusar/rollback e comparar schema/grants/policies; CI run `43753920274` passou nos jobs Static + unit e PostgreSQL 17.
 
-- ✅ Migrations 0001–0010 intactas (não foram editadas nesta CR nem na retomada; hashes pinados no harness correspondem aos commits do PR #6).
-- ✅ Migration 0011 (`20261114133000_cr008c_jwt_claims_and_aal.sql`) preservando hardening de mídia e pedidos:
-  - `media_assets` permanece somente leitura para `authenticated` (GRANT SELECT; REVOKE INSERT/UPDATE/DELETE); writes só via `service_role`/canal confiável (teste `owner cannot write media (trusted channel)` PASS, `service retains trusted metadata updates` PASS).
-  - `orders`/`customers`/`payments`/`inventory`/`custom_requests` só têm GRANT SELECT para `authenticated`; INSERT/UPDATE/DELETE permanecem reservados a RPCs/service_role (testes `owner/editor/operator/finance cannot raw order write` PASS, `service cannot mutate event tables` PASS).
-  - Policies administrativas foram reescritas idempotentemente para exigir `AND public.require_aal2()`.
-- ✅ Migration incremental 0012 (`20261114133100_cr009c1_pg17_advisory_lock.sql`) validada: redefine `check_private_media()` com chave `pg_advisory_xact_lock(7007, (bigint&0x7fffffff)::int)` (assinatura de 2 argumentos correta para PG17), coberta por testes de publicação de mídia privada (todos PASS).
-- ✅ Ciclo aplicação → rollback → reaplicação (bloco `cr009c1_rollback_cycle`): snapshot transacional em `private.cr009c1_*`, aplicação 0011, verificações AAL1/AAL2 em admin_profiles, execução do hook negada para authenticated, rollback restaura policies/funções/grants por comparação estrutural de fingerprints, reaplicação bem-sucedida; tudo PASS.
-- ✅ Funções `my_roles()` / `custom_access_token_hook(jsonb)` / `require_aal2()` restauradas após rollforward, com grants corretos (hook só executável por service_role+supabase_auth_admin; testes `anon/auth exec custom_access_token_hook denied` PASS).
-- ✅ AAL1/AAL2: para owner/editor/operator/finance, SELECT em admin_profiles/orders/customers/payments é negado em aal1, permitido em aal2 conforme a matriz; `aal2 inactive denied orders` PASS; `my_roles()` retorna `['proprietario']` para owner, `[]` para roleless.
-- ✅ Isolamento: proprietário vê tudo, editor só catálogo/cupons/banners, operador só operação, financeiro só payments/finance_order_summary, roleless/inactive/revoked não veem tabelas administrativas; todos PASS.
-- ✅ Tabelas append-only (DELETE/UPDATE/TRUNCATE negados via trigger `immutable_event`): testes `append-only DELETE/UPDATE/TRUNCATE <table>` PASS para order_items, order_status_history, payments, inventory_movements, custom_request_history, admin_audit_events; DELETE do service_role também é bloqueado pelo trigger.
-- ✅ TypeScript/Vitest/ESLint/build: todos PASS.
-- ✅ GitHub Actions inteiramente verde (Static+unit e PostgreSQL 17).
+## Validação desta etapa
 
-## Estado do Supabase remoto (ugwuxczcqlrdjkpjsdqb) — SOMENTE LEITURA, inalterado nesta CR
+- `npx tsc --noEmit`: passou.
+- Vitest: 197/197 passaram (18 arquivos). Inclui mapeamento e validação de combinação, mas não comprova CRUD comercial, armazenamento remoto ou sessão AAL2 real.
+- ESLint com `--max-warnings 0` nos arquivos TypeScript alterados: passou; não houve formatação global. A dívida do lint global do repositório permanece separada.
+- `npm run build`: passou com warning de chunk JS (824.51 kB > 500 kB).
+- Credential scan passou; autotestes 23/23; `git diff --check`, parser de SQL e compilação de sintaxe Python passaram.
+- Harness PostgreSQL 17 testa migration, persistência commitada, RLS/AAL2, SKU/variantes, publicação em view, categoria, concorrência/idempotência de estoque e mínimo. CR-010B.2 acrescentou apply/rollback em DB descartável, com recusa quando há minimum diferente de zero e fingerprint de schema/policies/grants restaurado. Sandbox sem `psql`, servidor PG17, Docker/Podman.
+- GitHub Actions run `43753920274` no head `6e431a6`: Static + unit **PASS** e PostgreSQL 17 local (RLS + migration integrity, incluindo novo ciclo de apply/rollback) **PASS**; pacote de publicação foi skipped. O primeiro rascunho do teste de rollback falhou ao concatenar o array de roles no fingerprint; cast corrigido e rerun passou. Runs anteriores confirmam a migration comercial independente.
+- #9 ainda é draft; o CI green não torna a migration remota aplicada nem conclui Storage/imagens. Os checks antigos de PR #7 continuam sendo do head `bdf895b`.
+- `npm run lint` global tinha dívida preexistente ampla (860 problemas, majoritariamente Prettier); não formatar o repo inteiro para limpar esse baseline.
 
-| Item | Valor |
-|---|---|
-| Projeto | `ciatto3d-homolog` (sa-east-1, Postgres 17.11, ACTIVE_HEALTHY) |
-| Migrations aplicadas | 0001–0010 (10) |
-| Migration pendente | 0011 (`cr008c_jwt_claims_and_aal`, hash `18acfd79…689ea`) |
-| Repair incremental | 0012 (`cr009c1_pg17_advisory_lock`, hash `6ecf456…1af0`) |
-| Usuários cadastrados | 0 |
-| Buckets Storage | 0 |
-| Auth.signup | disable_signup=true |
-| Custom Access Token Hook | desabilitado |
-| Site URL / redirects | http://localhost:3000 / vazio |
-| Convite Paulo Roberto (criatto3d.arte@gmail.com) | **não enviado** |
+## Gates pendentes e próxima etapa
 
-**Restrições cumpridas nesta CR:**
-- ❌ Nenhuma migration/escrita executada no remoto.
-- ❌ Hook não ativado; Auth config não alterada.
-- ❌ Nenhum convite enviado, nenhum bootstrap, nenhum bucket criado.
-- ❌ DNS/FTP/Locaweb/publicação não tocados (https://criatto3d.art.br preserva logo, temas, catálogo, carrinho, WhatsApp 5521987640769).
-- ❌ Nenhum merge na `main`.
-
-## Pendências reais para ativação do Supabase (após aprovação)
-
-1. **Snapshot backup** no painel (Database → Backups) antes de qualquer escrita remota.
-2. **Executar `docs/sql/01-precheck-capture-state.sql`** no SQL Editor (service_role) e salvar todo o output (blocos `policy_ddl`, grants, funções).
-3. **Aplicar migration 0011 + repair 0012** no SQL Editor (transação única).
-4. **Executar `docs/sql/02-postcheck-verify.sql`** — confirmar funções/grants/policies com `require_aal2()`, contagem de tabelas RLS+FORCE = 27, simulações SET LOCAL aal1/aal2.
-5. **Ativar Custom Access Token Hook** no painel Auth → Hooks → Custom Access Token → `public.custom_access_token_hook` (Postgres function).
-6. **Configurar URL Configuration** — pelo menos `http://localhost:5173/auth/callback` para bootstrap local; para domínio público esperar provisionamento HTTPS.
-7. **Validar JWT real** com sessão emitida pelo GoTrue (primeiro convite de teste): aal1 com `roles:[]`, aal2 com `roles` corretas após TOTP.
-8. **Pendência de homolog HTTPS:** `admin.criatto3d.art.br` (ou preview) precisa ser provisionado na Locaweb/Nginx apontando para build estático + `VITE_SUPABASE_*` ANTES de convidar Paulo Roberto em URL de produção. O bootstrap inicial local via `bun run dev` + callback `http://localhost:5173/auth/callback` é válido para o primeiro dono.
-9. **Confirmar SMTP** do Supabase enviando e-mails de convite antes do convite "para valer".
-10. **Bootstrap do proprietário Paulo Roberto** (`INSERT INTO admin_profiles + user_roles` via service_role, convite por e-mail, senha, MFA TOTP, AAL2) — CR separada, somente após callback HTTPS acessível e hook validado.
+1. Aguardar revisão/aprovação e integração do PR dependente #9 à branch base. Não atualizar nem chamar PR #7 de integrado enquanto o head dele continuar `bdf895b`.
+2. A migration local passou o harness PG17 do CI, mas aplicação em homologação continua exigindo autorização explícita; nenhum comando local aplica automaticamente ao remoto.
+3. Para mídia, obter autorização/decisão de bucket, visibilidade, tamanho/MIME, validação, policies e canal confiável de upload/registro/limpeza órfã. A ausência de Storage impede concluir CR-010B comercialmente.
+4. CR-010C só depois da decisão de catálogo/estoque e contrato do pedido: implementar criação de pedidos idempotente e validação server-side, com testes de concorrência/permissões. Não iniciar pagamento nem criar pedido nesta etapa.

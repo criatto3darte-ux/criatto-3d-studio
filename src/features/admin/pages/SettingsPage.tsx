@@ -1,43 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { RotateCcw, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Input } from "@/shared/ui/Input";
 import { ThemeSegmented } from "@/shared/ui/ThemeToggle";
-import { demoRepository, useDemoData, useDemoStorageStatus } from "@/features/demo-data/repository";
+import { DEFAULT_REAL_SETTINGS, readAdminStoreSettings, saveRealStoreSettings } from "@/features/catalog/store-settings.service";
 import { validateSettings, type Errors } from "@/features/demo-data/rules";
 import type { StoreSettings } from "@/features/demo-data/model";
-import { Check, ConfirmDialog, TextareaField, adminStyles as s } from "../ui/AdminUI";
+import { Check, TextareaField, adminStyles as s } from "../ui/AdminUI";
 
 export function SettingsPage() {
-  const data = useDemoData();
-  const storageStatus = useDemoStorageStatus();
-  const [form, setForm] = useState<StoreSettings>(data.settings);
+  const [form, setForm] = useState<StoreSettings>(DEFAULT_REAL_SETTINGS);
   const [errors, setErrors] = useState<Errors>({});
+  const [version, setVersion] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const set = (p: Partial<StoreSettings>) => { setForm((f) => ({ ...f, ...p })); setSaved(false); };
 
-  function save() {
+  async function reload() {
+    setLoading(true);
+    setError("");
+    try {
+      const current = await readAdminStoreSettings();
+      setVersion(current.version);
+      setForm(current.settings);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao carregar configurações.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void reload(); }, []);
+
+  async function save() {
     setSaved(false);
-    const clean: StoreSettings = { ...form, name: form.name.trim(), whatsappNumber: form.whatsappNumber.replace(/\D/g, ""), email: form.email.trim(), instagram: form.instagram.trim(), tiktok: form.tiktok.trim(), logo: form.logo.trim() };
-    const e = validateSettings(clean);
-    setErrors(e);
-    if (Object.keys(e).length) return;
-    const persisted = demoRepository.update((d) => ({ ...d, settings: clean }));
-    setForm(clean);
-    setSaved(persisted);
+    const clean: StoreSettings = { ...form, name: form.name.trim(), whatsappNumber: form.whatsappNumber.replace(/\D/g, ""), email: form.email.trim(), instagram: form.instagram.trim(), tiktok: form.tiktok.trim(), logo: "" };
+    const validation = validateSettings(clean);
+    setErrors(validation);
+    if (Object.keys(validation).length) return;
+    setBusy(true);
+    setError("");
+    try {
+      await saveRealStoreSettings(clean, version);
+      const current = await readAdminStoreSettings();
+      setForm(current.settings);
+      setVersion(current.version);
+      setSaved(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao salvar configurações.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className={s.stack}>
-      <p className={s.muted}>Configurações salvas apenas neste navegador (demonstração). A loja pública usa os mesmos dados. Não informe contatos fictícios.</p>
+      <p className={s.muted}>Configurações oficiais persistidas no Supabase. As redes sociais aparecem na loja após salvar.</p>
+      {loading && <p role="status">Carregando configurações…</p>}
+      {error && <p role="alert">{error}</p>}
       <Card>
         <h2 className={s.h2}>Loja</h2>
         <div className={s.formGrid}>
           <Input label="Nome da loja" value={form.name} error={errors.name} onChange={(e) => set({ name: e.target.value })} />
-          <Input label="Logotipo (caminho ou https://)" placeholder="/images/logo.svg" value={form.logo} error={errors.logo} onChange={(e) => set({ logo: e.target.value })} />
+
           <Input className={s.full} label="Endereço (quando aplicável)" value={form.address} maxLength={1000} error={errors.address} onChange={(e) => set({ address: e.target.value })} />
         </div>
       </Card>
@@ -64,13 +93,10 @@ export function SettingsPage() {
         <div style={{ maxWidth: 260, marginTop: 8 }}><ThemeSegmented full /></div>
       </Card>
       <div className={s.toolbar}>
-        <Button onClick={save}><Save size={18} /> Salvar configurações</Button>
-        <Button variant="outline" onClick={() => setConfirmReset(true)}><RotateCcw size={18} /> Restaurar dados fictícios</Button>
-        <span role="status" className={s.muted}>{saved && !storageStatus.writeError && !storageStatus.recoveryRequired ? "Configurações salvas (demonstração local)." : ""}</span>
+        <Button onClick={() => void save()} disabled={busy || loading}><Save size={18} /> {busy ? "Salvando…" : "Salvar configurações"}</Button>
+        <span role="status" className={s.muted}>{saved ? "Configurações salvas no Supabase." : ""}</span>
       </div>
-      <ConfirmDialog open={confirmReset} danger title="Restaurar dados fictícios" confirmLabel="Restaurar" text="Todos os produtos, categorias, pedidos, clientes, banners, cupons e configurações voltarão ao estado inicial da demonstração. O carrinho e o tema não são afetados."
-        onCancel={() => setConfirmReset(false)}
-        onConfirm={() => { demoRepository.reset(); setForm(demoRepository.get().settings); setErrors({}); setConfirmReset(false); setSaved(false); }} />
+
     </div>
   );
 }

@@ -138,11 +138,10 @@ jobs:
           set -o pipefail
           python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log
 
-  # Job adicional: gera ZIP de publicação e disponibiliza como Artifact
-  # para download pela UI do GitHub. Roda apenas em pushes para branches
-  # integration/* (não em PRs, não em main).
+  # CR-010B.8 — isolated homologation login hotfix package.
+  # Only runs on integration/* pushes. No automatic Locaweb upload/deploy.
   pacote:
-    name: Pacote de publicação (ZIP artifact)
+    name: Pacote homologação (ZIP artifact)
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/integration/')
     runs-on: ubuntu-24.04
     needs: [static]
@@ -157,23 +156,31 @@ jobs:
       - name: Install (--frozen-lockfile)
         run: bun install --frozen-lockfile
 
-      - name: Build de produção (SPA estática)
-        run: bun run build
-
-      - name: Montar pacote
+      - name: Build homologação com publishable key pública
+        env:
+          VITE_SUPABASE_URL: https://ugwuxczcqlrdjkpjsdqb.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_D4Dwx1chy9FlFLuxvwMecg_7DpACnPf
+          VITE_APP_URL: https://homolog.criatto3d.art.br
         run: |
-          mkdir -p _pkg
-          cp -r dist/* _pkg/
-          cd _pkg
-          zip -r ../criatto3d-producao.zip .
-          cd ..
-          ls -la criatto3d-producao.zip
-          echo "SHA-256:"
-          sha256sum criatto3d-producao.zip
+          set -euo pipefail
+          test -n "$VITE_SUPABASE_URL"
+          test -n "$VITE_SUPABASE_ANON_KEY"
+          bun run build:homolog
+          test -f dist/index.html
 
-      - name: Upload artifact (ZIP para download)
+      - name: Montar ZIP apenas para homologação
+        run: |
+          set -euo pipefail
+          mkdir -p _pkg
+          cp -r dist/. _pkg/
+          cd _pkg
+          zip -qr ../criatto3d-homolog-commercial.zip .
+          cd ..
+          sha256sum criatto3d-homolog-commercial.zip
+
+      - name: Upload artifact para publicação manual
         uses: actions/upload-artifact@v4
         with:
-          name: criatto3d-producao.zip
-          path: criatto3d-producao.zip
-          retention-days: 30
+          name: criatto3d-homolog-commercial
+          path: criatto3d-homolog-commercial.zip
+          retention-days: 14
