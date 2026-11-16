@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { ImagePlus, Star, Trash2 } from "lucide-react";
+import { ImagePlus, Star, Trash2, Crop } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { invalidatePublicCatalog } from "@/features/catalog/supabase-catalog";
@@ -8,6 +8,8 @@ import {
   uploadCatalogImage, uploadCatalogImageFromUrl, type CatalogImage,
 } from "@/features/catalog/catalog-media";
 import styles from "./ProductGallery.module.css";
+import { ImageCropEditor } from "./ImageCropEditor";
+import { fetchPublicImageFile } from "@/features/catalog/catalog-media";
 
 interface Props {
   productId: string;
@@ -18,6 +20,8 @@ export function ProductGallery({ productId, productName }: Props) {
   const fileId = useId();
   const [photos, setPhotos] = useState<CatalogImage[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [replacePhoto, setReplacePhoto] = useState<CatalogImage | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [alt, setAlt] = useState(productName);
   const [loading, setLoading] = useState(true);
@@ -57,6 +61,20 @@ export function ProductGallery({ productId, productName }: Props) {
     }
   }
 
+  async function editExisting(photo: CatalogImage) {
+    setBusy(true);
+    setError("");
+    try {
+      const candidate = await fetchPublicImageFile(photo.url);
+      setReplacePhoto(photo);
+      setEditingFile(candidate);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível abrir esta imagem.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className={styles.gallery} aria-label="Fotos do produto">
       <h3>Fotos do produto</h3>
@@ -82,6 +100,10 @@ export function ProductGallery({ productId, productName }: Props) {
               >
                 <Star size={14} /> {photo.primary ? "Principal" : "Definir principal"}
               </Button>
+              <Button size="sm" variant="outline" disabled={busy}
+                onClick={() => void editExisting(photo)}>
+                <Crop size={14}/> Ajustar
+              </Button>
               <Button
                 size="sm" variant="outline"
                 disabled={busy}
@@ -100,6 +122,27 @@ export function ProductGallery({ productId, productName }: Props) {
         ))}
       </div>
       {!loading && photos.length === 0 && <p className={styles.hint}>Nenhuma foto cadastrada.</p>}
+      {editingFile && (
+        <ImageCropEditor file={editingFile} shape="product"
+          onCancel={() => { setEditingFile(null); setReplacePhoto(null); }}
+          onApply={(adjusted) => {
+            if (!replacePhoto) {
+              setFile(adjusted);
+              setImageUrl("");
+              setEditingFile(null);
+              return;
+            }
+            const old = replacePhoto;
+            setEditingFile(null);
+            setReplacePhoto(null);
+            void execute(async () => {
+              const newId = await uploadCatalogImage(productId, adjusted, old.alt || productName);
+              if (old.primary) await makePrimaryCatalogImage(productId, newId);
+              await deleteCatalogImage(productId, old.mediaId);
+            }, "Imagem reenquadrada e substituída.");
+          }}
+        />
+      )}
       <div className={styles.upload}>
         <label htmlFor={fileId}>Adicionar imagem</label>
         <input
@@ -124,6 +167,12 @@ export function ProductGallery({ productId, productName }: Props) {
             }
           }}
         />
+        {file && !editingFile && (
+          <Button variant="outline" disabled={busy}
+            onClick={() => { setReplacePhoto(null); setEditingFile(file); }}>
+            <Crop size={16}/> Ajustar posição e zoom
+          </Button>
+        )}
         <Input
           label="Texto alternativo da foto" maxLength={200} value={alt}
           onChange={(event) => setAlt(event.target.value)}
