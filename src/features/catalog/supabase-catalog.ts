@@ -675,7 +675,7 @@ export async function saveAdminProduct(input: {
   featured: boolean;
   active: boolean;
   badge: "novo" | "destaque" | "promocao" | null;
-}): Promise<void> {
+}): Promise<string> {
   const fields = {
     slug: input.slug.trim(),
     name: input.name.trim(),
@@ -706,5 +706,8 @@ export async function saveAdminProduct(input: {
   throwSafe(result.error, "Não foi possível salvar o produto.");
   if (input.id && result.data?.length !== 1)
     throw new Error("O produto foi alterado em outra sessão. Atualize a lista e tente novamente.");
+  const id = result.data?.[0]?.id;
+  if (typeof id !== "string") throw new Error("O banco não confirmou o ID do produto.");
   invalidatePublicCatalog();
+  return id;
 }
