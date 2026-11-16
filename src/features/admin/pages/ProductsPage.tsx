@@ -447,8 +447,8 @@ export function ProductsPage() {
 
       <p role="note">
         O catálogo público expõe somente disponibilidade binária; os saldos exatos são exclusivos do
-        painel de estoque. A edição de variantes, combinações e SKUs requer a migration transacional
-        CR-010B.1 aprovada e aplicada no Supabase; imagens/galeria seguem dependentes de Storage.
+        painel de estoque. A edição de variantes, combinações e SKUs utiliza a migration transacional
+        CR-010B.1 já aplicada no Supabase. A galeria depende da ativação do Storage.
       </p>
       <Modal
         open={!!draft}
@@ -635,8 +635,8 @@ export function ProductsPage() {
                 <>
                   <p className={s.muted}>
                     Formato JSON para grupos de atributos, opções e combinações de SKU. A gravação
-                    depende da migration transacional CR-010B.1, ainda não aplicada no Supabase;
-                    após aprovação, ela preserva bloqueios de variantes já referenciadas em pedidos.
+                    utiliza a migration transacional CR-010B.1 já aplicada no Supabase;
+                    o banco preserva bloqueios de variantes referenciadas em pedidos.
                   </p>
                   <TextareaField
                     label="Grupos e opções (JSON)"
