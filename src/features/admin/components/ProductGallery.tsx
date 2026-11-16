@@ -5,7 +5,7 @@ import { Input } from "@/shared/ui/Input";
 import { invalidatePublicCatalog } from "@/features/catalog/supabase-catalog";
 import {
   deleteCatalogImage, listAdminCatalogImages, makePrimaryCatalogImage,
-  uploadCatalogImage, type CatalogImage,
+  uploadCatalogImage, uploadCatalogImageFromUrl, type CatalogImage,
 } from "@/features/catalog/catalog-media";
 import styles from "./ProductGallery.module.css";
 
@@ -18,6 +18,7 @@ export function ProductGallery({ productId, productName }: Props) {
   const fileId = useId();
   const [photos, setPhotos] = useState<CatalogImage[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
   const [alt, setAlt] = useState(productName);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -107,22 +108,33 @@ export function ProductGallery({ productId, productName }: Props) {
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
         />
         <Input
+          label="URL pública HTTPS (alternativa ao arquivo local)"
+          type="url" inputMode="url" placeholder="https://exemplo.com/imagem.jpg"
+          value={imageUrl} disabled={busy}
+          onChange={(event) => setImageUrl(event.target.value)}
+        />
+        <Input
           label="Texto alternativo da foto" maxLength={200} value={alt}
           onChange={(event) => setAlt(event.target.value)}
         />
         <Button
-          disabled={!file || busy}
+          disabled={(!file && !imageUrl.trim()) || busy}
           onClick={() => {
-            if (!file) return;
+            if (!file && !imageUrl.trim()) return;
             void execute(async () => {
-              await uploadCatalogImage(productId, file, alt);
+              if (file) {
+                await uploadCatalogImage(productId, file, alt);
+              } else {
+                await uploadCatalogImageFromUrl(productId, imageUrl, alt);
+              }
+              setImageUrl("");
               setFile(null);
               const input = document.getElementById(fileId) as HTMLInputElement | null;
               if (input) input.value = "";
             }, "Foto enviada com sucesso.");
           }}
         >
-          <ImagePlus size={17} /> {busy ? "Enviando…" : "Enviar foto"}
+          <ImagePlus size={17} /> {busy ? "Enviando…" : file ? "Enviar foto" : "Importar imagem da URL"}
         </Button>
       </div>
     </section>
