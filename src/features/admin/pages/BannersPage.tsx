@@ -1,86 +1,282 @@
-import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
-import { demoRepository, useDemoData } from "@/features/demo-data/repository";
-import { activeBanner, newId, validateBanner, type Errors } from "@/features/demo-data/rules";
+import { validateBanner, type Errors } from "@/features/demo-data/rules";
 import type { DemoBanner } from "@/features/demo-data/model";
+import {
+  clearBannerImage,
+  deleteAdminBanner,
+  importBannerImageFromUrl,
+  listAdminBanners,
+  saveAdminBanner,
+  uploadBannerImage,
+  type AdminBanner,
+} from "@/features/catalog/banners.service";
 import { Check, ConfirmDialog, DataTable, Modal, adminStyles as s } from "../ui/AdminUI";
 import { cx } from "@/shared/utils/cx";
-import { safeUrl } from "@/shared/utils/safe-url";
 
-function Preview({ b, mobile }: { b: DemoBanner; mobile?: boolean }) {
+function Preview({ banner, mobile, src }: { banner: DemoBanner; mobile?: boolean; src?: string }) {
   return (
     <div className={cx(s.previewBox, mobile && s.previewMobile)}>
-      <div className={s.muted} style={{ marginBottom: 6 }}>{mobile ? "Prévia mobile" : "Prévia desktop"}</div>
-      <div className={s.previewTitle}>{b.title} {b.highlight && <span className="text-gradient">{b.highlight}</span>}</div>
-      {b.subtitle && <p className={s.muted}>{b.subtitle}</p>}
-      <span className={s.thumbTag} style={{ position: "static", display: "inline-block", fontSize: 12, padding: "4px 10px" }}>{b.buttonText || "Botão"}</span>
-      {safeUrl(b.image) ? <img className={s.previewImg} src={safeUrl(b.image)} alt="" /> : <div className={s.muted} style={{ marginTop: 8 }}>Sem imagem (o cubo animado é exibido).</div>}
+      <div className={s.muted} style={{ marginBottom: 6 }}>
+        {mobile ? "Prévia mobile" : "Prévia desktop"}
+      </div>
+      <div className={s.previewTitle}>
+        {banner.title} {banner.highlight && <span className="text-gradient">{banner.highlight}</span>}
+      </div>
+      {banner.subtitle && <p className={s.muted}>{banner.subtitle}</p>}
+      <span className={s.thumbTag} style={{ position: "static", display: "inline-block", fontSize: 12, padding: "4px 10px" }}>
+        {banner.buttonText || "Explorar produtos"}
+      </span>
+      {src ? (
+        <img className={s.previewImg} src={src} alt="Prévia da imagem do banner" />
+      ) : (
+        <div className={s.muted} style={{ marginTop: 8 }}>Nenhuma imagem anexada.</div>
+      )}
     </div>
   );
 }
 
 export function BannersPage() {
-  const data = useDemoData();
-  const list = [...data.banners].sort((a, b) => a.order - b.order);
-  const shown = activeBanner(data.banners);
-  const [draft, setDraft] = useState<DemoBanner | null>(null);
+  const [list, setList] = useState<AdminBanner[]>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<AdminBanner | null>(null);
   const [errors, setErrors] = useState<Errors>({});
-  const [del, setDel] = useState<DemoBanner | null>(null);
-  const isNew = draft ? !data.banners.some((b) => b.id === draft.id) : false;
+  const [del, setDel] = useState<AdminBanner | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [filePreview, setFilePreview] = useState("");
+  const [removeImage, setRemoveImage] = useState(false);
 
-  function save() {
-    if (!draft) return;
-    const b = { ...draft, title: draft.title.trim(), highlight: draft.highlight.trim(), buttonUrl: draft.buttonUrl.trim(), image: draft.image.trim() };
-    const e = validateBanner(b);
-    setErrors(e);
-    if (Object.keys(e).length) return;
-    demoRepository.update((d) => ({ ...d, banners: isNew ? [...d.banners, b] : d.banners.map((x) => (x.id === b.id ? b : x)) }));
-    setDraft(null);
+  useEffect(() => {
+    if (!file) { setFilePreview(""); return; }
+    const url = URL.createObjectURL(file);
+    setFilePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  async function reload() {
+    setState("loading");
+    try {
+      setList(await listAdminBanners());
+      setState("ready");
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Erro ao carregar banners.");
+      setState("error");
+    }
   }
-  const set = (p: Partial<DemoBanner>) => setDraft((d) => (d ? { ...d, ...p } : d));
+  useEffect(() => { void reload(); }, []);
+
+  const shown = [...list].filter((item) => item.active).sort((a, b) => a.order - b.order)[0];
+  const isNew = draft !== null && !draft.id;
+
+  function edit(banner: AdminBanner) {
+    setErrors({});
+    setError("");
+    setNotice("");
+    setFile(null);
+    setImageUrl("");
+    setRemoveImage(false);
+    setDraft({ ...banner });
+  }
+  function create() {
+    edit({
+      id: "", version: 0, mediaId: null, title: "", highlight: "",
+      subtitle: "", image: "", buttonText: "Explorar produtos",
+      buttonUrl: "/produtos", order: list.length + 1, active: false,
+    });
+  }
+  function update(values: Partial<AdminBanner>) {
+    setDraft((current) => current ? { ...current, ...values } : current);
+  }
+
+  async function save() {
+    if (!draft) return;
+    const values = {
+      ...draft,
+      title: draft.title.trim(),
+      highlight: draft.highlight.trim(),
+      subtitle: draft.subtitle.trim(),
+      buttonUrl: draft.buttonUrl.trim(),
+      buttonText: draft.buttonText.trim(),
+    };
+    const result = validateBanner(values);
+    setErrors(result);
+    if (Object.keys(result).length) return;
+    if (file && imageUrl.trim()) {
+      setError("Escolha um arquivo local ou uma URL, não os dois.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const id = await saveAdminBanner({
+        ...(values.id ? { id: values.id, version: values.version } : {}),
+        title: values.title,
+        highlight: values.highlight,
+        subtitle: values.subtitle,
+        buttonText: values.buttonText,
+        buttonUrl: values.buttonUrl,
+        order: values.order,
+        active: values.active,
+      });
+      try {
+        if (file) await uploadBannerImage(id, file, [values.title, values.highlight].filter(Boolean).join(" "));
+        else if (imageUrl.trim()) await importBannerImageFromUrl(
+          id, imageUrl, [values.title, values.highlight].filter(Boolean).join(" "),
+        );
+        else if (removeImage && draft.mediaId) {
+          const cleanupPending = await clearBannerImage(id);
+          if (cleanupPending) setNotice("Imagem desvinculada; a limpeza física ficou pendente.");
+        }
+      } catch (cause) {
+        setDraft({ ...values, id });
+        setError(
+          "Os dados do banner foram salvos, mas a imagem não foi atualizada: " +
+          (cause instanceof Error ? cause.message : "erro desconhecido"),
+        );
+        await reload();
+        return;
+      }
+      setDraft(null);
+      setFile(null);
+      setImageUrl("");
+      setNotice("Banner salvo no Supabase.");
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível salvar o banner.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeBanner() {
+    if (!del) return;
+    setBusy(true);
+    setError("");
+    try {
+      const pending = await deleteAdminBanner(del.id);
+      setNotice(pending
+        ? "Banner excluído. Limpeza do arquivo pendente."
+        : "Banner e imagem desvinculados com sucesso.");
+      setDel(null);
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível excluir o banner.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggle(banner: AdminBanner, active: boolean) {
+    setBusy(true);
+    setError("");
+    try {
+      await saveAdminBanner({
+        ...banner, active,
+      });
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível alterar o status.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className={s.stack}>
       <div className={s.toolbar}>
-        <p className={`${s.muted} ${s.grow}`}>A página inicial mostra o primeiro banner ativo pela ordem. O layout do topo da loja não muda; só textos, botão e imagem.</p>
-        <Button onClick={() => { setErrors({}); setDraft({ id: newId("b"), title: "", highlight: "", subtitle: "", image: "", buttonText: "Explorar produtos", buttonUrl: "/produtos", order: list.length + 1, active: false }); }}><Plus size={18} /> Novo banner</Button>
+        <p className={cx(s.muted, s.grow)}>
+          Banners salvos no Supabase. Envie fotos do computador ou importe por URL HTTPS pública.
+        </p>
+        <Button variant="outline" onClick={() => void reload()} disabled={busy}>
+          <RefreshCw size={16} /> Atualizar
+        </Button>
+        <Button onClick={create} disabled={busy}><Plus size={18} /> Novo banner</Button>
       </div>
-      <DataTable label="Banners" empty={!list.length} head={<><th>Ordem</th><th>Título</th><th className={s.hideSm}>Botão</th><th>Status</th><th className={s.num}>Ações</th></>}>
-        {list.map((b) => (
-          <tr key={b.id}>
-            <td>{b.order}</td>
-            <td><strong>{b.title} {b.highlight}</strong>{shown?.id === b.id && <div className={s.muted}>Exibido na loja</div>}</td>
-            <td className={s.hideSm}>{b.buttonText} → {b.buttonUrl}</td>
-            <td><Check label={b.active ? "Ativo" : "Inativo"} checked={b.active} onChange={(v) => demoRepository.update((d) => ({ ...d, banners: d.banners.map((x) => (x.id === b.id ? { ...x, active: v } : x)) }))} /></td>
-            <td className={s.num}><div className={s.actions}>
-              <Button size="icon" variant="ghost" aria-label={`Editar banner ${b.title}`} onClick={() => { setErrors({}); setDraft({ ...b }); }}><Pencil size={16} /></Button>
-              <Button size="icon" variant="ghost" aria-label={`Excluir banner ${b.title}`} onClick={() => setDel(b)}><Trash2 size={16} /></Button>
-            </div></td>
-          </tr>
-        ))}
-      </DataTable>
-
-      <Modal open={!!draft} title={isNew ? "Novo banner" : "Editar banner"} onClose={() => setDraft(null)} footer={<><Button variant="outline" onClick={() => setDraft(null)}>Cancelar</Button><Button onClick={save}>Salvar</Button></>}>
+      {error && <p role="alert">{error}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {state === "loading" && <p role="status">Carregando banners reais…</p>}
+      {state === "ready" && (
+        <DataTable label="Banners" empty={!list.length}
+          head={<><th>Ordem</th><th>Título</th><th className={s.hideSm}>Imagem</th><th>Status</th><th className={s.num}>Ações</th></>}>
+          {list.map((banner) => (
+            <tr key={banner.id}>
+              <td>{banner.order}</td>
+              <td><strong>{banner.title} {banner.highlight}</strong>
+                {shown?.id === banner.id && <div className={s.muted}>Exibido na loja</div>}
+              </td>
+              <td className={s.hideSm}>{banner.image ? "Anexada" : "Sem foto"}</td>
+              <td><Check label={banner.active ? "Ativo" : "Inativo"}
+                checked={banner.active} onChange={(value) => void toggle(banner, value)} /></td>
+              <td className={s.num}>
+                <div className={s.actions}>
+                  <Button size="icon" variant="ghost" aria-label={`Editar ${banner.title}`}
+                    onClick={() => edit(banner)} disabled={busy}><Pencil size={16} /></Button>
+                  <Button size="icon" variant="ghost" aria-label={`Excluir ${banner.title}`}
+                    onClick={() => setDel(banner)} disabled={busy}><Trash2 size={16} /></Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
+      )}
+      <Modal open={!!draft} title={isNew ? "Novo banner" : "Editar banner"}
+        onClose={() => !busy && setDraft(null)}
+        footer={<>
+          <Button variant="outline" disabled={busy} onClick={() => setDraft(null)}>Cancelar</Button>
+          <Button disabled={busy} onClick={() => void save()}>{busy ? "Salvando…" : "Salvar"}</Button>
+        </>}>
         {draft && (
           <div className={s.stack}>
             <div className={s.formGrid}>
-              <Input label="Título" value={draft.title} error={errors.title} onChange={(e) => set({ title: e.target.value })} />
-              <Input label="Destaque colorido (opcional)" value={draft.highlight} onChange={(e) => set({ highlight: e.target.value })} />
-              <Input className={s.full} label="Subtítulo" value={draft.subtitle} error={errors.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />
-              <Input label="Texto do botão" value={draft.buttonText} error={errors.buttonText} onChange={(e) => set({ buttonText: e.target.value })} />
-              <Input label="URL do botão" value={draft.buttonUrl} error={errors.buttonUrl} onChange={(e) => set({ buttonUrl: e.target.value })} />
-              <Input label="Imagem (caminho ou https://)" placeholder="/images/banner/hero.jpg" value={draft.image} error={errors.image} onChange={(e) => set({ image: e.target.value })} />
-              <Input label="Ordem de exibição" type="number" min={0} value={String(draft.order)} error={errors.order} onChange={(e) => set({ order: Number(e.target.value) })} />
-              <Check label="Ativo" checked={draft.active} onChange={(v) => set({ active: v })} />
+              <Input label="Título" value={draft.title} error={errors.title}
+                onChange={(e) => update({ title: e.target.value })} />
+              <Input label="Destaque colorido" value={draft.highlight}
+                onChange={(e) => update({ highlight: e.target.value })} />
+              <Input className={s.full} label="Subtítulo" value={draft.subtitle}
+                error={errors.subtitle} onChange={(e) => update({ subtitle: e.target.value })} />
+              <Input label="Texto do botão" value={draft.buttonText}
+                error={errors.buttonText} onChange={(e) => update({ buttonText: e.target.value })} />
+              <Input label="Destino do botão" value={draft.buttonUrl}
+                error={errors.buttonUrl} onChange={(e) => update({ buttonUrl: e.target.value })} />
+              <Input label="Ordem" type="number" min={0} value={draft.order}
+                error={errors.order} onChange={(e) => update({ order: Number(e.target.value) })} />
+              <Check label="Ativo" checked={draft.active} onChange={(v) => update({ active: v })} />
             </div>
-            <div className={s.preview}><Preview b={draft} /><Preview b={draft} mobile /></div>
+            <fieldset className={s.stack} disabled={busy}
+              style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}>
+              <legend>Imagem do banner</legend>
+              <label htmlFor="banner-file">Anexar imagem do computador</label>
+              <input id="banner-file" type="file" accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => { setFile(e.target.files?.[0] ?? null); if (e.target.files?.[0]) setImageUrl(""); }} />
+              <Input label="Ou importar imagem de URL pública HTTPS"
+                type="url" placeholder="https://site.com/banner.jpg" value={imageUrl}
+                onChange={(e) => { setImageUrl(e.target.value); if (e.target.value) setFile(null); }} />
+              {draft.mediaId && <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={removeImage}
+                  onChange={(e) => { setRemoveImage(e.target.checked); if (e.target.checked) { setFile(null); setImageUrl(""); } }} />
+                Remover imagem atual
+              </label>}
+              <p className={s.muted}>Até 12 MB por foto. O arquivo é convertido em WebP e armazenado no Supabase.</p>
+            </fieldset>
+            <div className={s.preview}>
+              <Preview banner={draft} src={removeImage ? "" : filePreview || draft.image} />
+              <Preview banner={draft} mobile src={removeImage ? "" : filePreview || draft.image} />
+            </div>
           </div>
         )}
       </Modal>
-      <ConfirmDialog open={!!del} danger title="Excluir banner" confirmLabel="Excluir" text={`Excluir o banner "${del?.title ?? ""}"?`} onCancel={() => setDel(null)}
-        onConfirm={() => { const id = del!.id; demoRepository.update((d) => ({ ...d, banners: d.banners.filter((b) => b.id !== id) })); setDel(null); }} />
+      <ConfirmDialog open={!!del} danger title="Excluir banner"
+        text={`Excluir o banner "${del?.title ?? ""}" e sua imagem armazenada?`}
+        confirmLabel="Excluir" onCancel={() => setDel(null)}
+        onConfirm={() => void removeBanner()} />
     </div>
   );
 }
