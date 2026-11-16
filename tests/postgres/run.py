@@ -196,6 +196,7 @@ def all_migrations():
     migs += list((ROOT/'supabase/migrations').glob('*_cr009c1*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr009f*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr010b1*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr010b7*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -217,6 +218,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261114133100_cr009c1_pg17_advisory_lock.sql':'6ecf4564d216fdbea1027c3a103284492949b4a8377328431047125758dd1af0',
     '20261115103000_cr009f_hook_type_fix_and_media_aal2.sql':'6bb93621f935ec279a2b0f68211cc59104ea059fb5a7772d50c4e5c39ed615e1',
     '20261116014216_cr010b1_catalog_stock_commands.sql':'a31f001bdbbe024ac4ed994a814237f2bd81dbca3367e66e28ea56fc057b2c92',
+    '20261116030000_cr010b7_public_catalog_media.sql':'b01c2c54dee03a4ed8a03c77ef50c427020041284f59dca387ad2659edeecd3b',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
