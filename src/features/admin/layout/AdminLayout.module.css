@@ -1,6 +1,6 @@
-.shell { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; background: var(--color-background); transition: grid-template-columns var(--transition); }
-.collapsed { grid-template-columns: var(--sidebar-collapsed) 1fr; }
-.sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-3); background: var(--color-surface); border-right: 1px solid var(--color-border); overflow-y: auto; }
+.shell { width: 100%; min-width: 0; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: 100vh; background: var(--color-background); transition: grid-template-columns var(--transition); }
+.collapsed { grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr); }
+.sidebar { min-width: 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-3); background: var(--color-surface); border-right: 1px solid var(--color-border); overflow-y: auto; }
 [data-theme="dark"] .sidebar { background: linear-gradient(180deg, #0b1220, #080b14); }
 .brand { padding: 0 var(--space-3); }
 .nav { display: flex; flex-direction: column; gap: 4px; }
@@ -16,18 +16,18 @@
 .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--color-surface-elevated); border: 1px solid var(--color-border); flex-shrink: 0; }
 .profileText { display: flex; flex-direction: column; line-height: 1.3; }
 .profileText small { color: var(--color-text-muted); }
-.main { min-width: 0; display: flex; flex-direction: column; }
-.header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); background: var(--color-header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border); }
+.main { width: 100%; min-width: 0; max-width: 100%; display: flex; flex-direction: column; }
+.header { min-width: 0; max-width: 100%; position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); background: var(--color-header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border); }
 .titles { min-width: 0; }
 .titles h1 { font-size: 26px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .titles p { color: var(--color-text-muted); font-size: 14px; }
-.headerActions { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: var(--space-2); position: relative; }
+.headerActions { min-width: 0; margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: var(--space-2); position: relative; }
 .bellDot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
 .popover { position: absolute; top: calc(100% + 8px); right: 0; width: min(320px, calc(100vw - 32px)); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-md); z-index: 50; }
 .popover h2 { font-size: 15px; margin-bottom: var(--space-3); }
 .popover ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
 .popover small { display: block; color: var(--color-text-muted); }
-.content { padding: var(--space-6); flex: 1; }
+.content { width: 100%; min-width: 0; max-width: 100%; padding: clamp(var(--space-4), 3vw, var(--space-6)); flex: 1; }
 .backdrop { display: none; }
 .mobileOnly { display: none; }
 @media (max-width: 900px) {
@@ -38,6 +38,7 @@
   .collapsed .item { justify-content: flex-start; padding: 0 14px; }
   .backdrop { display: block; position: fixed; inset: 0; z-index: 55; background: var(--color-overlay); border: 0; }
   .header { padding: var(--space-3) var(--space-4); }
+  .headerActions { gap: 4px; }
   .titles h1 { font-size: 20px; }
   .titles p { display: none; }
   .content { padding: var(--space-4); }
@@ -47,6 +48,8 @@
 .bell { position: relative; }
 /* Phones: "Ver Loja" becomes icon-only so the header fits 320px+ without horizontal scroll. */
 @media (max-width: 480px) {
+  .titles { flex: 1 1 auto; }
+  .titles h1 { font-size: 18px; }
   .storeLabel { display: none; }
   .storeLink { width: 44px; padding: 0; }
   .header { gap: var(--space-2); }
