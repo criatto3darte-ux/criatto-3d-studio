@@ -139,11 +139,11 @@ jobs:
           set -o pipefail
           python3 -u tests/postgres/run.py 2>&1 | tee /tmp/pg-harness.log
 
-  # CR-010B.8 — isolated homologation login hotfix package.
-  # Only runs on integration/* pushes. No automatic Locaweb upload/deploy.
+  # CR-012A — pacote isolado para validação visual em homologação.
+  # Executa em integration/* e nesta branch autorizada. Sem upload/deploy automático.
   pacote:
     name: Pacote homologação (ZIP artifact)
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/integration/')
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/integration/') || github.ref == 'refs/heads/fix/cr-012a-layout-responsiveness')
     runs-on: ubuntu-24.04
     needs: [static]
     steps:
