@@ -236,3 +236,9 @@ export async function listAdminCatalogImages(productId: string): Promise<Catalog
     }];
   }).sort((a, b) => Number(b.primary) - Number(a.primary) || a.position - b.position);
 }
+
+/** Requests best-effort physical image cleanup after product archival. */
+export async function cleanupArchivedProductImages(productId: string): Promise<boolean> {
+  const data = await invokeMedia({ operation: "cleanup-product", productId });
+  return Boolean(data?.cleanupPending);
+}
