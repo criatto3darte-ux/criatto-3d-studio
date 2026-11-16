@@ -19,6 +19,7 @@ import {
 } from "@/features/catalog/supabase-catalog";
 import { slugify, validateProduct, type Errors } from "@/features/demo-data/rules";
 import { ProductGallery } from "../components/ProductGallery";
+import { cleanupArchivedProductImages } from "@/features/catalog/catalog-media";
 import {
   Check,
   ConfirmDialog,
@@ -295,7 +296,18 @@ export function ProductsPage() {
     setActionError("");
     try {
       await archiveAdminProduct(toArchive.id, toArchive.version);
+      const id = toArchive.id;
       setToArchive(null);
+      try {
+        const pending = await cleanupArchivedProductImages(id);
+        if (pending) setActionError(
+          "Produto arquivado. A limpeza de algumas fotos ficou pendente; reexecute a manutenção de imagens.",
+        );
+      } catch {
+        setActionError(
+          "Produto arquivado no Supabase; a limpeza das fotos não foi confirmada. Tente novamente pelo serviço de mídia.",
+        );
+      }
       await reload();
     } catch (cause) {
       setActionError(
