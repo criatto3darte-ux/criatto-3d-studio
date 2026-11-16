@@ -939,6 +939,42 @@ COMMIT;
         check(db,'anonymous cannot execute new commands',
               "SET ROLE anon; SELECT public.adjust_inventory(gen_random_uuid(),1,'x','x',0)",
               error='permission denied')
+        # CR-010C: live-order flow in disposable local PG17 only.
+        checkout_product = "'c0000000-0000-4000-8000-000000000001'"
+        checkout_key = "c1111111-1111-4111-8111-111111111111"
+        execute(db, f"""
+INSERT INTO products(id,category_id,slug,name,regular_price_cents,production_mode,active)
+VALUES({checkout_product},{q('category')},'checkout-integration','Checkout test',900,'pronta-entrega',true);
+INSERT INTO inventory(product_id,on_hand,allocated) VALUES({checkout_product},5,0);
+""")
+        payload = json.dumps({
+            'customerName':'Cliente Teste',
+            'customerPhone':'+5521987640769',
+            'privacyAccepted':True,
+            'idempotencyKey':checkout_key,
+            'items':[{'productId':'c0000000-0000-4000-8000-000000000001','quantity':1,'sku':None}],
+        },separators=(',',':'))
+        service_checkout = f"BEGIN; SET LOCAL ROLE service_role; SELECT subtotal_cents||':'||replayed FROM public.create_checkout_order('{payload}'::jsonb); COMMIT;"
+        check(db,'CR-010C public order created with server price',
+              service_checkout,'900:false')
+        check(db,'CR-010C stock reservation is atomic',
+              f"SELECT on_hand||':'||allocated FROM inventory WHERE product_id={checkout_product}",'5:1')
+        check(db,'CR-010C retry replays same real order',
+              service_checkout,'900:true')
+        check(db,'CR-010C retry does not insert another order',
+              f"SELECT count(*) FROM orders WHERE idempotency_key='{checkout_key}'",'1')
+        checkout_id = f"(SELECT id FROM orders WHERE idempotency_key='{checkout_key}')"
+        check(db,'CR-010C AAL1 operator cannot cancel order',
+              actor('operator',f"SELECT * FROM public.transition_checkout_order({checkout_id},1,'cancelado','test')",'aal1'),
+              error='AAL2 order authorization required')
+        check(db,'CR-010C AAL2 operator cancels and releases reservation',
+              actor_commit('operator',f"SELECT status||':'||version FROM public.transition_checkout_order({checkout_id},1,'cancelado','test')",'aal2'),
+              'cancelado:2')
+        check(db,'CR-010C cancel restores stock',
+              f"SELECT on_hand||':'||allocated FROM inventory WHERE product_id={checkout_product}",'5:0')
+        check(db,'CR-010C terminal status cannot transition again',
+              actor('operator',f"SELECT * FROM public.transition_checkout_order({checkout_id},2,'confirmado','invalid')",'aal2'),
+              error='invalid order status transition')
         # service_role NÃO consegue DELETE em order_items (trigger append-only
         # rejeita a mutação). Usamos transação explícita com ROLLBACK e, após a
         # tentativa bloqueada, verificamos que o registro continua intacto.
