@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { listPublishedBanners } from "@/features/catalog/banners.service";
 import type { Category, Product } from "@/shared/types/catalog";
-import { resolveContactSettings } from "@/config/contacts";
+import { readPublicStoreSettings, DEFAULT_REAL_SETTINGS } from "@/features/catalog/store-settings.service";
 import { useRemoteCatalog } from "@/features/catalog/supabase-catalog";
 import type { DemoBanner, StoreSettings } from "@/features/demo-data/model";
 
@@ -36,14 +36,19 @@ export function useStoreCatalog(): StoreCatalog {
   }, [snapshot]);
 }
 
-/** Contact fallback is official configuration, never LocalStorage/demo commerce data. */
+/** Public contact settings are loaded from the limited Supabase public view. */
 export function useStoreSettings(): StoreSettings {
-  return {
-    name: "Criatto 3D",
-    logo: "",
-    deliveryInfo: "",
-    ...resolveContactSettings(null),
-  };
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_REAL_SETTINGS);
+  useEffect(() => {
+    let active = true;
+    void readPublicStoreSettings().then((value) => {
+      if (active) setSettings(value);
+    }).catch(() => {
+      if (active) setSettings(DEFAULT_REAL_SETTINGS);
+    });
+    return () => { active = false; };
+  }, []);
+  return settings;
 }
 
 /** Read the public-only banner view; never show demo banners in live mode. */
