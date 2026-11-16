@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { listPublicCatalogImages } from "@/features/catalog/catalog-media";
 import type {
   Category,
   Product,
@@ -225,6 +226,7 @@ async function loadCatalog(): Promise<{ products: Product[]; categories: Categor
       Boolean(row.available),
     ]),
   );
+  const publicImages = await listPublicCatalogImages();
   const products = (productResult.data ?? []).flatMap((raw) => {
     const product = toPublicProduct(
       raw as PublicProductRow,
@@ -245,7 +247,10 @@ async function loadCatalog(): Promise<{ products: Product[]; categories: Categor
         option_id: string;
       }[],
     );
-    return product ? [product] : [];
+    return product ? [{
+      ...product,
+      images: (publicImages.get(product.id) ?? []).map((image) => image.url),
+    }] : [];
   });
   return { products, categories };
 }
