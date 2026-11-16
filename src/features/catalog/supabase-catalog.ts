@@ -348,7 +348,7 @@ export async function listAdminProducts(
   categories?: readonly AdminCategory[],
 ): Promise<AdminProduct[]> {
   const client = getSupabase();
-  const [productsResult, availabilityResult, groupsResult, optionsResult] = await Promise.all([
+  const [productsResult, availabilityResult, groupsResult, optionsResult, variantsResult, variantValuesResult] = await Promise.all([
     client
       .from("products")
       .select(
@@ -362,11 +362,15 @@ export async function listAdminProducts(
       .select("id,product_id,code,label,position")
       .order("position"),
     client.from("product_attribute_options").select("id,group_id,label,position").order("position"),
+    client.from("product_variants").select("id,product_id,sku").eq("active", true),
+    client.from("variant_option_values").select("variant_id,group_id,option_id"),
   ]);
   throwSafe(productsResult.error, "Não foi possível carregar os produtos.");
   throwSafe(availabilityResult.error, "Não foi possível carregar a disponibilidade dos produtos.");
   throwSafe(groupsResult.error, "Não foi possível carregar as variações dos produtos.");
   throwSafe(optionsResult.error, "Não foi possível carregar as opções dos produtos.");
+  throwSafe(variantsResult.error, "Não foi possível carregar os SKUs dos produtos.");
+  throwSafe(variantValuesResult.error, "Não foi possível carregar as combinações dos SKUs.");
   let categoryRows = categories;
   if (!categoryRows) categoryRows = await listAdminCategories();
   const categoryById = new Map(categoryRows.map((category) => [category.id, category]));
@@ -390,6 +394,8 @@ export async function listAdminProducts(
         label: string;
       }[],
       (optionsResult.data ?? []) as { group_id: string; id: string; label: string }[],
+      (variantsResult.data ?? []) as { id: string; product_id: string; sku: string }[],
+      (variantValuesResult.data ?? []) as { variant_id: string; group_id: string; option_id: string }[],
     );
     if (!product) return [];
     return [{ ...product, active: row.active, version: row.version, archivedAt: row.archived_at }];
