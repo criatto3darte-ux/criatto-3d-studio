@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Crop, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { validateBanner, type Errors } from "@/features/demo-data/rules";
@@ -15,6 +15,8 @@ import {
 } from "@/features/catalog/banners.service";
 import { Check, ConfirmDialog, DataTable, Modal, adminStyles as s } from "../ui/AdminUI";
 import { cx } from "@/shared/utils/cx";
+import { ImageCropEditor } from "../components/ImageCropEditor";
+import { fetchPublicImageFile } from "@/features/catalog/catalog-media";
 
 function Preview({ banner, mobile, src }: { banner: DemoBanner; mobile?: boolean; src?: string }) {
   return (
@@ -51,6 +53,7 @@ export function BannersPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [filePreview, setFilePreview] = useState("");
   const [removeImage, setRemoveImage] = useState(false);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!file) { setFilePreview(""); return; }
@@ -82,6 +85,7 @@ export function BannersPage() {
     setFile(null);
     setImageUrl("");
     setRemoveImage(false);
+    setEditingFile(null);
     setDraft({ ...banner });
   }
   function create() {
@@ -93,6 +97,25 @@ export function BannersPage() {
   }
   function update(values: Partial<AdminBanner>) {
     setDraft((current) => current ? { ...current, ...values } : current);
+  }
+
+  async function beginImageEdit() {
+    if (!draft) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (file) {
+        setEditingFile(file);
+        return;
+      }
+      const source = imageUrl.trim() || draft.image;
+      if (!source) throw new Error("Escolha uma imagem local ou informe uma URL.");
+      setEditingFile(await fetchPublicImageFile(source));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível carregar a imagem.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function save() {
@@ -264,7 +287,22 @@ export function BannersPage() {
                   onChange={(e) => { setRemoveImage(e.target.checked); if (e.target.checked) { setFile(null); setImageUrl(""); } }} />
                 Remover imagem atual
               </label>}
-              <p className={s.muted}>Até 12 MB por foto. O arquivo é convertido em WebP e armazenado no Supabase.</p>
+              <Button variant="outline" disabled={busy || (!file && !imageUrl.trim() && !draft.image)}
+                onClick={() => void beginImageEdit()}>
+                <Crop size={16}/> Ajustar enquadramento e zoom
+              </Button>
+              {editingFile && (
+                <ImageCropEditor file={editingFile} shape="banner"
+                  onCancel={() => setEditingFile(null)}
+                  onApply={(adjusted) => {
+                    setFile(adjusted);
+                    setImageUrl("");
+                    setRemoveImage(false);
+                    setEditingFile(null);
+                  }}
+                />
+              )}
+              <p className={s.muted}>Até 12 MB por foto. Ajuste o enquadramento antes de salvar. O arquivo final será armazenado como WebP.</p>
             </fieldset>
             <div className={s.preview}>
               <Preview banner={draft} src={removeImage ? "" : filePreview || draft.image} />
