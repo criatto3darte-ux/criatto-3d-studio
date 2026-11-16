@@ -47,6 +47,7 @@ export function StockPage() {
   const [delta, setDelta] = useState("");
   const [minimum, setMinimum] = useState("");
   const [reason, setReason] = useState("");
+  const [operationKey, setOperationKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
 
@@ -125,11 +126,16 @@ export function StockPage() {
     setDelta("");
     setMinimum(String(row.minimum));
     setReason("");
+    setOperationKey(mode === "adjust" ? crypto.randomUUID() : null);
     setActionError("");
   }
 
   async function submitStockAction() {
     if (!selected || !dialogMode) return;
+    if (dialogMode === "adjust" && !operationKey) {
+      setActionError("Identificador da movimentação indisponível. Reabra o formulário.");
+      return;
+    }
     setBusy(true);
     setActionError("");
     try {
@@ -147,7 +153,7 @@ export function StockPage() {
           productId: selected.productId,
           delta: parsedDelta,
           reason: reason.trim(),
-          operationKey: crypto.randomUUID(),
+          operationKey: operationKey!,
           expectedVersion: selected.version,
         });
       } else {
