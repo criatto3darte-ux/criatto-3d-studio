@@ -21,7 +21,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = public, pg_temp
-AS $
+AS $body$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.product_images
@@ -35,7 +35,7 @@ BEGIN
   UPDATE public.product_images SET is_primary = true
     WHERE product_id = p_product_id AND media_id = p_media_id;
 END;
-$;
+$body$;
 REVOKE ALL ON FUNCTION public.set_catalog_primary_media(uuid,uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.set_catalog_primary_media(uuid,uuid) TO service_role;
 
