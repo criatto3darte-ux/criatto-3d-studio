@@ -99,7 +99,8 @@ Deno.serve(async (req) => {
     orderId: result.order_id,
     orderNumber: result.order_number,
     subtotalCents: result.subtotal_cents,
-    whatsapp,
+    whatsapp: validWhatsapp ? whatsapp : "",
+    whatsappConfigured: validWhatsapp,
     status: "aguardando-contato",
     replayed: Boolean(result.replayed),
   });
