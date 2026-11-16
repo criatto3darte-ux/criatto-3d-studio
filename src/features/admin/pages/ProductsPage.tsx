@@ -18,6 +18,7 @@ import {
   type AdminProduct,
 } from "@/features/catalog/supabase-catalog";
 import { slugify, validateProduct, type Errors } from "@/features/demo-data/rules";
+import { ProductGallery } from "../components/ProductGallery";
 import {
   Check,
   ConfirmDialog,
@@ -665,11 +666,11 @@ export function ProductsPage() {
                   </Button>
                 </>
               )}
-              <p role="note">
-                Imagens e galeria aguardam autorização e configuração de um fluxo de upload seguro:
-                o schema atual reserva gravação de metadados de mídia a um canal confiável e não há
-                bucket de Storage.
-              </p>
+              {draft.isNew ? (
+                <p role="note">Salve o produto primeiro para habilitar o envio de fotos.</p>
+              ) : (
+                <ProductGallery productId={draft.product.id} productName={draft.product.name} />
+              )}
               {actionError && <p role="status">{actionError}</p>}
             </section>
           </div>
