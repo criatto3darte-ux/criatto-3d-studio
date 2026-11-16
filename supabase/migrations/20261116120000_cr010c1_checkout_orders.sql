@@ -58,6 +58,7 @@ DECLARE
   v_qty integer;
   v_unit_price bigint;
   v_variant_id uuid;
+  v_item_id uuid;
   v_attributes jsonb;
   v_sku text;
   v_kind text;
@@ -80,8 +81,8 @@ BEGIN
   v_key := (p_payload->>'idempotencyKey')::uuid;
   v_hash := encode(sha256(convert_to(p_payload::text, 'UTF8')), 'hex');
   PERFORM pg_advisory_xact_lock(hashtextextended(v_key::text, 10991));
-  SELECT id,number,payload_hash,subtotal_cents INTO v_existing
-  FROM public.orders WHERE idempotency_key = v_key;
+  SELECT o.id,o.number,o.payload_hash,o.subtotal_cents INTO v_existing
+  FROM public.orders o WHERE o.idempotency_key = v_key;
   IF FOUND THEN
     IF v_existing.payload_hash <> v_hash THEN
       RAISE EXCEPTION 'checkout key reused for different payload' USING ERRCODE='23505';
@@ -172,7 +173,7 @@ BEGIN
       v_order_id,v_product.id,v_variant_id,v_product.name,v_sku,
       v_attributes,
       v_product.effective_price_cents,v_qty,0
-    );
+    ) RETURNING id INTO v_item_id;
     IF v_product.production_mode = 'pronta-entrega' THEN
       UPDATE public.inventory SET allocated=allocated+v_qty
       WHERE product_id=v_product.id AND (on_hand-allocated)>=v_qty
@@ -188,6 +189,8 @@ BEGIN
         'Reserva para checkout WhatsApp',NULL,
         v_order_id::text||':'||v_product.id::text||':'||coalesce(v_sku,'base')
       );
+      INSERT INTO public.order_allocations(order_item_id,product_id,quantity,state)
+      VALUES(v_item_id,v_product.id,v_qty,'active');
     END IF;
   END LOOP;
   RETURN QUERY SELECT v_order_id,v_number,v_subtotal,false;
@@ -274,6 +277,10 @@ BEGIN
         );
       END IF;
     END LOOP;
+    UPDATE public.order_allocations a SET
+      state=CASE WHEN p_new_status='cancelado' THEN 'released' ELSE 'consumed' END
+    FROM public.order_items oi WHERE oi.id=a.order_item_id
+      AND oi.order_id=p_order_id AND a.state='active';
   END IF;
   UPDATE public.orders o SET status=p_new_status,
     confirmed_at=CASE WHEN p_new_status='confirmado' THEN now() ELSE confirmed_at END
