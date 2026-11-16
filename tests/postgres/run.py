@@ -556,6 +556,17 @@ try:
               "SELECT bool_and(proconfig @> ARRAY['search_path=public, pg_temp']) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
         check(db,'no anon definer execution',
               "SELECT bool_and(NOT has_function_privilege('anon',p.oid,'EXECUTE')) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prosecdef",'t')
+        check(db,'catalog image view contains only published catalog bucket links',
+              "SELECT pg_get_viewdef('public.public_catalog_images'::regclass) ILIKE '%catalog-images%'",
+              't')
+        check(db,'catalog image view anonymous SELECT permitted',
+              "SELECT has_table_privilege('anon','public.public_catalog_images','SELECT')",
+              't')
+        check(db,'catalog primary command restricted to service role',
+              "SELECT has_function_privilege('service_role','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
+              "AND NOT has_function_privilege('anon','public.set_catalog_primary_media(uuid,uuid)','EXECUTE') "
+              "AND NOT has_function_privilege('authenticated','public.set_catalog_primary_media(uuid,uuid)','EXECUTE')",
+              't')
         check(db,'bigint money',
               "SELECT bool_and(data_type='bigint') FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('orders','products','payments','order_items','coupons','custom_requests') AND column_name LIKE '%cents'",'t')
         # Seed auth users FIRST so that FK columns (confirmed_by, actor_id,
