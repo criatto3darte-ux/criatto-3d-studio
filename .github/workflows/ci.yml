@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - "integration/**"
+      - "fix/cr-012a-layout-responsiveness"
 
 permissions:
   contents: read        # checkout only; sem write, id-token, packages ou PR-comments.
