@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2, Crop } from "lucide-react";
 import type { Product, ProductAvailability } from "@/shared/types/catalog";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
@@ -20,7 +20,9 @@ import {
 } from "@/features/catalog/supabase-catalog";
 import { slugify, validateProduct, type Errors } from "@/features/demo-data/rules";
 import { ProductGallery } from "../components/ProductGallery";
-import { cleanupArchivedProductImages } from "@/features/catalog/catalog-media";
+import { cleanupArchivedProductImages, fetchPublicImageFile, uploadCatalogImage } from "@/features/catalog/catalog-media";
+import { ImageCropEditor } from "../components/ImageCropEditor";
+import { buildSimpleVariants, extractSimpleVariants } from "@/features/catalog/product-variants.form";
 import {
   Check,
   ConfirmDialog,
@@ -39,6 +41,9 @@ interface Draft {
   promo: string;
   productionDays: string;
   openingStock: string;
+  colors: string;
+  sizes: string;
+  variantsTouched: boolean;
   isNew: boolean;
   slugTouched: boolean;
   variantGroupsJson: string;
@@ -59,6 +64,9 @@ function toDraft(product: Product, isNew: boolean, version?: number): Draft {
     promo: centsToInput(product.promoPriceCents),
     productionDays: product.productionDays ? String(product.productionDays) : "",
     openingStock: "0",
+    colors: "",
+    sizes: "",
+    variantsTouched: false,
     isNew,
     slugTouched: !isNew,
     variantGroupsJson: "[]",
@@ -81,6 +89,9 @@ export function ProductsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [toArchive, setToArchive] = useState<AdminProduct | null>(null);
+  const [stagedPhoto, setStagedPhoto] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [editingPhoto, setEditingPhoto] = useState<File | null>(null);
 
   async function reload() {
     setState("loading");
@@ -112,6 +123,9 @@ export function ProductsPage() {
   const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
 
   function openNew() {
+    setStagedPhoto(null);
+    setPhotoUrl("");
+    setEditingPhoto(null);
     setErrors({});
     setActionError("");
     setDraft(
@@ -137,6 +151,9 @@ export function ProductsPage() {
   }
 
   async function openEdit(product: AdminProduct) {
+    setStagedPhoto(null);
+    setPhotoUrl("");
+    setEditingPhoto(null);
     setErrors({});
     setActionError("");
     setBusy(true);
@@ -145,6 +162,7 @@ export function ProductsPage() {
       const next = toDraft(product, false, product.version);
       setDraft({
         ...next,
+        ...extractSimpleVariants(config.groups),
         variantGroupsJson: JSON.stringify(config.groups, null, 2),
         variantsJson: JSON.stringify(config.variants, null, 2),
       });
@@ -251,6 +269,15 @@ export function ProductsPage() {
       setActionError("Selecione uma categoria válida.");
       return;
     }
+    let simpleVariations: ReturnType<typeof buildSimpleVariants> | null = null;
+    if (draft.variantsTouched) {
+      try {
+        simpleVariations = buildSimpleVariants({ colors: draft.colors, sizes: draft.sizes }, product.slug);
+      } catch (cause) {
+        setActionError(cause instanceof Error ? cause.message : "Revise as cores e tamanhos.");
+        return;
+      }
+    }
     setBusy(true);
     setActionError("");
     try {
@@ -270,6 +297,27 @@ export function ProductsPage() {
         badge: product.badge ? (badgeValue[product.badge] ?? null) : null,
       });
       setDraft(null);
+      if (simpleVariations) {
+        try {
+          await replaceAdminVariantConfiguration(
+            savedId, simpleVariations.groups, simpleVariations.variants,
+          );
+        } catch (cause) {
+          setActionError("Produto salvo, mas as cores e tamanhos não foram confirmados: " +
+            (cause instanceof Error ? cause.message : "Tente novamente em Editar."));
+        }
+      }
+      if (stagedPhoto || photoUrl.trim()) {
+        try {
+          const file = stagedPhoto ?? await fetchPublicImageFile(photoUrl);
+          await uploadCatalogImage(savedId, file, product.name);
+          setStagedPhoto(null);
+          setPhotoUrl("");
+        } catch (cause) {
+          setActionError("Produto salvo, mas o envio da imagem não foi concluído: " +
+            (cause instanceof Error ? cause.message : "Tente novamente em Editar."));
+        }
+      }
       if (draft.isNew && product.availability === "pronta-entrega" &&
           Number(draft.openingStock) > 0) {
         try {
