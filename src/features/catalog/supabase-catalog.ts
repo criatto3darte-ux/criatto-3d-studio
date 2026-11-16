@@ -173,7 +173,11 @@ export function toPublicProduct(
     featured: Boolean(row.featured),
     active: true,
     variants,
-    ...(variantCombinations === undefined ? {} : { variantCombinations }),
+    // For a simple product no variant combination is required.
+    // An empty array would cause the cart validator to reject every add.
+    ...(productGroups.length === 0
+      ? {}
+      : { variantCombinations: variantCombinations ?? [] }),
   };
 }
 
