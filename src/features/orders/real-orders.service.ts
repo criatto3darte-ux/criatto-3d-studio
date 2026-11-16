@@ -50,3 +50,36 @@ export async function listRealOrderItems(orderId: string): Promise<RealOrderItem
     quantity: item.quantity, unitPriceCents: Number(item.unit_price_cents),
   }));
 }
+
+export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  "aguardando-contato": ["em-atendimento", "cancelado"],
+  "em-atendimento": ["confirmado", "cancelado"],
+  "confirmado": ["em-producao", "pronto-para-entrega", "cancelado"],
+  "em-producao": ["pronto-para-entrega", "cancelado"],
+  "pronto-para-entrega": ["enviado", "concluido", "cancelado"],
+  "enviado": ["concluido"],
+  "concluido": [],
+  "cancelado": [],
+};
+
+export async function transitionRealOrder(
+  order: Pick<RealOrder, "id" | "version">,
+  status: OrderStatus,
+  reason: string,
+): Promise<void> {
+  const { error } = await getSupabase().rpc("transition_checkout_order", {
+    p_order_id: order.id,
+    p_expected_version: order.version,
+    p_new_status: status,
+    p_reason: reason.trim().slice(0, 500),
+  });
+  if (error) {
+    if (error.code === "40001") {
+      throw new Error("Este pedido foi alterado por outra pessoa. Atualize a lista.");
+    }
+    if (error.code === "42501" || error.code === "PGRST301") {
+      throw new Error("É necessário acessar como proprietário ou operador com MFA AAL2.");
+    }
+    throw new Error("Não foi possível alterar o pedido ou movimentar a reserva de estoque.");
+  }
+}
