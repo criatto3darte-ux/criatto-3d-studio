@@ -55,6 +55,7 @@ DECLARE
   v_qty integer;
   v_unit_price bigint;
   v_variant_id uuid;
+  v_attributes jsonb;
   v_sku text;
   v_kind text;
   v_allocated integer;
@@ -109,6 +110,11 @@ BEGIN
     END IF;
 
     v_variant_id := NULL;
+    IF EXISTS (SELECT 1 FROM public.product_attribute_groups g WHERE g.product_id=v_product.id)
+       AND NOT EXISTS (SELECT 1 FROM public.product_variants v
+                       WHERE v.product_id=v_product.id AND v.active) THEN
+      RAISE EXCEPTION 'product variants not configured' USING ERRCODE='23514';
+    END IF;
     v_sku := nullif(btrim(coalesce(v_line->>'sku','')),'');
     IF EXISTS (SELECT 1 FROM public.product_variants v WHERE v.product_id=v_product.id AND v.active) THEN
       IF v_sku IS NULL THEN
@@ -145,16 +151,23 @@ BEGIN
     FROM public.products p WHERE p.id=(v_line->>'productId')::uuid;
     v_sku := nullif(btrim(coalesce(v_line->>'sku','')),'');
     v_variant_id := NULL;
+    v_attributes := '{}'::jsonb;
     IF v_sku IS NOT NULL THEN
       SELECT id INTO v_variant_id FROM public.product_variants
       WHERE product_id=v_product.id AND sku=v_sku AND active;
+      SELECT coalesce(jsonb_object_agg(g.label,o.label),'{}'::jsonb)
+        INTO v_attributes
+      FROM public.variant_option_values ov
+      JOIN public.product_attribute_groups g ON g.id=ov.group_id
+      JOIN public.product_attribute_options o ON o.id=ov.option_id
+      WHERE ov.variant_id=v_variant_id;
     END IF;
     INSERT INTO public.order_items(
       order_id,product_id,variant_id,product_name_snapshot,sku_snapshot,
       attributes_snapshot,unit_price_cents,quantity,line_discount_cents
     ) VALUES(
       v_order_id,v_product.id,v_variant_id,v_product.name,v_sku,
-      coalesce(v_line->'selections','{}'::jsonb),
+      v_attributes,
       v_product.effective_price_cents,v_qty,0
     );
     IF v_product.production_mode = 'pronta-entrega' THEN
