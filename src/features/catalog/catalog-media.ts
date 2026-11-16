@@ -157,7 +157,7 @@ export async function fetchPublicImageFile(inputUrl: string): Promise<File> {
       headers: { Accept: "image/webp,image/png,image/jpeg" },
     });
     if (!response.ok) throw new Error("A imagem não está disponível nessa URL.");
-    const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    const contentType = (response.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
     if (!["image/webp", "image/png", "image/jpeg"].includes(contentType)) {
       throw new Error("A URL deve retornar uma imagem PNG, JPEG ou WebP.");
     }
