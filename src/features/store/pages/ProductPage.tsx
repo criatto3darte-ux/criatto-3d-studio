@@ -19,7 +19,6 @@ import { Section } from "../components/Section";
 import styles from "./ProductPage.module.css";
 import { cx } from "@/shared/utils/cx";
 
-const VIEWS = 4;
 
 export function ProductPage({ product }: { product: Product }) {
   const cart = useCart();
@@ -35,7 +34,7 @@ export function ProductPage({ product }: { product: Product }) {
       Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
   );
   const purchasable = canPurchase(product);
-  const views = Math.max(product.images.length, VIEWS);
+  const views = Math.max(product.images.length, 1);
   const key = buildCartKey(product.id, selected);
   const already = cart.items.find((item) => item.key === key)?.quantity ?? 0;
   const remaining = Math.min(availableQuantity(cart.items, product), MAX_ITEM_QUANTITY - already);
@@ -67,7 +66,7 @@ export function ProductPage({ product }: { product: Product }) {
           <div className={styles.main}>
             <ProductMedia product={product} index={view} eager />
           </div>
-          <div className={styles.thumbs}>
+          {product.images.length > 1 && <div className={styles.thumbs}>
             {Array.from({ length: views }, (_, i) => (
               <button
                 key={i}
@@ -80,7 +79,7 @@ export function ProductPage({ product }: { product: Product }) {
                 <ProductMedia product={product} index={i} showTag={false} />
               </button>
             ))}
-          </div>
+          </div>}
         </div>
         <div className={styles.info}>
           <div className={styles.meta}>
