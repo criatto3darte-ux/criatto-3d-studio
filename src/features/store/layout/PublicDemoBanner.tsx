@@ -10,6 +10,7 @@ import styles from "./PublicDemoBanner.module.css";
 export function PublicDemoBanner() {
   const search = useSearch({ strict: false }) as { adminDisabled?: string } | undefined;
   const fromAdmin = search?.adminDisabled === "1";
+  const liveCheckout = import.meta.env.VITE_ENABLE_LIVE_CHECKOUT === "true";
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -28,8 +29,10 @@ export function PublicDemoBanner() {
         </span>
         <div className={styles.text}>
           <strong>Loja em homologação comercial.</strong> O catálogo publicado é consultado no
-          Supabase. Pedidos ainda não são processados; entre em contato pelo WhatsApp para
-          informações.{" "}
+          Supabase.{" "}
+          {liveCheckout
+            ? "Os pedidos de teste são registrados antes do atendimento pelo WhatsApp."
+            : "Pedidos ainda não são processados; entre em contato pelo WhatsApp para informações."}{" "}
           {fromAdmin && (
             <>
               <Info size={14} aria-hidden="true" />{" "}
