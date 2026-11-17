@@ -27,7 +27,7 @@ const productRow = {
 };
 
 describe("CR-010B Supabase catalog mapping", () => {
-  it("maps only the public projection and does not invent images or stock quantities", () => {
+  it("maps only the public projection and uses the server-validated public order limit", () => {
     const product = toPublicProduct(productRow, categories, true, [], []);
     expect(product).toMatchObject({
       id: productRow.id,
@@ -35,7 +35,7 @@ describe("CR-010B Supabase catalog mapping", () => {
       priceCents: 12500,
       promoPriceCents: 9900,
       availability: "pronta-entrega",
-      stock: 1,
+      stock: 10,
       images: [],
       active: true,
       featured: true,
