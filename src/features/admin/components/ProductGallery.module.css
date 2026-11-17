@@ -2,7 +2,7 @@
 .gallery h3 { margin: 0; font-size: 1rem; }
 .hint { margin: 0; color: var(--color-text-muted, #6b7280); font-size: .875rem; line-height: 1.5; }
 .error { color: #be123c; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 1rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(185px, 100%), 1fr)); gap: 1rem; }
 .photo { min-width: 0; border: 1px solid var(--color-border, #d1d5db); border-radius: 12px; overflow: hidden; }
 .photo img { display: block; width: 100%; height: 190px; object-fit: contain; background: rgba(128, 128, 128, .06); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .75rem; }
@@ -11,6 +11,6 @@
 .upload input[type="file"]:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .upload > :last-child { justify-self: start; }
 @media (max-width: 600px) {
-  .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); }
   .photo img { height: 150px; }
 }

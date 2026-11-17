@@ -1,21 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useHydrated } from "@tanstack/react-router";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronsLeft, ChevronsRight, CircleHelp, ExternalLink, Menu } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, CircleHelp, ExternalLink, Menu } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
 import { Button, buttonClass } from "@/shared/ui/Button";
 import { ThemeSegmented, ThemeToggleButton } from "@/shared/ui/ThemeToggle";
-import { DemoNotice } from "@/shared/ui/DemoNotice";
 import { adminNav, findAdminNav } from "./nav";
 import styles from "./AdminLayout.module.css";
 import { cx } from "@/shared/utils/cx";
-import { StorageNotice } from "@/features/demo-data/StorageNotice";
 
-const demoNotifications = [
-  { title: "Novo pedido iniciado (#4588)", time: "há 5 min" },
-  { title: "Solicitação de personalização recebida", time: "há 1 h" },
-  { title: "Estoque baixo: Organizador de Mesa", time: "ontem" },
-];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -23,7 +16,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [panel, setPanel] = useState<"none" | "notifications" | "help">("none");
+  const [panel, setPanel] = useState<"none" | "help">("none");
 
   useEffect(() => {
     setMobileOpen(false);
@@ -55,7 +48,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <span className={styles.avatar} aria-hidden="true">AD</span>
             <span className={styles.profileText}>
               <strong>Administrador</strong>
-              <small>Perfil demonstrativo</small>
+              <small>Acesso administrativo</small>
             </span>
           </div>
         </div>
@@ -74,10 +67,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <p>{current.subtitle}</p>
           </div>
           <div className={styles.headerActions}>
-            <Button variant="ghost" size="icon" className={styles.bell} aria-label="Notificações" aria-expanded={panel === "notifications"} onClick={() => setPanel((p) => (p === "notifications" ? "none" : "notifications"))}>
-              <Bell size={21} />
-              <span className={styles.bellDot} aria-hidden="true" />
-            </Button>
             <Button variant="ghost" size="icon" className={styles.hideMobile} aria-label="Ajuda" aria-expanded={panel === "help"} onClick={() => setPanel((p) => (p === "help" ? "none" : "help"))}>
               <CircleHelp size={21} />
             </Button>
@@ -85,29 +74,17 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <Link to="/" className={buttonClass("outline", "md", styles.storeLink)} target="_blank" rel="noopener" aria-label="Ver Loja (abre em nova aba)">
               <span className={styles.storeLabel}>Ver Loja</span> <ExternalLink size={16} aria-hidden="true" />
             </Link>
-            {panel === "notifications" && (
-              <div className={styles.popover} role="dialog" aria-label="Notificações">
-                <h2>Notificações (demonstração)</h2>
-                <ul>
-                  {demoNotifications.map((n) => (
-                    <li key={n.title}>{n.title}<small>{n.time}</small></li>
-                  ))}
-                </ul>
-              </div>
-            )}
             {panel === "help" && (
               <div className={styles.popover} role="dialog" aria-label="Ajuda">
                 <h2>Ajuda</h2>
-                <p>Este painel está em modo demonstração. As alterações ficam salvas apenas neste navegador (sincronizadas entre abas), nenhuma informação é enviada a um servidor e todos os números são simulados. Use "Restaurar dados fictícios" em Configurações para voltar ao início.</p>
+                <p>Gerencie o catálogo, estoque, banners, configurações e pedidos registrados pela loja. Alterações administrativas autorizadas são persistidas no Supabase.</p>
               </div>
             )}
           </div>
         </header>
         <div className={styles.content}>
-          <DemoNotice />
-          <StorageNotice admin />
-          {/* Demo data lives in this browser (LocalStorage): render admin screens only after hydration. */}
-          <div style={{ marginTop: 24 }}>{hydrated ? children : <p aria-busy="true">Carregando dados de demonstração…</p>}</div>
+          {/* Aguarda a hidratação antes de renderizar os módulos administrativos. */}
+          <div style={{ marginTop: 24 }}>{hydrated ? children : <p aria-busy="true">Carregando painel administrativo…</p>}</div>
         </div>
       </div>
     </div>

@@ -89,7 +89,18 @@ export function CheckoutPage() {
               <p><CheckCircle2 size={20}/> Pedido #{order.orderNumber} registrado no Supabase.</p>
               <p className={styles.hint}>Status: aguardando contato. Frete a combinar.</p>
               {whatsappLink && <a className={buttonClass("primary")} href={whatsappLink}
-                target="_blank" rel="noopener noreferrer" onClick={() => cart.clear()}>
+                target="_blank" rel="noopener noreferrer" onClick={(event) => {
+                  event.preventDefault();
+                  const href = event.currentTarget.href;
+                  const opened = window.open("about:blank", "_blank");
+                  if (!opened) {
+                    window.location.assign(href);
+                    return;
+                  }
+                  opened.opener = null;
+                  opened.location.href = href;
+                  cart.clear();
+                }}>
                 <MessageCircle size={18}/> Abrir WhatsApp e enviar pedido
               </a>}
               {!whatsappLink && <p className={styles.errorSummary}>
