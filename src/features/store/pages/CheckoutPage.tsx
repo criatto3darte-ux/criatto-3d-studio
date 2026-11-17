@@ -92,9 +92,14 @@ export function CheckoutPage() {
                 target="_blank" rel="noopener noreferrer" onClick={(event) => {
                   event.preventDefault();
                   const href = event.currentTarget.href;
-                  const opened = window.open(href, "_blank", "noopener,noreferrer");
-                  if (opened) cart.clear();
-                  else window.location.assign(href);
+                  const opened = window.open("about:blank", "_blank");
+                  if (!opened) {
+                    window.location.assign(href);
+                    return;
+                  }
+                  opened.opener = null;
+                  opened.location.href = href;
+                  cart.clear();
                 }}>
                 <MessageCircle size={18}/> Abrir WhatsApp e enviar pedido
               </a>}
