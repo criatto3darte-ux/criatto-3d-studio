@@ -10,6 +10,7 @@ import type {
 } from "@/shared/types/catalog";
 
 export type CatalogLoadState = "loading" | "ready" | "error" | "unconfigured";
+const PUBLIC_ORDER_QUANTITY_LIMIT = 10;
 export interface CatalogSnapshot {
   readonly state: CatalogLoadState;
   readonly products: readonly Product[];
@@ -169,15 +170,15 @@ export function toPublicProduct(
           : "indisponivel",
     ...(row.production_days ? { productionDays: row.production_days } : {}),
     // Public availability is boolean by design; exact on-hand quantities stay private.
-    stock: available && !hasUnconfiguredVariants ? 1 : 0,
+    // Use the cart's public line limit when available. The checkout RPC remains the
+    // authority that atomically validates and reserves the real private balance.
+    stock: available && !hasUnconfiguredVariants ? PUBLIC_ORDER_QUANTITY_LIMIT : 0,
     featured: Boolean(row.featured),
     active: true,
     variants,
     // For a simple product no variant combination is required.
     // An empty array would cause the cart validator to reject every add.
-    ...(productGroups.length === 0
-      ? {}
-      : { variantCombinations: variantCombinations ?? [] }),
+    ...(productGroups.length === 0 ? {} : { variantCombinations: variantCombinations ?? [] }),
   };
 }
 
@@ -251,10 +252,14 @@ async function loadCatalog(): Promise<{ products: Product[]; categories: Categor
         option_id: string;
       }[],
     );
-    return product ? [{
-      ...product,
-      images: (publicImages.get(product.id) ?? []).map((image) => image.url),
-    }] : [];
+    return product
+      ? [
+          {
+            ...product,
+            images: (publicImages.get(product.id) ?? []).map((image) => image.url),
+          },
+        ]
+      : [];
   });
   return { products, categories };
 }
@@ -357,7 +362,14 @@ export async function listAdminProducts(
   categories?: readonly AdminCategory[],
 ): Promise<AdminProduct[]> {
   const client = getSupabase();
-  const [productsResult, availabilityResult, groupsResult, optionsResult, variantsResult, variantValuesResult] = await Promise.all([
+  const [
+    productsResult,
+    availabilityResult,
+    groupsResult,
+    optionsResult,
+    variantsResult,
+    variantValuesResult,
+  ] = await Promise.all([
     client
       .from("products")
       .select(
@@ -404,7 +416,11 @@ export async function listAdminProducts(
       }[],
       (optionsResult.data ?? []) as { group_id: string; id: string; label: string }[],
       (variantsResult.data ?? []) as { id: string; product_id: string; sku: string }[],
-      (variantValuesResult.data ?? []) as { variant_id: string; group_id: string; option_id: string }[],
+      (variantValuesResult.data ?? []) as {
+        variant_id: string;
+        group_id: string;
+        option_id: string;
+      }[],
     );
     if (!product) return [];
     return [{ ...product, active: row.active, version: row.version, archivedAt: row.archived_at }];

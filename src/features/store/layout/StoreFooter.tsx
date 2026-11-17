@@ -102,7 +102,7 @@ export function StoreFooter() {
           <span>
             © {new Date().getFullYear()} {name}. Todos os direitos reservados.
           </span>
-          <span>Atendimento pelo WhatsApp. Pedidos pelo site ainda estão indisponíveis.</span>
+          <span>Pedidos registrados com segurança e atendimento finalizado pelo WhatsApp.</span>
         </div>
       </div>
     </footer>
