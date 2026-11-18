@@ -53,15 +53,33 @@ O conjunto PostgreSQL 17 passa a verificar:
 - permanência de `security_barrier=true` em todas as views públicas;
 - integridade SHA-256 da nova migration.
 
-## Operações remotas pendentes
+## Validação remota em homologação
 
-Esta branch não aplica a migration remotamente. Após revisão e CI verde, a
-promoção exige autorização específica para:
+Em 17/11/2026, após autorização, a migration foi aplicada exclusivamente ao
+projeto de homologação `ugwuxczcqlrdjkpjsdqb` e registrada no histórico remoto
+como `cr013_production_security_hardening`.
 
-1. aplicar a migration no Supabase de homologação;
-2. repetir o advisor e os testes funcionais da loja;
-3. habilitar proteção contra senhas vazadas no Auth, avaliando antes o impacto
+As consultas pós-aplicação confirmaram:
+
+- zero privilégios além de `SELECT` nas views auditadas;
+- zero permissões de leitura pública ausentes;
+- `anon` sem acesso ao `finance_order_summary`;
+- `authenticated` e `service_role` com leitura do resumo financeiro;
+- 14 de 14 views públicas com `security_barrier=true`;
+- página inicial e catálogo da homologação carregando normalmente;
+- cinco links de produto encontrados no catálogo publicado.
+
+O Security Advisor continua mostrando 14 views owner-executed e seis funções
+`SECURITY DEFINER`. São exceções arquiteturais conhecidas e controladas,
+descritas acima. O alerta de proteção contra senhas vazadas permanece pendente.
+
+## Operações pendentes
+
+Antes da produção ainda é necessário:
+
+1. habilitar proteção contra senhas vazadas no Auth, avaliando antes o impacto
    no login e na recuperação de senha;
-4. somente depois preparar a janela de produção.
+2. executar a rodada final de autenticação/MFA e checkout em homologação;
+3. preparar e aprovar a janela de produção.
 
 Produção, DNS, Locaweb e `main` permanecem inalterados.
