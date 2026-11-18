@@ -9,6 +9,7 @@
 }
 
 .inner {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -26,6 +27,8 @@
 
 .text {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   line-height: 1.35;
 }
 
@@ -42,6 +45,7 @@
   color: #ffc850;
   text-decoration: underline;
   margin-left: 0.35rem;
+  white-space: normal;
 }
 
 .link:hover {

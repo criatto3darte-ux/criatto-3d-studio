@@ -68,14 +68,16 @@ export async function saveRealStoreSettings(
   version: number | null,
 ): Promise<void> {
   const client = getSupabase();
+  const socialLinks: Record<string, string> = {};
+  const instagram = values.instagram.trim();
+  const tiktok = values.tiktok.trim();
+  if (instagram) socialLinks.instagram = instagram;
+  if (tiktok) socialLinks.tiktok = tiktok;
   const update = {
     name: values.name.trim(),
     whatsapp_number: values.whatsappNumber,
     public_email: values.email.trim() || null,
-    social_links: {
-      instagram: values.instagram.trim(),
-      tiktok: values.tiktok.trim(),
-    },
+    social_links: socialLinks,
     address: values.address.trim() || null,
     delivery_info: values.deliveryInfo.trim(),
     offers_national_shipping: values.offersNationalShipping,

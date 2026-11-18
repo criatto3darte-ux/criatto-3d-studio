@@ -88,13 +88,7 @@ Deno.serve(async (req) => {
     .eq("id", 1).maybeSingle();
   const whatsapp = typeof settings.data?.whatsapp_number === "string"
     ? settings.data.whatsapp_number : "";
-  if (settings.error || !/^55[1-9]{2}9?\d{8}$/.test(whatsapp)) {
-    return output(req, 503, {
-      error: "Pedido registrado; WhatsApp comercial não configurado. Entre em contato com a loja.",
-      orderId: result.order_id,
-      orderNumber: result.order_number,
-    });
-  }
+  const validWhatsapp = !settings.error && /^55[1-9]{2}9?\d{8}$/.test(whatsapp);
   return output(req, 200, {
     orderId: result.order_id,
     orderNumber: result.order_number,
