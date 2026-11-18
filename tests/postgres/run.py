@@ -198,6 +198,7 @@ def all_migrations():
     migs += list((ROOT/'supabase/migrations').glob('*_cr010b1*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr010b7*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr010c1*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr013*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -222,6 +223,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261116034611_cr010b7_public_catalog_media.sql':'50fdb4f8ea540feb6e0f30d507ad4ef598bf28acb376d9fc579b2d3ec24f4f1d',
     '20261116034643_cr010b10_public_site_banners.sql':'d16f891df310886c1548efab0167ccbdaa9df69709282ef39b276c3636396f48',
     '20261116120000_cr010c1_checkout_orders.sql':'c4433f1214b3875ad57bffdfd3f4c75b771a374f737ffaa58d6abed912cea533',
+    '20261118004549_cr013_production_security_hardening.sql':'aa8f04957a2be9d706e70e55e1a633a11fead0609055c9285acba1983a7b4200',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -575,6 +577,32 @@ try:
               't')
         check(db,'public banner view anonymous SELECT permitted',
               "SELECT has_table_privilege('anon','public.public_site_banners','SELECT')",
+              't')
+        check(db,'public projections expose SELECT only to storefront roles',
+              "SELECT count(*) FROM information_schema.role_table_grants "
+              "WHERE table_schema='public' "
+              "AND table_name IN ('public_categories','public_products','public_attribute_groups',"
+              "'public_attribute_options','public_variants','public_variant_options',"
+              "'public_product_images','public_category_images','public_banners',"
+              "'public_store_settings','public_availability','public_catalog_images',"
+              "'public_site_banners') AND grantee IN ('anon','authenticated','service_role') "
+              "AND privilege_type <> 'SELECT'",
+              '0')
+        check(db,'catalog media views reject storefront writes',
+              "SELECT NOT (has_table_privilege('anon','public.public_catalog_images','INSERT') "
+              "OR has_table_privilege('anon','public.public_catalog_images','UPDATE') "
+              "OR has_table_privilege('anon','public.public_catalog_images','DELETE')) "
+              "AND NOT (has_table_privilege('authenticated','public.public_site_banners','INSERT') "
+              "OR has_table_privilege('authenticated','public.public_site_banners','UPDATE') "
+              "OR has_table_privilege('authenticated','public.public_site_banners','DELETE'))",
+              't')
+        check(db,'finance summary is not anonymous and is SELECT-only for trusted roles',
+              "SELECT NOT has_table_privilege('anon','public.finance_order_summary','SELECT') "
+              "AND has_table_privilege('authenticated','public.finance_order_summary','SELECT') "
+              "AND has_table_privilege('service_role','public.finance_order_summary','SELECT') "
+              "AND NOT has_table_privilege('authenticated','public.finance_order_summary','INSERT') "
+              "AND NOT has_table_privilege('authenticated','public.finance_order_summary','UPDATE') "
+              "AND NOT has_table_privilege('authenticated','public.finance_order_summary','DELETE')",
               't')
         check(db,'public banners expose limited projection',
               "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
