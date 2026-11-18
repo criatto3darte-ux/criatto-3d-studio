@@ -40,6 +40,7 @@ jobs:
           VITE_SUPABASE_URL=https://tdawygjcqmclwlrermpl.supabase.co
           VITE_SUPABASE_ANON_KEY=sb_publishable_zs-LC9I2hjrY-_bKYDN9cQ_dFRwqQIE
           VITE_APP_URL=https://criatto3d.art.br
+          VITE_ENABLE_LIVE_CHECKOUT=true
           EOF
 
       - name: Install (--frozen-lockfile = reproduzível)
