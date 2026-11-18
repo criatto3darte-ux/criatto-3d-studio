@@ -10,9 +10,23 @@ const origins = new Set(
     "https://homolog.criatto3d.art.br,http://localhost:5173")
     .split(",").map((value) => value.trim()).filter(Boolean),
 );
+// Supabase API keys: prefer the new JSON env vars (named key "default") and
+// fall back to the legacy single-string vars only while they still exist.
+function apiKey(jsonVar: string, legacyVar: string): { key: string; source: string } {
+  try {
+    const value = (JSON.parse(Deno.env.get(jsonVar) ?? "{}") as Record<string, unknown>)
+      .default;
+    if (typeof value === "string" && value) return { key: value, source: jsonVar };
+  } catch { /* malformed JSON: use the legacy variable */ }
+  const legacy = Deno.env.get(legacyVar) ?? "";
+  return { key: legacy, source: legacy ? legacyVar : "missing" };
+}
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const secret = apiKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+const publishable = apiKey("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY");
+const serviceKey = secret.key;
+const publicKey = publishable.key;
+console.info(`catalog-media: secret key from ${secret.source}; publishable key from ${publishable.source}`);
 
 function cors(request: Request): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";

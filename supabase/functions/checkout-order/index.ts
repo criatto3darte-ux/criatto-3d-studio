@@ -1,8 +1,21 @@
 // CR-010C.1 — Public no-account checkout. PREPARED ONLY.
 // Requires CHECKOUT_RATE_PEPPER and validated PG17 order migration.
 import { createClient } from "npm:@supabase/supabase-js@2.76.1";
+// Supabase API keys: prefer the new JSON env vars (named key "default") and
+// fall back to the legacy single-string vars only while they still exist.
+function apiKey(jsonVar: string, legacyVar: string): { key: string; source: string } {
+  try {
+    const value = (JSON.parse(Deno.env.get(jsonVar) ?? "{}") as Record<string, unknown>)
+      .default;
+    if (typeof value === "string" && value) return { key: value, source: jsonVar };
+  } catch { /* malformed JSON: use the legacy variable */ }
+  const legacy = Deno.env.get(legacyVar) ?? "";
+  return { key: legacy, source: legacy ? legacyVar : "missing" };
+}
 const url = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const secret = apiKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+const serviceKey = secret.key;
+console.info(`checkout-order: secret key from ${secret.source}`);
 const pepper = Deno.env.get("CHECKOUT_RATE_PEPPER") ?? "";
 const origins = new Set(
   (Deno.env.get("CHECKOUT_ALLOWED_ORIGINS") ??
