@@ -4,8 +4,21 @@ import { createClient } from "npm:@supabase/supabase-js@2.76.1";
 const BUCKET = "catalog-images";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BYTES = 5 * 1024 * 1024;
+// Supabase API keys: prefer the new JSON env vars (named key "default") and
+// fall back to the legacy single-string vars only while they still exist.
+function apiKey(jsonVar: string, legacyVar: string): { key: string; source: string } {
+  try {
+    const value = (JSON.parse(Deno.env.get(jsonVar) ?? "{}") as Record<string, unknown>)
+      .default;
+    if (typeof value === "string" && value) return { key: value, source: jsonVar };
+  } catch { /* malformed JSON: use the legacy variable */ }
+  const legacy = Deno.env.get(legacyVar) ?? "";
+  return { key: legacy, source: legacy ? legacyVar : "missing" };
+}
 const url = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const secret = apiKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+const serviceKey = secret.key;
+console.info(`banner-media: secret key from ${secret.source}`);
 const allowed = new Set((Deno.env.get("CATALOG_MEDIA_ALLOWED_ORIGINS") ??
   "https://homolog.criatto3d.art.br,http://localhost:5173").split(",").map((x) => x.trim()));
 
