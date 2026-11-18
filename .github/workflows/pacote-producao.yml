@@ -37,8 +37,8 @@ jobs:
           cat > .env.production << 'EOF'
           # Produção — https://criatto3d.art.br
           # Usado apenas para o build de produção (GitHub Actions).
-          VITE_SUPABASE_URL=https://ugwuxczcqlrdjkpjsdqb.supabase.co
-          VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnd3V4Y3pjcWxyZGprcGpzZHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1OTkwMzgsImV4cCI6MjExMDE3NTAzOH0.4g5oKkg3JMiIf7g1GtPa4iltIS6NF9B2-fxLJR-Ij00
+          VITE_SUPABASE_URL=https://tdawygjcqmclwlrermpl.supabase.co
+          VITE_SUPABASE_ANON_KEY=sb_publishable_zs-LC9I2hjrY-_bKYDN9cQ_dFRwqQIE
           VITE_APP_URL=https://criatto3d.art.br
           EOF
 
