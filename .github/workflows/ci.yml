@@ -1,4 +1,4 @@
-# CR-007B.7 — CI mínimo para PRs contra main.
+# CR-007B.7 — CI mínimo para PRs contra main e branches de integração.
 # Sem deploy, sem credenciais Supabase, sem migrations remotas.
 # Escopo: install reproduzível (bun + frozen lockfile), typecheck, vitest,
 # build, lint direcionado, varredura de credenciais, e testes PostgreSQL 17
@@ -7,7 +7,9 @@ name: ci
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - "integration/**"
   push:
     branches:
       - main
