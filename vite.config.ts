@@ -1,8 +1,6 @@
 // Vite configuration for the Criatto 3D static SPA build (Locaweb Estática).
 //
-// Anteriormente este projeto usava @lovable.dev/vite-tanstack-config com preset
-// Nitro/Cloudflare SSR. Essa dependência foi substituída por configuração
-// pública e suportada:
+// Configuração pública e suportada (sem dependências de plataformas de terceiros):
 //   - @vitejs/plugin-react
 //   - @tanstack/router-plugin  (gera routeTree.gen.ts)
 //   - @tailwindcss/vite        (Tailwind v4)
