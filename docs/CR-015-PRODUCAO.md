@@ -19,7 +19,9 @@ A homologação é exclusivamente de teste; seus dados de teste foram removidos 
 - **Configuração da loja:** `store_settings` id=1 (Criatto 3D, WhatsApp 5521987640769,
   `canonical_origin` https://criatto3d.art.br).
 - **Edge Functions:** `checkout-order` (verify_jwt=false), `catalog-media` e `banner-media`
-  (verify_jwt=true). O `ezbr_sha256` de cada uma é igual ao da homologação.
+  (verify_jwt=true), na versão do PR #14 (lêem `SUPABASE_SECRET_KEYS` /
+  `SUPABASE_PUBLISHABLE_KEYS`, com fallback para as chaves legadas). O `ezbr_sha256` de cada uma
+  é igual ao da homologação: `e458963c…`, `fa1bcce7…` e `29db990e…`.
 - **Secrets das funções:** `CHECKOUT_ALLOWED_ORIGINS` e `CATALOG_MEDIA_ALLOWED_ORIGINS` =
   `https://criatto3d.art.br,https://www.criatto3d.art.br` (digest conferido);
   `CHECKOUT_RATE_PEPPER` definido pelo proprietário.
@@ -36,6 +38,8 @@ A homologação é exclusivamente de teste; seus dados de teste foram removidos 
   checkout real (`VITE_ENABLE_LIVE_CHECKOUT=true`).
 - Remove os vínculos com o Lovable (relatório de erros, `.lovable/`, instruções e exceções).
 - Versiona a CR-014 (`finance_order_summary` exige AAL2), com o SHA-256 fixado no harness PG17.
+- Integra o PR #14 (chaves novas nas Edge Functions); `pacote-homolog.yml` passa a usar a
+  publishable key; o CI também valida PRs contra `release/**`.
 - CI do PR: Static + unit OK; PostgreSQL 17 com 820 asserções OK.
 
 ## 4. Publicação (passo a passo)
@@ -51,10 +55,16 @@ A homologação é exclusivamente de teste; seus dados de teste foram removidos 
 
 ## 5. Pendências conhecidas
 
-- **Chaves legadas do Supabase:** as Edge Functions usam `SUPABASE_SERVICE_ROLE_KEY` e
-  `SUPABASE_ANON_KEY`, que o Supabase anuncia funcionar só até o fim de 2026. Migrar para
-  `SUPABASE_SECRET_KEYS` / `SUPABASE_PUBLISHABLE_KEYS` (testando primeiro na homologação)
-  antes dessa data. O frontend de produção já usa a publishable key.
+- **Chaves legadas do Supabase:** frontend (produção e homologação) e Edge Functions já usam as
+  chaves novas. Só revogar as chaves legadas depois de conferir, nos logs, que nenhuma função
+  usou o fallback legado e que não há outros consumidores.
+- **Upload de imagens (CR-013A):** a falha relatada na homologação não se reproduz com o código
+  atual. Com o Supabase simulado no Chromium, a galeria do produto, o cadastro de produto com foto
+  e o banner enviaram o arquivo (multipart) para `catalog-media`/`banner-media`. Os logs da
+  homologação mostram que nenhum upload chegou ao Supabase, o que indica um build antigo publicado
+  em homolog.criatto3d.art.br. Republicar a homologação com o pacote atual e testar o upload real
+  com sessão AAL2 (o caminho de upload no servidor ainda não foi exercitado de ponta a ponta).
+- **Homologação:** o pedido #1 de QA e os movimentos de estoque ficam preservados por auditoria.
 - **Plano Free:** sem backup baixável e com pausa do projeto após ~7 dias sem atividade.
   Fazer backup manual periódico do banco.
 - **Repositório público:** tornar privado em Settings → Danger Zone.
