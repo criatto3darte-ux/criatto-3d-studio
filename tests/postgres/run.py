@@ -199,6 +199,7 @@ def all_migrations():
     migs += list((ROOT/'supabase/migrations').glob('*_cr010b7*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr010c1*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr013*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr014*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -224,6 +225,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261116034643_cr010b10_public_site_banners.sql':'d16f891df310886c1548efab0167ccbdaa9df69709282ef39b276c3636396f48',
     '20261116120000_cr010c1_checkout_orders.sql':'c4433f1214b3875ad57bffdfd3f4c75b771a374f737ffaa58d6abed912cea533',
     '20261118004549_cr013_production_security_hardening.sql':'aa8f04957a2be9d706e70e55e1a633a11fead0609055c9285acba1983a7b4200',
+    '20261118015832_cr014_finance_summary_aal2.sql':'56b89303e0634b381c3b4bca6d3f0a9e38cc97d7cbf1eade56b3c61367b2524f',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -748,6 +750,7 @@ COMMIT;
         check(db,'finance sanitized summary (finance)',actor('finance','SELECT count(*) FROM finance_order_summary'),'1')
         check(db,'operator denied finance summary',actor('operator','SELECT count(*) FROM finance_order_summary'),'0')
         check(db,'editor denied finance summary',actor('editor','SELECT count(*) FROM finance_order_summary'),'0')
+        check(db,'CR-014 finance summary denied without MFA (aal1)',actor('finance','SELECT count(*) FROM finance_order_summary','aal1'),'0')
         check(db,'owner sees finance summary',actor('owner','SELECT count(*) FROM finance_order_summary'),'1')
         # Existing baseline assertions.
         check(db,'all FK first columns indexed',"SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='f' AND NOT EXISTS(SELECT 1 FROM pg_index i WHERE i.indrelid=c.conrelid AND i.indisvalid AND i.indkey[0]=c.conkey[1])",'0')
