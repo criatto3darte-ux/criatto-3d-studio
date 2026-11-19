@@ -7,7 +7,7 @@ import { validOrderUpdates } from "./order.rules";
 
 /**
  * Repositório central de demonstração (LocalStorage, versionado).
- * Contrato pensado para ser trocado por funções de servidor com Lovable Cloud depois:
+ * Contrato pensado para ser trocado por funções de servidor depois:
  * `get`, `update`, `reset`, `subscribe`. Componentes usam apenas `useDemoData`/`demoRepository`.
  */
 export const DEMO_STORAGE_KEY = "criatto3d:demo-data";

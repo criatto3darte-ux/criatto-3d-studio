@@ -1,0 +1,91 @@
+# SPA fallback + hardening — Apache / Locaweb (homolog + produção).
+#
+# Esta versão é compartilhada entre homolog.criatto3d.art.br e
+# criatto3d.art.br. Regras específicas de homolog (BasicAuth, noindex)
+# são condicionadas ao Host (ver <If> abaixo) e ao arquivo .htpasswd
+# presente ou ausente.
+#
+# Comandos para gerar senha (quando for aplicar o BasicAuth de homolog):
+#   htpasswd -cb public/.htpasswd criatto3d '<senha-escolhida>'
+# O arquivo .htpasswd NÃO deve ser gerado/commitado agora; só quando a
+# homologação for ativada.
+
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+
+  # Bloqueia acesso direto a arquivos/diretórios sensíveis:
+  #   .git, .env, .htaccess, .htpasswd, backups terminados em ~,
+  #   source maps (.map), scripts SQL e documentação interna.
+  RewriteRule (^|/)\.(git|env|htaccess|htpasswd) - [F,L,NC]
+  RewriteRule \.map$ - [F,L,NC]
+  RewriteRule \.sql$ - [F,L,NC]
+  RewriteRule ~$ - [F,L]
+
+  # SPA fallback: qualquer caminho que não corresponda a arquivo/diretório
+  # real é servido por /index.html (status 200) para o TanStack Router.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Controle de acesso de homologação (opcional).
+# Descomentar o bloco abaixo SOMENTE em homolog.criatto3d.art.br e
+# depois de gerar o .htpasswd. Em produção deixe comentado.
+#
+# <IfModule mod_auth_basic.c>
+#   AuthType Basic
+#   AuthName "Criatto 3D - Homologacao (acesso restrito)"
+#   AuthUserFile /home/[USUARIO]/public_html/homolog/.htpasswd
+#   Require valid-user
+# </IfModule>
+
+# Segurança básica
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+  # Bloqueia indexação por mecanismos de busca SOMENTE em homolog.
+  # Em produção (criatto3d.art.br) a loja pública deve ser indexável;
+  # o painel administrativo usa <meta name="robots"> no HTML.
+  # O <If> abaixo exige Apache 2.4+ (padrão na Locaweb).
+  <If "%{HTTP_HOST} == 'homolog.criatto3d.art.br'">
+    Header set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+  </If>
+  <FilesMatch "\.webmanifest$">
+    Header set Content-Type "application/manifest+json"
+  </FilesMatch>
+</IfModule>
+
+# Cache agressivo de assets hasheados (1 ano); HTML sempre revalidado.
+# Assets do Vite têm hash no nome (ex.: index-COb9FjeE.js), então um cache
+# longo é seguro: quando o conteúdo muda o nome do arquivo também muda.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html                 "access plus 0 seconds"
+  ExpiresByType text/css                  "access plus 1 year"
+  ExpiresByType application/javascript    "access plus 1 year"
+  ExpiresByType application/manifest+json "access plus 0 seconds"
+  ExpiresByType image/png                 "access plus 1 year"
+  ExpiresByType image/jpeg                "access plus 1 year"
+  ExpiresByType image/webp                "access plus 1 year"
+  ExpiresByType image/avif                "access plus 1 year"
+  ExpiresByType image/svg+xml             "access plus 1 year"
+  ExpiresByType image/x-icon              "access plus 1 year"
+  ExpiresByType application/font-woff2    "access plus 1 year"
+</IfModule>
+
+# MIME types que a Locaweb pode não reconhecer corretamente.
+<IfModule mod_mime.c>
+  AddType image/avif                    avif
+  AddType image/webp                    webp
+  AddType application/manifest+json     webmanifest
+  AddType application/wasm              wasm
+  AddType font/woff2                    woff2
+</IfModule>

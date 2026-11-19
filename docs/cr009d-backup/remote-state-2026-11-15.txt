@@ -1,0 +1,184 @@
+CR-009D.1 — Evidência de estado do Supabase remoto (somente-leitura)
+Projeto: ugwuxczcqlrdjkpjsdqb (criatto3d-homolog, sa-east-1)
+Data: 2026-11-15
+
+[PROJECT]
+name: ciatto3d-homolog
+status: ACTIVE_HEALTHY
+region: sa-east-1
+postgresql_version: PostgreSQL 17.11 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+organization: akifnzwtxnmjxvaljjro
+database_host: db.ugwuxczcqlrdjkpjsdqb.supabase.co
+
+[HEALTH]
+auth:      ACTIVE_HEALTHY (GoTrue v2.197.0)
+db:        ACTIVE_HEALTHY
+rest:      ACTIVE_HEALTHY (schemas public,graphql_public)
+storage:   ACTIVE_HEALTHY
+realtime:  ACTIVE_HEALTHY
+pooler:    ACTIVE_HEALTHY
+
+[MIGRATIONS APLICADAS — exatamente 10, 0001-0010]
+20261113120100 cr007b_identity
+20261113120200 cr007b_catalog
+20261113120300 cr007b_media
+20261113120400 cr007b_orders
+20261113120500 cr007b_inventory
+20261113120600 cr007b_coupons_requests
+20261113120700 cr007b_content_audit
+20261113120800 cr007b_access_invariants
+20261113120900 cr007b_media_privilege_hardening
+20261113121000 cr007b7_private_media_and_role_matrix
+migrations_count: 10
+0011 (cr008c_jwt_claims_and_aal)     : ausente
+0012 (cr009c1_pg17_advisory_lock)    : ausente
+
+[EXTENSÕES]
+pg_stat_statements 1.11
+pgcrypto 1.3
+plpgsql 1.0
+supabase_vault 0.3.2
+uuid-ossp 1.1
+
+[TABELAS PÚBLICAS — todas RLS+FORCE (27/27)]
+admin_audit_events rls=true force=true
+admin_profiles rls=true force=true
+banners rls=true force=true
+categories rls=true force=true
+category_images rls=true force=true
+coupon_redemptions rls=true force=true
+coupons rls=true force=true
+custom_request_history rls=true force=true
+custom_request_images rls=true force=true
+custom_requests rls=true force=true
+customers rls=true force=true
+inventory rls=true force=true
+inventory_movements rls=true force=true
+media_assets rls=true force=true
+order_allocations rls=true force=true
+order_items rls=true force=true
+order_status_history rls=true force=true
+orders rls=true force=true
+payments rls=true force=true
+product_attribute_groups rls=true force=true
+product_attribute_options rls=true force=true
+product_images rls=true force=true
+product_variants rls=true force=true
+products rls=true force=true
+store_settings rls=true force=true
+user_roles rls=true force=true
+variant_option_values rls=true force=true
+
+[TRIGGERS (38)]
+admin_audit_events     immutable_event -> reject_mutation
+admin_audit_events     immutable_truncate -> reject_mutation
+admin_profiles         last_profile_owner -> protect_last_owner
+admin_profiles         no_profile_truncate -> reject_mutation
+admin_profiles         version_stamp -> touch_version
+banners                version_stamp -> touch_version
+categories             version_stamp -> touch_version
+coupons                version_stamp -> touch_version
+custom_request_history immutable_event -> reject_mutation
+custom_request_history immutable_truncate -> reject_mutation
+custom_request_images  private_attachment -> check_private_media
+custom_requests        version_stamp -> touch_version
+customers              version_stamp -> touch_version
+inventory              version_stamp -> touch_version
+inventory_movements    immutable_event -> reject_mutation
+inventory_movements    immutable_truncate -> reject_mutation
+media_assets           private_attachment -> check_private_media
+media_assets           version_stamp -> touch_version
+order_allocations      allocation_bounds -> check_allocation
+order_allocations      version_stamp -> touch_version
+order_items            immutable_event -> reject_mutation
+order_items            immutable_truncate -> reject_mutation
+order_status_history   immutable_event -> reject_mutation
+order_status_history   immutable_truncate -> reject_mutation
+orders                 version_stamp -> touch_version
+payments               immutable_event -> reject_mutation
+payments               immutable_truncate -> reject_mutation
+payments               payment_order -> check_payment_order
+payments               private_attachment -> check_private_media
+product_attribute_groups valid_variant -> check_variant_integrity
+product_attribute_options valid_variant -> check_variant_integrity
+product_variants       valid_variant -> check_variant_integrity
+products               version_stamp -> touch_version
+store_settings         settings_links -> validate_social_links
+store_settings         version_stamp -> touch_version
+user_roles             last_role_owner -> protect_last_owner
+user_roles             no_role_truncate -> reject_mutation
+variant_option_values  valid_variant -> check_variant_integrity
+
+[POLICIES (40, nenhuma contém require_aal2 ainda)]
+admin_audit_events  admin_read
+admin_profiles      admin_read, own_profile
+banners             banner_rw
+categories          admin_read, admin_write
+category_images     admin_read, admin_write
+coupon_redemptions  admin_read
+coupons             coupon_read_operador, coupon_rw
+custom_request_history admin_read
+custom_request_images admin_read
+custom_requests     admin_read
+customers           admin_read
+inventory           admin_read
+inventory_movements admin_read
+media_assets        media_read_scoped
+order_allocations   admin_read
+order_items         admin_read
+order_status_history admin_read
+orders              admin_read
+payments            payments_finance, payments_owner
+product_attribute_groups admin_read, admin_write
+product_attribute_options admin_read, admin_write
+product_images      admin_read, admin_write
+product_variants    admin_read, admin_write
+products            admin_read, admin_write
+store_settings      admin_read, settings_owner
+user_roles          admin_read, own_roles
+variant_option_values admin_read, admin_write
+
+[GRANTS críticos authenticated]
+Tabelas append-only/sensíveis SELECT-only: admin_audit_events, admin_profiles, coupon_redemptions, custom_request_history, custom_request_images, custom_requests, customers, inventory, inventory_movements, media_assets, order_allocations, order_items, order_status_history, orders, payments, user_roles.
+Catálogo/conteúdo com INSERT/UPDATE/DELETE (restringidos por RLS) : banners, categories, category_images, coupons, product_attribute_groups, product_attribute_options, product_images, product_variants, products, store_settings, variant_option_values.
+Views public_*: SELECT para anon+authenticated.
+service_role retém DML completo para uso via RPC/operações confiáveis.
+media_assets: SELECT-only para authenticated (hardening 0009 preservado).
+
+[ENUMS]
+admin_role: proprietario,editor,operador,financeiro
+order_status: aguardando-contato,em-atendimento,confirmado,em-producao,pronto-para-entrega,enviado,concluido,cancelado
+production_mode: pronta-entrega,sob-demanda
+request_status: recebida,em-analise,orcamento-enviado,aprovado,em-producao,concluido,cancelado
+
+[DADOS (zero em todos os lugares)]
+auth.users=0 auth.identities=0 storage.buckets=0 storage.objects=0
+auth.sso_providers=0 auth.mfa_factors=0
+Todas 27 tabelas public = 0 linhas
+
+[FUNÇÕES PÚBLICAS]
+Pré-JWT (presentes): check_private_media (SECURITY DEFINER), reject_mutation (INVOKER), has_role, touch_version, protect_last_owner, check_allocation, check_payment_order, check_variant_integrity, validate_social_links (demais helpers de views).
+Funções JWT/AAL (my_roles, custom_access_token_hook, require_aal2): 0 — ausentes, conforme esperado antes da 0011.
+
+[AUTH CONFIG]
+site_url: http://localhost:3000
+uri_allow_list: (vazio)
+jwt_exp: 3600s
+disable_signup: true
+external_email_enabled: true
+external_phone_enabled: false
+mailer_autoconfirm: false
+hook_custom_access_token_enabled: false
+hook_custom_access_token_uri: null
+mfa_totp_enroll_enabled: true
+mfa_totp_verify_enabled: true
+mfa_allow_low_aal: false
+refresh_token_rotation: enabled
+smtp_host: null (SMTP custom não configurado)
+mfa_phone_enroll: false
+
+[EDGE FUNCTIONS]
+Nenhuma publicada.
+
+[API KEYS]
+anon (legacy JWT), service_role (legacy JWT), sb_publishable_*, sb_secret_* (default)

@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock, PackageCheck, ShoppingCart } from "lucide-react";
 import type { Product } from "@/shared/types/catalog";
 import { Button, buttonClass } from "@/shared/ui/Button";
-import { DemoNotice } from "@/shared/ui/DemoNotice";
 import { QuantityStepper } from "@/shared/ui/QuantityStepper";
 import { formatBRL } from "@/shared/utils/format";
 import { useStoreCatalog } from "@/features/catalog/catalog.service";
@@ -20,7 +19,6 @@ import { Section } from "../components/Section";
 import styles from "./ProductPage.module.css";
 import { cx } from "@/shared/utils/cx";
 
-const VIEWS = 4;
 
 export function ProductPage({ product }: { product: Product }) {
   const cart = useCart();
@@ -30,18 +28,26 @@ export function ProductPage({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [addError, setAddError] = useState(false);
-  const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
+  const [selected, setSelected] = useState<Record<string, string>>(
+    () =>
+      product.variantCombinations?.[0]?.selections ??
+      Object.fromEntries(product.variants.map((g) => [g.name, g.options[0]?.label ?? ""])),
   );
   const purchasable = canPurchase(product);
-  const views = Math.max(product.images.length, VIEWS);
+  const views = Math.max(product.images.length, 1);
   const key = buildCartKey(product.id, selected);
   const already = cart.items.find((item) => item.key === key)?.quantity ?? 0;
   const remaining = Math.min(availableQuantity(cart.items, product), MAX_ITEM_QUANTITY - already);
   const selectedQty = Math.min(qty, Math.max(1, remaining));
 
   function addToCart() {
-    const success = cart.add({ productId: product.id, name: product.name, unitPriceCents: effectivePriceCents(product), quantity: selectedQty, variants: selected });
+    const success = cart.add({
+      productId: product.id,
+      name: product.name,
+      unitPriceCents: effectivePriceCents(product),
+      quantity: selectedQty,
+      variants: selected,
+    });
     setAdded(success);
     setAddError(!success);
   }
@@ -49,22 +55,37 @@ export function ProductPage({ product }: { product: Product }) {
   return (
     <div className="container">
       <nav aria-label="Você está em" className={styles.crumbs}>
-        <Link to="/">Início</Link> / <Link to="/produtos">Produtos</Link> / <Link to="/produtos" search={{ categoria: category.slug }}>{category.name}</Link> / <span aria-current="page">{product.name}</span>
+        <Link to="/">Início</Link> / <Link to="/produtos">Produtos</Link> /{" "}
+        <Link to="/produtos" search={{ categoria: category.slug }}>
+          {category.name}
+        </Link>{" "}
+        / <span aria-current="page">{product.name}</span>
       </nav>
       <div className={styles.grid}>
         <div>
-          <div className={styles.main}><ProductMedia product={product} index={view} eager /></div>
-          <div className={styles.thumbs}>
+          <div className={styles.main}>
+            <ProductMedia product={product} index={view} eager />
+          </div>
+          {product.images.length > 1 && <div className={styles.thumbs}>
             {Array.from({ length: views }, (_, i) => (
-              <button key={i} type="button" className={styles.thumb} aria-pressed={view === i} aria-label={`Ver imagem ${i + 1}`} onClick={() => setView(i)}>
+              <button
+                key={i}
+                type="button"
+                className={styles.thumb}
+                aria-pressed={view === i}
+                aria-label={`Ver imagem ${i + 1}`}
+                onClick={() => setView(i)}
+              >
                 <ProductMedia product={product} index={i} showTag={false} />
               </button>
             ))}
-          </div>
+          </div>}
         </div>
         <div className={styles.info}>
           <div className={styles.meta}>
-            <Link to="/produtos" search={{ categoria: category.slug }} className={styles.muted}>{category.name}</Link>
+            <Link to="/produtos" search={{ categoria: category.slug }} className={styles.muted}>
+              {category.name}
+            </Link>
             <AvailabilityBadge product={product} />
           </div>
           <h1 className={styles.title}>{product.name}</h1>
@@ -72,19 +93,46 @@ export function ProductPage({ product }: { product: Product }) {
           <p className={styles.muted}>{product.description}</p>
 
           {product.availability === "pronta-entrega" && (
-            <p className={styles.notice}><PackageCheck size={18} aria-hidden="true" /> Pronta entrega · {product.stock} em estoque (demonstração)</p>
+            <p className={styles.notice}>
+              <PackageCheck size={18} aria-hidden="true" /> Disponibilidade consultada na loja
+            </p>
           )}
           {product.availability === "sob-demanda" && (
-            <p className={styles.notice}><Clock size={18} aria-hidden="true" /> Sob encomenda · produção em até {product.productionDays ?? "—"} dias úteis</p>
+            <p className={styles.notice}>
+              <Clock size={18} aria-hidden="true" /> Sob encomenda · produção em até{" "}
+              {product.productionDays ?? "—"} dias úteis
+            </p>
           )}
           {!purchasable && <p className={styles.notice}>Produto indisponível no momento.</p>}
 
           {product.variants.map((g) => (
             <fieldset key={g.id} className={styles.group}>
-              <legend className={styles.legend}>{g.name}: <span className={styles.muted}>{selected[g.name]}</span></legend>
+              <legend className={styles.legend}>
+                {g.name}: <span className={styles.muted}>{selected[g.name]}</span>
+              </legend>
               <div className={styles.options}>
                 {g.options.map((o) => (
-                  <button key={o.id} type="button" className={styles.chip} aria-pressed={selected[g.name] === o.label} onClick={() => { setSelected((s) => ({ ...s, [g.name]: o.label })); setAdded(false); }}>
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={styles.chip}
+                    aria-pressed={selected[g.name] === o.label}
+                    disabled={
+                      product.variantCombinations !== undefined &&
+                      !product.variantCombinations.some(
+                        (combination) => combination.selections[g.name] === o.label,
+                      )
+                    }
+                    onClick={() => {
+                      const matchingCombination = product.variantCombinations?.find(
+                        (combination) => combination.selections[g.name] === o.label,
+                      );
+                      setSelected(
+                        matchingCombination?.selections ?? { ...selected, [g.name]: o.label },
+                      );
+                      setAdded(false);
+                    }}
+                  >
                     {o.label}
                   </button>
                 ))}
@@ -95,19 +143,45 @@ export function ProductPage({ product }: { product: Product }) {
           <div>
             <div className={styles.legend}>Quantidade</div>
             <div className={styles.buy}>
-              <QuantityStepper label="Quantidade" value={selectedQty} max={remaining} onChange={(v) => { setQty(v); setAdded(false); }} />
-              <Button size="lg" disabled={!purchasable || remaining < 1} onClick={addToCart}><ShoppingCart size={20} /> Adicionar ao carrinho</Button>
+              <QuantityStepper
+                label="Quantidade"
+                value={selectedQty}
+                max={remaining}
+                onChange={(v) => {
+                  setQty(v);
+                  setAdded(false);
+                }}
+              />
+              <Button size="lg" disabled={!purchasable || remaining < 1} onClick={addToCart}>
+                <ShoppingCart size={20} /> Adicionar ao carrinho
+              </Button>
             </div>
           </div>
           <div aria-live="polite">
-            {purchasable && remaining < 1 && <p className={styles.notice}>O limite disponível para este produto já está no carrinho.</p>}
-            {addError && <p role="alert" className={styles.notice}>A disponibilidade mudou. Revise a quantidade antes de adicionar.</p>}
-            {cart.persistenceError && <p role="alert" className={styles.notice}>Não foi possível salvar o carrinho neste navegador. Ele permanece apenas nesta aba.</p>}
+            {purchasable && remaining < 1 && (
+              <p className={styles.notice}>
+                O limite disponível para este produto já está no carrinho.
+              </p>
+            )}
+            {addError && (
+              <p role="alert" className={styles.notice}>
+                A disponibilidade mudou. Revise a quantidade antes de adicionar.
+              </p>
+            )}
+            {cart.persistenceError && (
+              <p role="alert" className={styles.notice}>
+                Não foi possível salvar o carrinho neste navegador. Ele permanece apenas nesta aba.
+              </p>
+            )}
             {added && (
-              <p className={styles.added}><CheckCircle2 size={18} /> Adicionado ao carrinho. <Link to="/carrinho" className={cx(buttonClass("ghost", "sm"))}>Ver carrinho</Link></p>
+              <p className={styles.added}>
+                <CheckCircle2 size={18} /> Adicionado ao carrinho.{" "}
+                <Link to="/carrinho" className={cx(buttonClass("ghost", "sm"))}>
+                  Ver carrinho
+                </Link>
+              </p>
             )}
           </div>
-          <DemoNotice>Produto de demonstração: preço, estoque e prazo são fictícios.</DemoNotice>
         </div>
       </div>
       {relatedProducts(catalog.products, product).length > 0 && (
