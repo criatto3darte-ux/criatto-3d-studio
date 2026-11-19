@@ -224,8 +224,8 @@ export function CartPage() {
                   <MessageCircle size={20}/> Checkout em preparação
                 </Button>
                 <p className={styles.muted}>
-                  O resumo local não cria um pedido. A finalização será habilitada somente
-                  após os testes transacionais com o Supabase.
+                  A finalização de pedidos está temporariamente indisponível.
+                  Fale com a loja pelo WhatsApp.
                 </p>
               </>
             )}

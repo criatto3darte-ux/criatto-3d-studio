@@ -86,7 +86,7 @@ export function CheckoutPage() {
       />
       {!LIVE_CHECKOUT_ENABLED && (
         <p role="status" className={styles.errorSummary}>
-          Checkout comercial ainda em homologação. Nenhum pedido será criado nesta versão.
+          A finalização de pedidos está temporariamente indisponível. Fale com a loja pelo WhatsApp.
         </p>
       )}
       <div className={styles.layout}>
@@ -139,7 +139,7 @@ export function CheckoutPage() {
           {order && (
             <div role="status">
               <p>
-                <CheckCircle2 size={20} /> Pedido #{order.orderNumber} registrado no Supabase.
+                <CheckCircle2 size={20} /> Pedido #{order.orderNumber} registrado!
               </p>
               <p className={styles.hint}>Status: aguardando contato. Frete a combinar.</p>
               {whatsappLink && <a className={buttonClass("primary")} href={whatsappLink}

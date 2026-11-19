@@ -61,7 +61,7 @@ export async function createOfficialOrder(payload: ReturnType<typeof orderPayloa
   if (!data || !Number.isSafeInteger(data.orderNumber) ||
       !Number.isSafeInteger(Number(data.subtotalCents)) ||
       typeof data.orderId !== "string" || typeof data.whatsapp !== "string") {
-    throw new Error("O servidor não confirmou o pedido.");
+    throw new Error("Não foi possível confirmar o pedido. Tente novamente.");
   }
   return {
     orderId: data.orderId,
@@ -77,7 +77,7 @@ export function officialOrderWhatsAppUrl(
 ): string | null {
   const lines = [
     "*PEDIDO CRIATTO 3D*", "",
-    `Pedido oficial #${order.orderNumber}`,
+    `Pedido nº ${order.orderNumber}`,
     `Nome: ${customer.name.trim()}`,
     `WhatsApp: ${customer.phone}`, "",
     "*PRODUTOS*",
@@ -87,7 +87,7 @@ export function officialOrderWhatsAppUrl(
         ? ` | ${Object.entries(item.variants).map(([k, v]) => `${k}: ${v}`).join(", ")}`
         : ""),
     ),
-    "", `Subtotal confirmado no servidor: R$ ${(order.subtotalCents / 100).toFixed(2).replace(".", ",")}`,
+    "", `Subtotal: R$ ${(order.subtotalCents / 100).toFixed(2).replace(".", ",")}`,
     "Frete: a combinar.",
     customer.notes.trim() ? `Observações: ${customer.notes.trim()}` : "",
     "", "Gostaria de confirmar disponibilidade e entrega deste pedido.",
