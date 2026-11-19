@@ -9,6 +9,7 @@ import { adminNav, findAdminNav } from "./nav";
 import styles from "./AdminLayout.module.css";
 import { cx } from "@/shared/utils/cx";
 import { getSupabase } from "@/lib/supabase/client";
+import { clearLegacyDemoData } from "@/features/admin/admin-metrics";
 
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -31,6 +32,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       setSigningOut(false);
     }
   }
+
+  useEffect(() => {
+    // Remove dados de demonstração antigos deixados no navegador.
+    clearLegacyDemoData(typeof window === "undefined" ? undefined : window.localStorage);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
