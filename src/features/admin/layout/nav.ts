@@ -14,12 +14,12 @@ export const adminNav: AdminNavItem[] = [
   { to: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart, subtitle: "Acompanhe pedidos iniciados pelo WhatsApp." },
   { to: "/admin/produtos", label: "Produtos", icon: Package, subtitle: "Cadastre e edite o catálogo da loja." },
   { to: "/admin/categorias", label: "Categorias", icon: Layers, subtitle: "Organize as categorias exibidas na loja." },
-  { to: "/admin/clientes", label: "Clientes", icon: Users, subtitle: "Clientes registrados internamente pela equipe." },
-  { to: "/admin/cupons", label: "Cupons e Promoções", icon: Tag, subtitle: "Crie cupons e campanhas promocionais." },
+  { to: "/admin/clientes", label: "Clientes", icon: Users, subtitle: "Clientes identificados pelos pedidos da loja." },
+  { to: "/admin/cupons", label: "Cupons e Promoções", icon: Tag, subtitle: "Cupons de desconto (em breve no checkout)." },
   { to: "/admin/estoque", label: "Estoque", icon: Boxes, subtitle: "Controle quantidades de pronta entrega." },
   { to: "/admin/personalizacoes", label: "Personalizações", icon: WandSparkles, subtitle: "Analise solicitações de peças personalizadas." },
   { to: "/admin/banners", label: "Banners", icon: Image, subtitle: "Gerencie os banners da página inicial." },
-  { to: "/admin/relatorios", label: "Relatórios", icon: BarChart3, subtitle: "Indicadores demonstrativos de pedidos e vendas." },
+  { to: "/admin/relatorios", label: "Relatórios", icon: BarChart3, subtitle: "Indicadores de pedidos e vendas." },
   { to: "/admin/configuracoes", label: "Configurações", icon: Settings, subtitle: "Dados da loja, WhatsApp, entrega e mensagens." },
 ];
 
