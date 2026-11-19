@@ -792,7 +792,7 @@ export function ProductsPage() {
                 <p className={s.muted}>Escolha uma foto do computador ou uma URL HTTPS. A imagem será enviada
                   ao Supabase quando você salvar o produto.</p>
                 <label htmlFor="product-upload-file">Escolher foto do computador</label>
-                <input id="product-upload-file" type="file" accept="image/png,image/jpeg,image/webp"
+                <input id="product-upload-file" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                   disabled={busy}
                   onChange={(event) => {
                     const selected = event.target.files?.[0] ?? null;

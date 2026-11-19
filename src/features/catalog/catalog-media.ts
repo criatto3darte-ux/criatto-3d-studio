@@ -20,18 +20,63 @@ const MAX_OUTPUT_BYTES = 5 * 1024 * 1024;
 const MAX_EDGE = 1600;
 const BUCKET = "catalog-images";
 
+export type AcceptedImageType = "image/png" | "image/jpeg" | "image/webp";
+
+function formatMegabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+
+/** Identifies PNG, JPEG or WebP by the file signature (magic bytes). */
+function readBytes(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === "function") return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error ?? new Error("Não foi possível ler o arquivo."));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+export async function detectImageType(file: Blob): Promise<AcceptedImageType | null> {
+  const header = new Uint8Array(await readBytes(file.slice(0, 12)));
+  if (header.length >= 8 && header[0] === 0x89 && header[1] === 0x50 &&
+      header[2] === 0x4e && header[3] === 0x47 && header[4] === 0x0d &&
+      header[5] === 0x0a && header[6] === 0x1a && header[7] === 0x0a) return "image/png";
+  if (header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (header.length >= 12 &&
+      String.fromCharCode(...header.slice(0, 4)) === "RIFF" &&
+      String.fromCharCode(...header.slice(8, 12)) === "WEBP") return "image/webp";
+  return null;
+}
+
+/**
+ * Validates a local image by its content, not by `file.type`: some systems
+ * report WebP (or any image) as "" or application/octet-stream. Returns a Blob
+ * with the detected MIME type so decoding never depends on the OS mapping.
+ */
+export async function validateImageFile(file: Blob): Promise<Blob> {
+  if (!file.size) {
+    throw new Error("O arquivo está vazio. Escolha a foto novamente.");
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`A imagem tem ${formatMegabytes(file.size)} MB; o limite é 12 MB.`);
+  }
+  const detected = await detectImageType(file);
+  if (!detected) {
+    throw new Error("Envie uma foto PNG, JPEG ou WebP válida (o arquivo não é uma dessas imagens).");
+  }
+  return file.type === detected ? file : new Blob([file], { type: detected });
+}
+
 /** Client-side optimization only; the server must independently authorize and validate. */
 export async function prepareProductImage(file: File): Promise<PreparedImage> {
-  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-    throw new Error("Envie uma foto PNG, JPEG ou WebP.");
-  }
-  if (!file.size || file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("A imagem deve ter até 12 MB.");
-  }
+  const source = await validateImageFile(file);
 
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(source);
   } catch {
     throw new Error("O arquivo não contém uma imagem válida.");
   }
@@ -55,7 +100,12 @@ export async function prepareProductImage(file: File): Promise<PreparedImage> {
         0.82,
       );
     });
-    if (blob.type !== "image/webp" || !blob.size || blob.size > MAX_OUTPUT_BYTES) {
+    if (blob.type !== "image/webp") {
+      throw new Error(
+        "Este navegador não consegue converter a foto para WebP. Use Chrome, Edge ou Firefox.",
+      );
+    }
+    if (!blob.size || blob.size > MAX_OUTPUT_BYTES) {
       throw new Error("Não foi possível gerar WebP de até 5 MB.");
     }
     return { blob, width, height };

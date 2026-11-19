@@ -277,7 +277,7 @@ export function BannersPage() {
               style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}>
               <legend>Imagem do banner</legend>
               <label htmlFor="banner-file">Anexar imagem do computador</label>
-              <input id="banner-file" type="file" accept="image/jpeg,image/png,image/webp"
+              <input id="banner-file" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                 onChange={(e) => { setFile(e.target.files?.[0] ?? null); if (e.target.files?.[0]) setImageUrl(""); }} />
               <Input label="Ou importar imagem de URL pública HTTPS"
                 type="url" placeholder="https://site.com/banner.jpg" value={imageUrl}

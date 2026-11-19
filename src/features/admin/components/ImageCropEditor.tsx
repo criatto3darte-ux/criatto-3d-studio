@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
+import { validateImageFile } from "@/features/catalog/catalog-media";
 import styles from "./ImageCropEditor.module.css";
 
 type Shape = "product" | "banner";
@@ -31,12 +32,7 @@ export function ImageCropEditor({ file, shape, onApply, onCancel }: Props) {
     setZoom(1);
     setPosition({ x: 0, y: 0 });
     setError("");
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-        !file.size || file.size > 12 * 1024 * 1024) {
-      setError("Use PNG, JPEG ou WebP até 12 MB.");
-      return;
-    }
-    void createImageBitmap(file).then((bmp) => {
+    void validateImageFile(file).then((source) => createImageBitmap(source)).then((bmp) => {
       if (!alive) { bmp.close(); return; }
       if (!bmp.width || !bmp.height || Math.max(bmp.width, bmp.height) > 12000) {
         bmp.close();
@@ -45,7 +41,10 @@ export function ImageCropEditor({ file, shape, onApply, onCancel }: Props) {
       }
       bitmapRef.current = bmp;
       setReady(true);
-    }).catch(() => { if (alive) setError("Não foi possível abrir a imagem."); });
+    }).catch((cause: unknown) => {
+      if (!alive) return;
+      setError(cause instanceof Error && cause.message ? cause.message : "Não foi possível abrir a imagem.");
+    });
     return () => {
       alive = false;
       bitmapRef.current?.close();

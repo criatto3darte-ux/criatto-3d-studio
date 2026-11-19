@@ -146,7 +146,7 @@ export function ProductGallery({ productId, productName }: Props) {
       <div className={styles.upload}>
         <label htmlFor={fileId}>Adicionar imagem</label>
         <input
-          id={fileId} type="file" accept="image/jpeg,image/png,image/webp"
+          id={fileId} type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
           disabled={busy}
           onChange={(event) => {
             const selected = event.target.files?.[0] ?? null;
