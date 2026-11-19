@@ -58,13 +58,17 @@ A homologação é exclusivamente de teste; seus dados de teste foram removidos 
 - **Chaves legadas do Supabase:** frontend (produção e homologação) e Edge Functions já usam as
   chaves novas. Só revogar as chaves legadas depois de conferir, nos logs, que nenhuma função
   usou o fallback legado e que não há outros consumidores.
-- **Upload de imagens (CR-013A):** a falha relatada na homologação não se reproduz com o código
-  atual. Com o Supabase simulado no Chromium, a galeria do produto, o cadastro de produto com foto
-  e o banner enviaram o arquivo (multipart) para `catalog-media`/`banner-media`. Os logs da
-  homologação mostram que nenhum upload chegou ao Supabase, o que indica um build antigo publicado
-  em homolog.criatto3d.art.br. Republicar a homologação com o pacote atual e testar o upload real
-  com sessão AAL2 (o caminho de upload no servidor ainda não foi exercitado de ponta a ponta).
-- **Homologação:** o pedido #1 de QA e os movimentos de estoque ficam preservados por auditoria.
+- **Upload de imagens (CR-013A) — resolvido em `35a474b`:** o frontend confiava em `file.type`
+  e recusava imagens informadas pelo sistema como `""`/`application/octet-stream`, com uma
+  mensagem que citava o limite de 12 MB. Agora o formato é detectado pelos bytes iniciais e as
+  mensagens de vazio/tamanho/formato são distintas. Aprovado na homologação em 19/11/2026 com
+  sessão AAL2: upload de 2 fotos de produto e 1 de banner (POST 200 com arquivo), troca da foto
+  principal, remoção da secundária (Storage, `media_assets` e `product_images` limpos; nenhum
+  `delete-pending`), foto e banner exibidos na loja. Limitação: o Safari não gera WebP no
+  navegador; o painel orienta usar Chrome, Edge ou Firefox.
+- **Homologação:** os pedidos de QA #1 e #2 e os movimentos de estoque ficam preservados por
+  auditoria. Registros de QA "35a474b" (categoria, produto, banner e 2 imagens) aguardam
+  autorização para limpeza.
 - **Plano Free:** sem backup baixável e com pausa do projeto após ~7 dias sem atividade.
   Fazer backup manual periódico do banco.
 - **Repositório público:** tornar privado em Settings → Danger Zone.
