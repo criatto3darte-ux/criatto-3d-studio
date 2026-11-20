@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { solidPng } from "./support/png";
 import {
   QA_BANNER_TITLE, QA_PRODUCT_NAME, QA_PRODUCT_SLUG, loginAdmin, watchProblems,

@@ -1,12 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { watchProblems } from "./support/site";
 
 // Não grava nada: pode rodar na produção depois de cada publicação.
 test.describe("Loja e painel abrem sem erros @somente-leitura", () => {
-  test("página inicial, catálogo, produto, carrinho e login do painel", async ({ page }) => {
+  test("página inicial, catálogo, produto, carrinho e login do painel", async ({ page, theme }) => {
     const problems = watchProblems(page);
 
     await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.getByRole("link", { name: /Explorar produtos/ }).first()).toBeVisible();
 
     await page.goto("/produtos");
@@ -26,6 +27,7 @@ test.describe("Loja e painel abrem sem erros @somente-leitura", () => {
     await expect(page.locator("main")).toBeVisible();
 
     await page.goto("/admin/login");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.getByLabel("E-mail", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Senha", { exact: true })).toBeVisible();
 

@@ -11,7 +11,7 @@ não precisa testar cada versão.
      publica por FTP em https://homolog.criatto3d.art.br;
    - espera o site responder a versão nova (`/version.txt` = SHA do commit);
    - roda os testes de ponta a ponta (`e2e/`) no site publicado:
-     - loja no desktop (tema claro) e no celular (tema escuro);
+     - loja no computador e no celular, cada um nos temas claro e escuro;
      - compra completa até a mensagem do WhatsApp;
      - painel com login e MFA: atender e cancelar o pedido;
      - foto do produto: enviar, ver na loja e remover;
