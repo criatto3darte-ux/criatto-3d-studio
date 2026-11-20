@@ -1,0 +1,142 @@
+# CR-017 — Publicação na produção, só depois da homologação aprovada.
+#
+# Disparo manual (Actions → deploy-producao → Run workflow, branch main),
+# digitando PUBLICAR. O workflow:
+#   1. confirma que o deploy-homolog DESTE commit passou (publicação + testes);
+#   2. gera e valida o pacote de produção;
+#   3. publica por FTP em https://criatto3d.art.br;
+#   4. roda os testes somente de leitura (@somente-leitura), sem criar pedidos.
+#
+# Secrets: PRODUCAO_FTP_SERVER, PRODUCAO_FTP_USERNAME, PRODUCAO_FTP_PASSWORD, PRODUCAO_FTP_DIR
+name: deploy-producao
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: "Digite PUBLICAR para publicar na produção"
+        required: true
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SITE_URL: https://criatto3d.art.br
+
+jobs:
+  verificar:
+    name: Homologação aprovada para este commit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Confirmação
+        if: inputs.confirmacao != 'PUBLICAR'
+        run: echo "::error::Digite PUBLICAR para confirmar." && exit 1
+
+      - name: Somente a branch main
+        if: github.ref != 'refs/heads/main'
+        run: echo "::error::Publique a partir da main." && exit 1
+
+      - name: deploy-homolog aprovado neste commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-homolog.yml/runs?head_sha=$GITHUB_SHA&status=success" --jq '.total_count')
+          if [ "${n:-0}" -lt 1 ]; then
+            echo "::error::A homologação deste commit ($GITHUB_SHA) não foi aprovada. Rode/espere o deploy-homolog."
+            exit 1
+          fi
+          echo "Homologação aprovada para $GITHUB_SHA"
+
+  publicar:
+    name: Gerar e publicar na produção
+    needs: verificar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Variáveis públicas da produção
+        run: |
+          cat > .env.production << 'EOF'
+          VITE_SUPABASE_URL=https://tdawygjcqmclwlrermpl.supabase.co
+          VITE_SUPABASE_ANON_KEY=sb_publishable_zs-LC9I2hjrY-_bKYDN9cQ_dFRwqQIE
+          VITE_APP_URL=https://criatto3d.art.br
+          VITE_ENABLE_LIVE_CHECKOUT=true
+          EOF
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build de produção
+        run: bun run build
+
+      - name: Validar pacote
+        run: scripts/validar-pacote.sh producao "$GITHUB_SHA"
+
+      - name: Conferir acesso FTP
+        env:
+          FTP_SERVER: ${{ secrets.PRODUCAO_FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.PRODUCAO_FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.PRODUCAO_FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.PRODUCAO_FTP_DIR }}
+        run: |
+          for v in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_DIR; do
+            [ -n "${!v}" ] || { echo "::error::Secret PRODUCAO_${v} não cadastrado"; exit 1; }
+          done
+
+      - name: Publicar por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.PRODUCAO_FTP_SERVER }}
+          username: ${{ secrets.PRODUCAO_FTP_USERNAME }}
+          password: ${{ secrets.PRODUCAO_FTP_PASSWORD }}
+          server-dir: ${{ secrets.PRODUCAO_FTP_DIR }}
+          local-dir: ./dist/
+          protocol: ftps
+
+  conferir:
+    name: Conferência somente leitura na produção
+    needs: publicar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - run: bun install --frozen-lockfile
+
+      - name: Instalar navegador
+        run: bunx playwright install --with-deps chromium
+
+      - name: Aguardar a versão publicada
+        run: |
+          for i in $(seq 1 30); do
+            v=$(curl -fsS "$SITE_URL/version.txt?t=$(date +%s)" || true)
+            [ "$(echo "$v" | tr -d '[:space:]')" = "$GITHUB_SHA" ] && { echo "versão publicada: $v"; exit 0; }
+            sleep 10
+          done
+          echo "::error::O site não respondeu a versão $GITHUB_SHA"; exit 1
+
+      - name: Testes somente leitura
+        env:
+          E2E_BASE_URL: ${{ env.SITE_URL }}
+        run: bunx playwright test -c e2e/playwright.config.ts --grep @somente-leitura
+
+      - name: Relatório dos testes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-e2e-producao
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

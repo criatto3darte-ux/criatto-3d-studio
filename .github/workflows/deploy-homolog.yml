@@ -1,0 +1,121 @@
+# CR-017 — Publicação automática na homologação + testes de ponta a ponta.
+#
+# A cada integração na main: gera o site de homologação, valida o pacote,
+# publica por FTP em https://homolog.criatto3d.art.br e roda os testes
+# Playwright contra o site publicado (loja + painel com MFA + fotos).
+# A produção (deploy-producao.yml) só aceita um commit cujo run deste
+# workflow terminou com sucesso.
+#
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   HOMOLOG_FTP_SERVER, HOMOLOG_FTP_USERNAME, HOMOLOG_FTP_PASSWORD, HOMOLOG_FTP_DIR
+#   E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD, E2E_ADMIN_TOTP_SECRET  (usuário de testes da homologação)
+name: deploy-homolog
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-homolog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SITE_URL: https://homolog.criatto3d.art.br
+
+jobs:
+  publicar:
+    name: Gerar e publicar na homologação
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Variáveis públicas da homologação
+        run: |
+          cat > .env.homolog << 'EOF'
+          VITE_SUPABASE_URL=https://ugwuxczcqlrdjkpjsdqb.supabase.co
+          VITE_SUPABASE_ANON_KEY=sb_publishable_D4Dwx1chy9FlFLuxvwMecg_7DpACnPf
+          VITE_APP_URL=https://homolog.criatto3d.art.br
+          VITE_ENABLE_LIVE_CHECKOUT=true
+          EOF
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build da homologação
+        run: |
+          bun run build:homolog
+          cp public/robots-homolog.txt dist/robots.txt
+
+      - name: Validar pacote
+        run: scripts/validar-pacote.sh homolog "$GITHUB_SHA"
+
+      - name: Conferir acesso FTP
+        env:
+          FTP_SERVER: ${{ secrets.HOMOLOG_FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.HOMOLOG_FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.HOMOLOG_FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.HOMOLOG_FTP_DIR }}
+        run: |
+          for v in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_DIR; do
+            [ -n "${!v}" ] || { echo "::error::Secret HOMOLOG_${v} não cadastrado"; exit 1; }
+          done
+
+      - name: Publicar por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.HOMOLOG_FTP_SERVER }}
+          username: ${{ secrets.HOMOLOG_FTP_USERNAME }}
+          password: ${{ secrets.HOMOLOG_FTP_PASSWORD }}
+          server-dir: ${{ secrets.HOMOLOG_FTP_DIR }}
+          local-dir: ./dist/
+          protocol: ftps
+
+  testar:
+    name: Testes de ponta a ponta na homologação
+    needs: publicar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - run: bun install --frozen-lockfile
+
+      - name: Instalar navegador
+        run: bunx playwright install --with-deps chromium
+
+      - name: Aguardar a versão publicada
+        run: |
+          for i in $(seq 1 30); do
+            v=$(curl -fsS "$SITE_URL/version.txt?t=$(date +%s)" || true)
+            [ "$(echo "$v" | tr -d '[:space:]')" = "$GITHUB_SHA" ] && { echo "versão publicada: $v"; exit 0; }
+            sleep 10
+          done
+          echo "::error::O site não respondeu a versão $GITHUB_SHA"; exit 1
+
+      - name: Rodar testes
+        env:
+          E2E_BASE_URL: ${{ env.SITE_URL }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_ADMIN_TOTP_SECRET: ${{ secrets.E2E_ADMIN_TOTP_SECRET }}
+        run: bunx playwright test -c e2e/playwright.config.ts
+
+      - name: Relatório dos testes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-e2e-homolog
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

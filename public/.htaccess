@@ -22,6 +22,8 @@ DirectoryIndex index.html
   #   .git, .env, .htaccess, .htpasswd, backups terminados em ~,
   #   source maps (.map), scripts SQL e documentação interna.
   RewriteRule (^|/)\.(git|env|htaccess|htpasswd) - [F,L,NC]
+  # Estado do deploy automático por FTP (lista de arquivos e hashes).
+  RewriteRule (^|/)\.ftp-deploy-sync-state\.json$ - [F,L,NC]
   RewriteRule \.map$ - [F,L,NC]
   RewriteRule \.sql$ - [F,L,NC]
   RewriteRule ~$ - [F,L]
