@@ -35,8 +35,11 @@ bun run build
 
 ## Publicação
 
-- Homologação: workflow `pacote-homolog`.
-- Produção: workflow `pacote-producao` (disparo manual), que gera o ZIP para
-  envio à Locaweb.
+- Homologação: automática a cada integração na `main` (`deploy-homolog`), com
+  testes de ponta a ponta no site publicado.
+- Produção: `deploy-producao` (manual, digitando `PUBLICAR`), aceito só quando a
+  homologação do mesmo commit passou. Detalhes em
+  `docs/CR-017-HOMOLOGACAO-AUTOMATICA.md`.
+- Plano B: `pacote-homolog` / `pacote-producao` geram o ZIP para envio manual.
 
 Documentação detalhada das etapas em `docs/`.
