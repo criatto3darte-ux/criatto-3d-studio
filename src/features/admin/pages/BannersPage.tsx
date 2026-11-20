@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Crop, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
+import { Logo } from "@/shared/ui/Logo";
 import { validateBanner, type Errors } from "@/features/demo-data/rules";
 import type { DemoBanner } from "@/features/demo-data/model";
 import {
@@ -24,10 +25,18 @@ function Preview({ banner, mobile, src }: { banner: DemoBanner; mobile?: boolean
       <div className={s.muted} style={{ marginBottom: 6 }}>
         {mobile ? "Prévia mobile" : "Prévia desktop"}
       </div>
-      <div className={s.previewTitle}>
-        {banner.title} {banner.highlight && <span className="text-gradient">{banner.highlight}</span>}
-      </div>
-      {banner.subtitle && <p className={s.muted}>{banner.subtitle}</p>}
+      {banner.heroStyle === "logo" ? (
+        <div style={{ maxWidth: mobile ? 180 : 260, marginBottom: 8 }}>
+          <Logo variant="full" size="hero" alt="Prévia do logotipo da loja" />
+        </div>
+      ) : (
+        <>
+          <div className={s.previewTitle}>
+            {banner.title} {banner.highlight && <span className="text-gradient">{banner.highlight}</span>}
+          </div>
+          {banner.subtitle && <p className={s.muted}>{banner.subtitle}</p>}
+        </>
+      )}
       <span className={s.thumbTag} style={{ position: "static", display: "inline-block", fontSize: 12, padding: "4px 10px" }}>
         {banner.buttonText || "Explorar produtos"}
       </span>
@@ -92,7 +101,7 @@ export function BannersPage() {
     edit({
       id: "", version: 0, mediaId: null, title: "", highlight: "",
       subtitle: "", image: "", buttonText: "Explorar produtos",
-      buttonUrl: "/produtos", order: list.length + 1, active: false,
+      buttonUrl: "/produtos", order: list.length + 1, active: false, heroStyle: "texto",
     });
   }
   function update(values: Partial<AdminBanner>) {
@@ -148,6 +157,7 @@ export function BannersPage() {
         buttonUrl: values.buttonUrl,
         order: values.order,
         active: values.active,
+        heroStyle: values.heroStyle,
       });
       try {
         if (file) await uploadBannerImage(id, file, [values.title, values.highlight].filter(Boolean).join(" "));
@@ -170,7 +180,7 @@ export function BannersPage() {
       setDraft(null);
       setFile(null);
       setImageUrl("");
-      setNotice("Banner salvo no Supabase.");
+      setNotice("Banner salvo.");
       await reload();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível salvar o banner.");
@@ -272,6 +282,19 @@ export function BannersPage() {
               <Input label="Ordem" type="number" min={0} value={draft.order}
                 error={errors.order} onChange={(e) => update({ order: Number(e.target.value) })} />
               <Check label="Ativo" checked={draft.active} onChange={(v) => update({ active: v })} />
+              <fieldset className={s.full} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}>
+                <legend>No topo da loja, mostrar</legend>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type="radio" name="banner-hero-style" checked={draft.heroStyle !== "logo"}
+                    onChange={() => update({ heroStyle: "texto" })} />
+                  Texto do banner (título, destaque e subtítulo)
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type="radio" name="banner-hero-style" checked={draft.heroStyle === "logo"}
+                    onChange={() => update({ heroStyle: "logo" })} />
+                  Logo grande da loja (sem o texto)
+                </label>
+              </fieldset>
             </div>
             <fieldset className={s.stack} disabled={busy}
               style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}>

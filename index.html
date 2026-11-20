@@ -13,7 +13,8 @@
     <script>
       (function () {
         try {
-          var saved = localStorage.getItem('criatto3d-theme');
+          // Mesma chave do ThemeProvider (src/shared/theme/ThemeProvider.tsx).
+          var saved = localStorage.getItem('criatto3d:theme');
           var theme = saved === 'light' || saved === 'dark'
             ? saved
             : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');

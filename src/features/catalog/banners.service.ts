@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchPublicImageFile, prepareProductImage } from "@/features/catalog/catalog-media";
-import type { DemoBanner } from "@/features/demo-data/model";
+import type { DemoBanner, HeroStyle } from "@/features/demo-data/model";
 
 const BUCKET = "catalog-images";
 
@@ -18,6 +18,15 @@ export interface BannerInput {
   buttonUrl: string;
   order: number;
   active: boolean;
+  heroStyle?: HeroStyle | undefined;
+}
+export function toHeroStyle(value: unknown): HeroStyle {
+  return value === "logo" ? "logo" : "texto";
+}
+/** Banco sem a migration CR-018 ainda: lê sem a coluna nova e assume "texto". */
+function missingHeroStyle(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === "42703" || error.code === "PGRST204" ||
+    /hero_style/.test(error.message ?? ""));
 }
 function toPublicUrl(key: string | null | undefined): string {
   if (!key || !/^banners\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/i.test(key)) return "";
@@ -29,9 +38,14 @@ function message(error: unknown, fallback: string): never {
 
 export async function listAdminBanners(): Promise<AdminBanner[]> {
   const client = getSupabase();
-  const { data, error } = await client.from("banners")
-    .select("id,title,highlight,subtitle,button_text,button_url,display_order,active,media_id,version")
+  const columns = "id,title,highlight,subtitle,button_text,button_url,display_order,active,media_id,version";
+  let result = await client.from("banners").select(`${columns},hero_style`)
     .order("display_order", { ascending: true });
+  if (missingHeroStyle(result.error)) {
+    result = await client.from("banners").select(columns)
+      .order("display_order", { ascending: true }) as unknown as typeof result;
+  }
+  const { data, error } = result;
   if (error) return message(error, "Não foi possível consultar os banners.");
   const mediaIds = (data ?? []).map((banner) => banner.media_id).filter((id): id is string => !!id);
   const media = mediaIds.length
@@ -52,6 +66,7 @@ export async function listAdminBanners(): Promise<AdminBanner[]> {
       active: row.active,
       mediaId: row.media_id,
       version: row.version,
+      heroStyle: toHeroStyle((row as { hero_style?: unknown }).hero_style),
       image: asset?.bucket === BUCKET && asset.state === "published"
         ? toPublicUrl(asset.object_key) : "",
     };
@@ -60,9 +75,14 @@ export async function listAdminBanners(): Promise<AdminBanner[]> {
 
 /** An anonymous browser reads a narrow, public-only view, never the admin table. */
 export async function listPublishedBanners(): Promise<DemoBanner[]> {
-  const { data, error } = await getSupabase().from("public_site_banners")
-    .select("id,title,highlight,subtitle,button_text,button_url,display_order,image_key")
+  const columns = "id,title,highlight,subtitle,button_text,button_url,display_order,image_key";
+  let result = await getSupabase().from("public_site_banners").select(`${columns},hero_style`)
     .order("display_order", { ascending: true });
+  if (missingHeroStyle(result.error)) {
+    result = await getSupabase().from("public_site_banners").select(columns)
+      .order("display_order", { ascending: true }) as unknown as typeof result;
+  }
+  const { data, error } = result;
   if (error?.code === "PGRST205" || error?.code === "42P01") return [];
   if (error) return message(error, "Não foi possível consultar os banners publicados.");
   return (data ?? []).map((row) => ({
@@ -75,12 +95,14 @@ export async function listPublishedBanners(): Promise<DemoBanner[]> {
     order: row.display_order,
     active: true,
     image: toPublicUrl(row.image_key),
+    heroStyle: toHeroStyle((row as { hero_style?: unknown }).hero_style),
   }));
 }
 
 export async function saveAdminBanner(input: BannerInput): Promise<string> {
   const client = getSupabase();
-  const values = {
+  const heroStyle = toHeroStyle(input.heroStyle);
+  const base = {
     title: input.title.trim(),
     highlight: input.highlight.trim(),
     subtitle: input.subtitle.trim(),
@@ -89,14 +111,26 @@ export async function saveAdminBanner(input: BannerInput): Promise<string> {
     display_order: input.order,
     active: input.active,
   };
+  async function write(values: Record<string, unknown>) {
+    if (input.id) {
+      return client.from("banners").update(values)
+        .eq("id", input.id).eq("version", input.version ?? -1).select("id").maybeSingle();
+    }
+    return client.from("banners").insert(values).select("id").single();
+  }
+  let result = await write({ ...base, hero_style: heroStyle });
+  if (missingHeroStyle(result.error)) {
+    if (heroStyle === "logo") {
+      throw new Error("A opção de logo no topo ainda não está disponível. Use \"Texto do banner\".");
+    }
+    result = await write(base);
+  }
+  const { data, error } = result;
   if (input.id) {
-    const { data, error } = await client.from("banners").update(values)
-      .eq("id", input.id).eq("version", input.version ?? -1).select("id").maybeSingle();
     if (error) return message(error, "Falha ao atualizar banner.");
     if (!data) throw new Error("O banner foi modificado por outro usuário. Atualize a página.");
     return data.id;
   }
-  const { data, error } = await client.from("banners").insert(values).select("id").single();
   if (error || !data) return message(error, "Falha ao cadastrar banner.");
   return data.id;
 }

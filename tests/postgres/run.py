@@ -200,6 +200,7 @@ def all_migrations():
     migs += list((ROOT/'supabase/migrations').glob('*_cr010c1*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr013*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr014*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr018*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -226,6 +227,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261116120000_cr010c1_checkout_orders.sql':'c4433f1214b3875ad57bffdfd3f4c75b771a374f737ffaa58d6abed912cea533',
     '20261118004549_cr013_production_security_hardening.sql':'aa8f04957a2be9d706e70e55e1a633a11fead0609055c9285acba1983a7b4200',
     '20261118015832_cr014_finance_summary_aal2.sql':'56b89303e0634b381c3b4bca6d3f0a9e38cc97d7cbf1eade56b3c61367b2524f',
+    '20261120170000_cr018_banner_hero_style.sql':'d1b73c2fd60ca2a6c214fc06b1b947112770477c34309aa1d6e0d100d41c20c1',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -605,6 +607,20 @@ try:
               "AND NOT has_table_privilege('authenticated','public.finance_order_summary','INSERT') "
               "AND NOT has_table_privilege('authenticated','public.finance_order_summary','UPDATE') "
               "AND NOT has_table_privilege('authenticated','public.finance_order_summary','DELETE')",
+              't')
+        check(db,'CR-018 banner hero style defaults to texto and is exposed publicly',
+              "SELECT column_default LIKE '''texto''%' FROM information_schema.columns "
+              "WHERE table_schema='public' AND table_name='banners' AND column_name='hero_style'",
+              't')
+        check(db,'CR-018 public banner view exposes hero_style and keeps security_barrier',
+              "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
+              "AND table_name='public_site_banners' AND column_name='hero_style') "
+              "AND (SELECT reloptions @> ARRAY['security_barrier=true'] FROM pg_class "
+              "WHERE oid='public.public_site_banners'::regclass)",
+              't')
+        check(db,'CR-018 banner hero style rejects unknown values',
+              "SELECT pg_get_constraintdef(oid) ILIKE '%texto%logo%' FROM pg_constraint "
+              "WHERE conname='banners_hero_style_check'",
               't')
         check(db,'public banners expose limited projection',
               "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' "

@@ -2,6 +2,7 @@
 .inner { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: var(--space-6); min-height: 460px; padding-block: var(--space-7); }
 .eyebrow { font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-primary); }
 .title { font-size: clamp(36px, 5.2vw, 68px); overflow-wrap: anywhere; font-weight: 800; letter-spacing: -0.035em; margin: 12px 0 16px; }
+.logoTitle { margin: 0; line-height: 0; }
 .subtitle { font-size: 19px; color: var(--color-text); opacity: 0.9; max-width: 520px; }
 .cta { margin-top: var(--space-5); }
 .features { list-style: none; padding: 0; margin: var(--space-6) 0 0; display: flex; flex-wrap: wrap; gap: var(--space-5); }
@@ -16,6 +17,7 @@
 @media (max-width: 900px) {
   .inner { grid-template-columns: 1fr; min-height: 0; }
   .visual { order: -1; aspect-ratio: 16 / 9; }
+  .logoTitle { text-align: center; }
 }
 
 @media (max-width: 520px) {
