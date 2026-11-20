@@ -75,7 +75,8 @@ jobs:
           password: ${{ secrets.HOMOLOG_FTP_PASSWORD }}
           server-dir: ${{ secrets.HOMOLOG_FTP_DIR }}
           local-dir: ./dist/
-          protocol: ftps
+          # O servidor FTP da Locaweb não aceita FTPS (500 Command "AUTH" not understood).
+          protocol: ftp
 
   testar:
     name: Testes de ponta a ponta na homologação

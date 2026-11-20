@@ -39,7 +39,9 @@ publicação manual por ZIP, como plano B.
 | `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` | usuário de testes da **homologação** |
 | `E2E_ADMIN_TOTP_SECRET` | chave do autenticador desse usuário (texto mostrado no cadastro do MFA) |
 
-O deploy usa FTPS. Na primeira publicação automática todos os arquivos são
+O deploy usa FTP simples: o servidor FTP da Locaweb não aceita FTPS
+(`500 Command "AUTH" not understood`). Por isso, use uma conta FTP exclusiva
+para o deploy e troque a senha se suspeitar de vazamento. Na primeira publicação automática todos os arquivos são
 enviados e o servidor passa a guardar `.ftp-deploy-sync-state.json` (bloqueado
 para acesso público no `.htaccess`); nas seguintes, só o que mudou.
 
