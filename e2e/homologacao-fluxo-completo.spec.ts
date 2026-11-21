@@ -90,7 +90,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
-  test("admin envia e remove imagem do banner", async ({ page }) => {
+  test("admin envia e remove imagem do banner e alterna texto/logo no topo", async ({ page }) => {
     const problems = watchProblems(page);
     await loginAdmin(page);
     await page.goto("/admin/banners");
@@ -100,14 +100,25 @@ test.describe("Fluxo completo da loja e do painel", () => {
     await dialog.locator("#banner-file").setInputFiles({
       name: "qa-banner.png", mimeType: "image/png", buffer: solidPng(1600, 900, [229, 0, 126]),
     });
+    // CR-018: grava a opção "logo grande" junto com a imagem.
+    await dialog.getByLabel(/Logo grande da loja/).check();
     await dialog.getByRole("button", { name: /^Salvar/ }).click();
-    await expect(page.getByText("Banner salvo no Supabase.")).toBeVisible();
+    await expect(page.getByText("Banner salvo.", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: `Editar ${QA_BANNER_TITLE}` }).first().click();
     dialog = page.getByRole("dialog");
+    // A escolha voltou do banco; restaura "texto" e remove a imagem.
+    await expect(dialog.getByLabel(/Logo grande da loja/)).toBeChecked();
+    await dialog.getByLabel(/Texto do banner/).check();
     await dialog.getByLabel("Remover imagem atual").check();
     await dialog.getByRole("button", { name: /^Salvar/ }).click();
-    await expect(page.getByText(/Banner salvo no Supabase\.|limpeza física ficou pendente/)).toBeVisible();
+    await expect(
+      page.getByText(/^Banner salvo\.$|limpeza física ficou pendente/),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: `Editar ${QA_BANNER_TITLE}` }).first().click();
+    await expect(page.getByRole("dialog").getByLabel(/Texto do banner/)).toBeChecked();
+    await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
     expect(problems, problems.join("\n")).toEqual([]);
   });
 });
