@@ -43,6 +43,8 @@ else
   grep -q 'tdawygjcqmclwlrermpl' -r dist/assets || { echo "ERRO: produção sem o Supabase de produção"; exit 1; }
   if grep -q 'ugwuxczcqlrdjkpjsdqb' -r dist/assets; then echo "ERRO: produção apontando para homologação"; exit 1; fi
   grep -q 'Allow: /' dist/robots.txt || { echo "ERRO: produção deve ser indexável"; exit 1; }
+  grep -q '^Sitemap: https://criatto3d.art.br/sitemap.xml' dist/robots.txt || { echo "ERRO: robots.txt sem Sitemap"; exit 1; }
+  grep -q '<loc>https://criatto3d.art.br/</loc>' dist/sitemap.xml 2>/dev/null || { echo "ERRO: sitemap.xml ausente"; exit 1; }
 fi
 
 # Marcador de versão: os testes esperam o site publicado responder este SHA.

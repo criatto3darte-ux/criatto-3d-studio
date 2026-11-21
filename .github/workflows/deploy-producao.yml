@@ -77,6 +77,12 @@ jobs:
       - name: Build de produção
         run: bun run build
 
+      - name: Mapa do site para buscadores (sitemap.xml)
+        run: >-
+          node scripts/gerar-sitemap.mjs https://criatto3d.art.br
+          https://tdawygjcqmclwlrermpl.supabase.co
+          sb_publishable_zs-LC9I2hjrY-_bKYDN9cQ_dFRwqQIE
+
       - name: Validar pacote
         run: scripts/validar-pacote.sh producao "$GITHUB_SHA"
 

@@ -4,6 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080B14" />
+    <meta name="description" content="Criatto 3D: produtos criativos impressos em 3D para decoração, presentes, geek e peças personalizadas. Fabricação própria no Rio de Janeiro." />
+    <meta property="og:site_name" content="Criatto 3D" />
+    <meta property="og:title" content="Criatto 3D — Produtos 3D criativos e personalizados" />
+    <meta property="og:description" content="Produtos criativos impressos em 3D para decoração, presentes e peças personalizadas." />
+    <meta property="og:image" content="https://criatto3d.art.br/branding/logo-full-dark.png" />
+    <meta property="og:url" content="https://criatto3d.art.br/" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://criatto3d.art.br/#organizacao",
+            "name": "Criatto 3D",
+            "alternateName": ["Criatto3D", "criatto3d.art.br"],
+            "url": "https://criatto3d.art.br/",
+            "logo": "https://criatto3d.art.br/branding/logo-full-dark.png",
+            "email": "criatto3d.arte@gmail.com",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer service",
+              "telephone": "+55-21-98764-0769",
+              "availableLanguage": "pt-BR"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://criatto3d.art.br/#site",
+            "name": "Criatto 3D",
+            "url": "https://criatto3d.art.br/",
+            "inLanguage": "pt-BR",
+            "publisher": { "@id": "https://criatto3d.art.br/#organizacao" }
+          }
+        ]
+      }
+    </script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -24,10 +60,14 @@
         }
       })();
     </script>
-    <title>Criatto 3D — Produtos 3D</title>
+    <title>Criatto 3D — Produtos 3D criativos e personalizados</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>Criatto 3D — Produtos 3D criativos e personalizados</h1>
+      <p>Decoração, presentes, geek e peças personalizadas impressas em 3D, com fabricação própria no Rio de Janeiro. Ative o JavaScript para ver o catálogo em criatto3d.art.br.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
