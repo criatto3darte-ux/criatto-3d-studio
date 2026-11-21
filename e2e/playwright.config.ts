@@ -22,9 +22,11 @@ export default defineConfig<{ theme: Theme }>({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "desktop-claro", use: { ...devices["Desktop Chrome"], theme: "light", colorScheme: "light" } },
-    { name: "desktop-escuro", use: { ...devices["Desktop Chrome"], theme: "dark", colorScheme: "dark" } },
-    { name: "celular-claro", use: { ...devices["Pixel 7"], theme: "light", colorScheme: "light" } },
-    { name: "celular-escuro", use: { ...devices["Pixel 7"], theme: "dark", colorScheme: "dark" } },
+    // Sistema no tema oposto de propósito: o tema escolhido na loja (salvo no
+    // navegador) precisa vencer a preferência do aparelho.
+    { name: "desktop-claro", use: { ...devices["Desktop Chrome"], theme: "light", colorScheme: "dark" } },
+    { name: "desktop-escuro", use: { ...devices["Desktop Chrome"], theme: "dark", colorScheme: "light" } },
+    { name: "celular-claro", use: { ...devices["Pixel 7"], theme: "light", colorScheme: "dark" } },
+    { name: "celular-escuro", use: { ...devices["Pixel 7"], theme: "dark", colorScheme: "light" } },
   ],
 });

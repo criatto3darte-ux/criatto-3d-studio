@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { THEME_STORAGE_KEY } from "@/shared/theme/ThemeProvider";
 
 const root = path.resolve(__dirname, "../..");
 
@@ -60,7 +61,7 @@ describe("CR-008B static build", () => {
 
   it("index.html bootstraps theme before React (no FOUC)", () => {
     const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-    expect(html).toContain("criatto3d-theme");
+    expect(html).toContain(`localStorage.getItem('${THEME_STORAGE_KEY}')`);
     expect(html).toContain("/src/main.tsx");
   });
 

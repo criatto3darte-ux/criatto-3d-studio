@@ -1,6 +1,6 @@
 import { ArrowRight, Headset, Rocket, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
 import { buttonClass } from "@/shared/ui/Button";
-import { LogoMark } from "@/shared/ui/Logo";
+import { Logo, LogoMark } from "@/shared/ui/Logo";
 import { useHeroBanner, useStoreSettings } from "@/features/catalog/catalog.service";
 import styles from "./Hero.module.css";
 import { cx } from "@/shared/utils/cx";
@@ -22,15 +22,25 @@ export function Hero() {
   const href = safeUrl(banner?.buttonUrl) ?? "/produtos";
   const image = safeUrl(banner?.image);
   const external = /^https:\/\//.test(href);
+  const showLogo = banner?.heroStyle === "logo";
+  const headline = [title, highlight].filter(Boolean).join(" ") || settings.name;
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
       <div className={cx("container", styles.inner)}>
         <div>
-          <p className={styles.eyebrow}>Criatividade sem limites</p>
-          <h1 id="hero-title" className={styles.title}>
-            {title}{highlight && <> <span className="text-gradient">{highlight}</span></>}
-          </h1>
-          {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+          {showLogo ? (
+            <h1 id="hero-title" className={styles.logoTitle}>
+              <Logo variant="full" size="hero" name={settings.name} logo={settings.logo} alt={headline} />
+            </h1>
+          ) : (
+            <>
+              <p className={styles.eyebrow}>Criatividade sem limites</p>
+              <h1 id="hero-title" className={styles.title}>
+                {title}{highlight && <> <span className="text-gradient">{highlight}</span></>}
+              </h1>
+              {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+            </>
+          )}
           <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className={cx(buttonClass("primary", "lg"), styles.cta)}>
             <ShoppingCart size={20} /> {cta} <ArrowRight size={20} />
           </a>

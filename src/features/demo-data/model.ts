@@ -85,7 +85,11 @@ export interface DemoBanner {
   buttonUrl: string;
   order: number;
   active: boolean;
+  /** How the home highlight shows: the banner text (default) or the big store logo. */
+  heroStyle?: HeroStyle;
 }
+
+export type HeroStyle = "texto" | "logo";
 
 export type CouponKind = "percentual" | "fixo";
 

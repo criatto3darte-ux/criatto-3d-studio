@@ -79,3 +79,21 @@
   width: 156px;
   height: 156px;
 }
+
+/* Variante por tema do logotipo completo oficial (claro é a base). */
+:global(html[data-theme="dark"]) .onLight { display: none; }
+:global(html:not([data-theme="dark"])) .onDark { display: none; }
+
+/* Destaque da página inicial: logotipo grande no lugar do texto. */
+.hero { padding: 0; justify-content: flex-start; }
+.hero.full .image,
+.hero.markOnly .image {
+  height: auto;
+  width: min(100%, 480px);
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .hero { justify-content: center; width: 100%; }
+  .hero.full .image,
+  .hero.markOnly .image { width: min(80%, 360px); }
+}

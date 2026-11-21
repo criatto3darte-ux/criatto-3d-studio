@@ -19,6 +19,9 @@ import { safeUrl } from "@/shared/utils/safe-url";
 
 const FULL_WEBP = "/branding/logo-full-dark.webp";
 const FULL_PNG = "/branding/logo-full-dark.png";
+// Tema claro: mesmo logotipo com "Criatto" e "PRODUTOS 3D" em preto.
+const FULL_LIGHT_WEBP = "/branding/logo-full-light.webp";
+const FULL_LIGHT_PNG = "/branding/logo-full-light.png";
 const MARK_WEBP = "/branding/logo-mark-dark.webp";
 const MARK_PNG = "/branding/logo-mark-dark.png";
 
@@ -51,6 +54,8 @@ interface LogoProps {
   className?: string | undefined;
   /** Atributo alt (acessibilidade). Default depende de `name`. */
   alt?: string | undefined;
+  /** "hero": logotipo grande no destaque da página inicial. */
+  size?: "default" | "hero";
 }
 
 /** Alias legado: o Hero da landing renderiza o cubo grande decorativo. */
@@ -80,6 +85,7 @@ export function Logo({
   variant,
   className,
   alt,
+  size = "default",
 }: LogoProps) {
   // Hidrata no cliente para escolher WebP ou PNG; em SSR renderiza PNG (seguro).
   const [webp, setWebp] = useState(false);
@@ -100,25 +106,60 @@ export function Logo({
         : MARK_PNG);
 
   const isFull = effectiveVariant === "full";
+  const rootClass = cx(
+    styles.logo,
+    compact && styles.compact,
+    isFull ? styles.full : styles.markOnly,
+    size === "hero" && styles.hero,
+    className,
+  );
+  const altText = alt ?? (customSrc ? `Logotipo de ${name}` : `${name} — logotipo oficial`);
+  const width = isFull ? 68 : 42;
+  const height = isFull ? 44 : 42;
+
+  // O logotipo oficial completo tem a palavra "Criatto" branca; no tema claro
+  // usamos a variante escura. As duas ficam no HTML e o CSS mostra a do tema
+  // atual (data-theme no <html>), sem piscar ao trocar de tema.
+  if (!customSrc && isFull) {
+    return (
+      <span className={rootClass}>
+        <img
+          key={`dark-${webp}`}
+          src={webp ? FULL_WEBP : FULL_PNG}
+          className={cx(styles.image, styles.onDark)}
+          alt={altText}
+          loading="eager"
+          decoding="async"
+          width={width}
+          height={height}
+          draggable={false}
+        />
+        <img
+          key={`light-${webp}`}
+          src={webp ? FULL_LIGHT_WEBP : FULL_LIGHT_PNG}
+          className={cx(styles.image, styles.onLight)}
+          alt={altText}
+          loading="eager"
+          decoding="async"
+          width={width}
+          height={height}
+          draggable={false}
+        />
+      </span>
+    );
+  }
 
   return (
-    <span
-      className={cx(
-        styles.logo,
-        compact && styles.compact,
-        isFull ? styles.full : styles.markOnly,
-        className,
-      )}
-    >
+    <span className={rootClass}>
       <img
         key={src}
         src={src}
         className={styles.image}
-        alt={alt ?? (customSrc ? `Logotipo de ${name}` : `${name} — logotipo oficial`)}
+        alt={altText}
         loading="eager"
         decoding="async"
-        width={isFull ? 68 : 42}
-        height={isFull ? 44 : 42}
+        width={width}
+        height={height}
         draggable={false}
       />
     </span>
