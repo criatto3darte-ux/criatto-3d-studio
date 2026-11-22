@@ -552,9 +552,13 @@ try:
         execute(db, setup)
         for migration in all_migrations():
             execute(db, migration.read_text())
-        check(db,'27 RLS/FORCE tables',
+        # 27 base tables + 2 from CR-019A (shipping_settings, local_delivery_zones).
+        check(db,'29 RLS/FORCE tables',
               "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",
-              str(27))
+              str(29))
+        check(db,'no public table without RLS/FORCE',
+              "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND NOT (c.relrowsecurity AND c.relforcerowsecurity)",
+              '0')
         expected_migs = len(all_migrations())
         check(db,'source migration count', f'SELECT {expected_migs}', str(expected_migs))
         check(db,'all table PKs',
