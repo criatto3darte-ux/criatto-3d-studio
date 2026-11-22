@@ -12,8 +12,22 @@ export interface RealOrder {
   name: string;
   phone: string;
   subtotalCents: number;
+  shippingCents: number | null;
+  totalCents: number | null;
+  deliveryLabel: string | null;
+  deliveryDays: number | null;
+  /** Full delivery address (admin only), or null for pickup / older orders. */
+  deliveryAddress: string | null;
   notes: string;
   version: number;
+}
+
+function formatShipAddress(o: Record<string, unknown>): string | null {
+  if (typeof o.ship_cep !== "string" || typeof o.ship_street !== "string") return null;
+  const cep = o.ship_cep.length === 8 ? `${o.ship_cep.slice(0, 5)}-${o.ship_cep.slice(5)}` : o.ship_cep;
+  const complement = typeof o.ship_complement === "string" && o.ship_complement ? `, ${o.ship_complement}` : "";
+  return `${o.ship_street}, ${String(o.ship_number ?? "")}${complement} — ${String(o.ship_district ?? "")}, ` +
+    `${String(o.ship_city ?? "")}/${String(o.ship_state ?? "")} — CEP ${cep}`;
 }
 export interface RealOrderItem {
   id: string;
@@ -26,7 +40,7 @@ export interface RealOrderItem {
 
 export async function listRealOrders(): Promise<RealOrder[]> {
   const { data, error } = await getSupabase().from("orders")
-    .select("id,number,status,created_at,customer_name_snapshot,customer_phone_snapshot,subtotal_cents,notes,version")
+    .select("id,number,status,created_at,customer_name_snapshot,customer_phone_snapshot,subtotal_cents,shipping_cents,total_cents,delivery_label,delivery_days,ship_cep,ship_street,ship_number,ship_complement,ship_district,ship_city,ship_state,notes,version")
     .order("created_at", { ascending: false })
     .limit(150);
   if (error) throw new Error("Não foi possível carregar os pedidos reais. Confira o acesso MFA AAL2.");
@@ -34,6 +48,11 @@ export async function listRealOrders(): Promise<RealOrder[]> {
     id: order.id, number: Number(order.number), status: order.status,
     createdAt: order.created_at, name: order.customer_name_snapshot,
     phone: order.customer_phone_snapshot, subtotalCents: Number(order.subtotal_cents),
+    shippingCents: order.shipping_cents === null ? null : Number(order.shipping_cents),
+    totalCents: order.total_cents === null ? null : Number(order.total_cents),
+    deliveryLabel: order.delivery_label ?? null,
+    deliveryDays: order.delivery_days ?? null,
+    deliveryAddress: formatShipAddress(order as Record<string, unknown>),
     notes: order.notes, version: order.version,
   }));
 }

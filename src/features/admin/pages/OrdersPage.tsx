@@ -91,7 +91,7 @@ export function OrdersPage() {
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">Carregando pedidos…</p>}
       {!loading && <DataTable label="Pedidos reais" empty={!visible.length}
-        head={<><th>Número</th><th>Data</th><th>Cliente</th><th>Status</th><th>Subtotal</th><th>Ações</th></>}>
+        head={<><th>Número</th><th>Data</th><th>Cliente</th><th>Status</th><th>Valor</th><th>Ações</th></>}>
         {visible.map((order) => (
           <tr key={order.id}>
             <td>#{order.number}</td>
@@ -101,7 +101,9 @@ export function OrdersPage() {
               order.status === "concluido" ? "success" : "warning"}>
               {statusLabel[order.status]}
             </Badge></td>
-            <td>{formatBRL(order.subtotalCents)}</td>
+            <td>{order.totalCents !== null
+              ? formatBRL(order.totalCents)
+              : <>{formatBRL(order.subtotalCents)} <span className={s.muted}>+ frete a combinar</span></>}</td>
             <td>
               <Button size="sm" variant="outline" onClick={() => void open(order)}>
                 <Eye size={16}/> Ver
@@ -117,7 +119,11 @@ export function OrdersPage() {
           <p><strong>Cliente:</strong> {selected.name}</p>
           <p><strong>Telefone:</strong> {selected.phone}</p>
           <p><strong>Status:</strong> {statusLabel[selected.status]}</p>
-          <p><strong>Frete:</strong> a combinar</p>
+          <p><strong>Entrega:</strong> {selected.deliveryLabel ?? "A combinar"}
+            {selected.deliveryDays !== null && ` — prazo de até ${selected.deliveryDays} dia(s) útil(eis)`}</p>
+          {selected.deliveryAddress && <p><strong>Endereço:</strong> {selected.deliveryAddress}</p>}
+          <p><strong>Frete:</strong> {selected.shippingCents === null ? "a combinar"
+            : selected.shippingCents === 0 ? "grátis" : formatBRL(selected.shippingCents)}</p>
           <p><strong>Observações:</strong> {selected.notes || "Nenhuma"}</p>
           <h3>Produtos</h3>
           {loadingItems ? <p role="status">Carregando itens…</p> : (
@@ -130,6 +136,7 @@ export function OrdersPage() {
             ))}</ul>
           )}
           <p><strong>Subtotal:</strong> {formatBRL(selected.subtotalCents)}</p>
+          {selected.totalCents !== null && <p><strong>Total:</strong> {formatBRL(selected.totalCents)}</p>}
           {ORDER_TRANSITIONS[selected.status].length > 0 && (
             <fieldset className={s.stack} disabled={statusBusy}>
               <legend>Atualizar andamento do pedido</legend>
