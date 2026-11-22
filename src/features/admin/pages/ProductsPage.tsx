@@ -23,6 +23,7 @@ import { ProductGallery } from "../components/ProductGallery";
 import { cleanupArchivedProductImages, fetchPublicImageFile, uploadCatalogImage } from "@/features/catalog/catalog-media";
 import { ImageCropEditor } from "../components/ImageCropEditor";
 import { buildSimpleVariants, extractSimpleVariants } from "@/features/catalog/product-variants.form";
+import { QA_FIXTURE_NOTICE, isQaProduct } from "../qa-fixtures";
 import {
   SHIPPING_SIZES,
   parseProductShipping,
@@ -472,10 +473,11 @@ export function ProductsPage() {
           }
         >
           {filtered.map((product) => (
-            <tr key={product.id}>
+            <tr key={product.id} data-row-id={product.id}>
               <td>
                 <strong>{product.name}</strong>
                 <div className={s.muted}>/{product.slug}</div>
+                {isQaProduct(product) && <div className={s.muted}>Robô de testes — não editar</div>}
               </td>
               <td className={s.hideSm}>{product.category}</td>
               <td className={s.num}>
@@ -570,6 +572,9 @@ export function ProductsPage() {
       >
         {draft && (
           <div className={s.formGrid}>
+            {!draft.isNew && isQaProduct(draft.product) && (
+              <p role="note" className={s.full}><strong>Atenção:</strong> {QA_FIXTURE_NOTICE}</p>
+            )}
             <Input
               label="Nome"
               value={draft.product.name}

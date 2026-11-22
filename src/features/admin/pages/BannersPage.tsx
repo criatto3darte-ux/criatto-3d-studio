@@ -4,6 +4,7 @@ import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { Logo } from "@/shared/ui/Logo";
 import { notifyStoreContentChanged } from "@/features/catalog/store-content";
+import { QA_FIXTURE_NOTICE, isQaBanner } from "../qa-fixtures";
 import { validateBanner, type Errors } from "@/features/demo-data/rules";
 import type { DemoBanner } from "@/features/demo-data/model";
 import {
@@ -245,14 +246,16 @@ export function BannersPage() {
         <DataTable label="Banners" empty={!list.length}
           head={<><th>Ordem</th><th>Título</th><th className={s.hideSm}>Imagem</th><th>Status</th><th className={s.num}>Ações</th></>}>
           {list.map((banner) => (
-            <tr key={banner.id}>
+            <tr key={banner.id} data-row-id={banner.id}>
               <td>{banner.order}</td>
               <td><strong>{banner.title} {banner.highlight}</strong>
+                {isQaBanner(banner) && <div className={s.muted}>Robô de testes — não editar nem ativar</div>}
                 {shown?.id === banner.id && <div className={s.muted}>Exibido na loja</div>}
               </td>
               <td className={s.hideSm}>{banner.image ? "Anexada" : "Sem foto"}</td>
-              <td><Check label={banner.active ? "Ativo" : "Inativo"}
-                checked={banner.active} onChange={(value) => void toggle(banner, value)} /></td>
+              <td>{isQaBanner(banner) && !banner.active ? <span className={s.muted}>Inativo (robô)</span> : (
+                <Check label={banner.active ? "Ativo" : "Inativo"}
+                  checked={banner.active} onChange={(value) => void toggle(banner, value)} />)}</td>
               <td className={s.num}>
                 <div className={s.actions}>
                   <Button size="icon" variant="ghost" aria-label={`Editar ${banner.title}`}
@@ -273,6 +276,7 @@ export function BannersPage() {
         </>}>
         {draft && (
           <div className={s.stack}>
+            {isQaBanner(draft) && <p role="note"><strong>Atenção:</strong> {QA_FIXTURE_NOTICE}</p>}
             <div className={s.formGrid}>
               <Input label="Título" value={draft.title} error={errors.title}
                 onChange={(e) => update({ title: e.target.value })} />
@@ -286,7 +290,8 @@ export function BannersPage() {
                 error={errors.buttonUrl} onChange={(e) => update({ buttonUrl: e.target.value })} />
               <Input label="Ordem" type="number" min={0} value={draft.order}
                 error={errors.order} onChange={(e) => update({ order: Number(e.target.value) })} />
-              <Check label="Ativo" checked={draft.active} onChange={(v) => update({ active: v })} />
+              {!(isQaBanner(draft) && !draft.active) &&
+                <Check label="Ativo" checked={draft.active} onChange={(v) => update({ active: v })} />}
               <fieldset className={s.full} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}>
                 <legend>No topo da loja, mostrar</legend>
                 <label style={{ display: "flex", gap: 8, alignItems: "center" }}>

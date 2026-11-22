@@ -39,3 +39,7 @@ export async function loginAdmin(page: Page): Promise<void> {
 export const QA_PRODUCT_SLUG = process.env.E2E_QA_PRODUCT_SLUG ?? "produto-qa-e2e";
 export const QA_PRODUCT_NAME = process.env.E2E_QA_PRODUCT_NAME ?? "Produto QA E2E";
 export const QA_BANNER_TITLE = process.env.E2E_QA_BANNER_TITLE ?? "Banner QA E2E";
+// IDs fixos dos registros do robô na homologação: o robô os encontra mesmo
+// que alguém mude o título ou o nome pelo painel.
+export const QA_BANNER_ID = process.env.E2E_QA_BANNER_ID ?? "c40ffa2c-a168-4fbb-966c-1e20def0b05b";
+export const QA_PRODUCT_ID = process.env.E2E_QA_PRODUCT_ID ?? "b96bd11f-7990-4c3f-8f7c-25962c666668";

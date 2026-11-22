@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { solidPng } from "./support/png";
 import {
-  QA_BANNER_TITLE, QA_PRODUCT_NAME, QA_PRODUCT_SLUG, loginAdmin, watchProblems,
+  QA_BANNER_ID, QA_PRODUCT_ID, QA_PRODUCT_NAME, QA_PRODUCT_SLUG, loginAdmin, watchProblems,
 } from "./support/site";
 
 // Grava dados (pedido, fotos): só na homologação, nunca na produção.
@@ -66,7 +66,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
     const problems = watchProblems(page);
     await loginAdmin(page);
     await page.goto("/admin/produtos");
-    await page.getByRole("button", { name: `Editar ${QA_PRODUCT_NAME}` }).first().click();
+    await page.locator(`tr[data-row-id="${QA_PRODUCT_ID}"]`).getByRole("button", { name: /^Editar/ }).click();
     const gallery = page.getByRole("region", { name: "Fotos do produto" });
     await gallery.waitFor();
 
@@ -94,7 +94,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
     const problems = watchProblems(page);
     await loginAdmin(page);
     await page.goto("/admin/produtos");
-    const edit = page.getByRole("button", { name: `Editar ${QA_PRODUCT_NAME}` }).first();
+    const edit = page.locator(`tr[data-row-id="${QA_PRODUCT_ID}"]`).getByRole("button", { name: /^Editar/ });
 
     await edit.click();
     let dialog = page.getByRole("dialog");
@@ -123,7 +123,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
     await loginAdmin(page);
     await page.goto("/admin/banners");
 
-    await page.getByRole("button", { name: `Editar ${QA_BANNER_TITLE}` }).first().click();
+    await page.locator(`tr[data-row-id="${QA_BANNER_ID}"]`).getByRole("button", { name: /^Editar/ }).click();
     let dialog = page.getByRole("dialog");
     await dialog.locator("#banner-file").setInputFiles({
       name: "qa-banner.png", mimeType: "image/png", buffer: solidPng(1600, 900, [229, 0, 126]),
@@ -133,7 +133,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
     await dialog.getByRole("button", { name: /^Salvar/ }).click();
     await expect(page.getByText("Banner salvo.", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: `Editar ${QA_BANNER_TITLE}` }).first().click();
+    await page.locator(`tr[data-row-id="${QA_BANNER_ID}"]`).getByRole("button", { name: /^Editar/ }).click();
     dialog = page.getByRole("dialog");
     // A escolha voltou do banco; restaura "texto" e remove a imagem.
     await expect(dialog.getByLabel(/Logo grande da loja/)).toBeChecked();
@@ -144,7 +144,7 @@ test.describe("Fluxo completo da loja e do painel", () => {
       page.getByText(/^Banner salvo\.$|limpeza física ficou pendente/),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: `Editar ${QA_BANNER_TITLE}` }).first().click();
+    await page.locator(`tr[data-row-id="${QA_BANNER_ID}"]`).getByRole("button", { name: /^Editar/ }).click();
     await expect(page.getByRole("dialog").getByLabel(/Texto do banner/)).toBeChecked();
     await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
     expect(problems, problems.join("\n")).toEqual([]);
