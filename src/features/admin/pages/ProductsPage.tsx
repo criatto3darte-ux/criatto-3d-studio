@@ -24,6 +24,13 @@ import { cleanupArchivedProductImages, fetchPublicImageFile, uploadCatalogImage 
 import { ImageCropEditor } from "../components/ImageCropEditor";
 import { buildSimpleVariants, extractSimpleVariants } from "@/features/catalog/product-variants.form";
 import {
+  SHIPPING_SIZES,
+  parseProductShipping,
+  productShippingToInput,
+  type ProductShipping,
+  type ProductShippingInput,
+} from "@/features/shipping/shipping.rules";
+import {
   Check,
   ConfirmDialog,
   DataTable,
@@ -49,6 +56,7 @@ interface Draft {
   variantGroupsJson: string;
   variantsJson: string;
   version?: number;
+  shipping: ProductShippingInput;
 }
 const badgeValue: Record<string, "novo" | "destaque" | "promocao" | null> = {
   Novo: "novo",
@@ -57,7 +65,12 @@ const badgeValue: Record<string, "novo" | "destaque" | "promocao" | null> = {
   Promoção: "promocao",
 };
 
-function toDraft(product: Product, isNew: boolean, version?: number): Draft {
+function toDraft(
+  product: Product,
+  isNew: boolean,
+  version?: number,
+  shipping: ProductShipping = { mode: "nenhum" },
+): Draft {
   return {
     product,
     price: centsToInput(product.priceCents || null),
@@ -71,6 +84,7 @@ function toDraft(product: Product, isNew: boolean, version?: number): Draft {
     slugTouched: !isNew,
     variantGroupsJson: "[]",
     variantsJson: "[]",
+    shipping: productShippingToInput(shipping),
     ...(version === undefined ? {} : { version }),
   };
 }
@@ -159,7 +173,7 @@ export function ProductsPage() {
     setBusy(true);
     try {
       const config = await getAdminVariantConfiguration(product.id);
-      const next = toDraft(product, false, product.version);
+      const next = toDraft(product, false, product.version, product.shipping);
       setDraft({
         ...next,
         ...extractSimpleVariants(config.groups),
@@ -253,6 +267,8 @@ export function ProductsPage() {
         : {}),
     };
     const validation = validateProduct(product, products, categories);
+    const shipping = parseProductShipping(draft.shipping);
+    Object.assign(validation, shipping.errors);
     delete validation.stock;
     delete validation.images;
     delete validation.description;
@@ -263,7 +279,8 @@ export function ProductsPage() {
       }
     }
     setErrors(validation);
-    if (Object.keys(validation).length) return;
+    if (Object.keys(validation).length || !shipping.value) return;
+    const shippingValue = shipping.value;
     const category = categoryBySlug.get(product.category);
     if (!category) {
       setActionError("Selecione uma categoria válida.");
@@ -295,6 +312,7 @@ export function ProductsPage() {
         featured: product.featured,
         active: product.active,
         badge: product.badge ? (badgeValue[product.badge] ?? null) : null,
+        shipping: shippingValue,
       });
       setDraft(null);
       if (simpleVariations) {
@@ -671,6 +689,107 @@ export function ProductsPage() {
                 }
               />
             )}
+            <fieldset
+              className={s.full}
+              style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}
+            >
+              <legend>Embalagem para o frete</legend>
+              <div className={s.formGrid}>
+                <SelectField
+                  label="Como informar"
+                  value={draft.shipping.mode}
+                  onChange={(event) =>
+                    setDraft((value) => value && {
+                      ...value,
+                      shipping: {
+                        ...value.shipping,
+                        mode: event.target.value as ProductShippingInput["mode"],
+                      },
+                    })
+                  }
+                  hint="Tamanho padrão usa as medidas definidas em Entrega."
+                >
+                  <option value="nenhum">Ainda não definido</option>
+                  <option value="tamanho">Tamanho padrão (P, M ou G)</option>
+                  <option value="medidas">Peso e medidas próprios</option>
+                </SelectField>
+                {draft.shipping.mode === "tamanho" && (
+                  <SelectField
+                    label="Tamanho"
+                    value={draft.shipping.size}
+                    error={errors.shippingSize}
+                    onChange={(event) =>
+                      setDraft((value) => value && {
+                        ...value,
+                        shipping: {
+                          ...value.shipping,
+                          size: event.target.value as ProductShippingInput["size"],
+                        },
+                      })
+                    }
+                  >
+                    <option value="">Escolha…</option>
+                    {SHIPPING_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+                  </SelectField>
+                )}
+                {draft.shipping.mode === "medidas" && (
+                  <>
+                    <Input
+                      label="Peso com embalagem (g)"
+                      inputMode="numeric"
+                      value={draft.shipping.measures.weightG}
+                      error={errors["shipping.weightG"]}
+                      onChange={(event) => setDraft((value) => value && {
+                        ...value,
+                        shipping: {
+                          ...value.shipping,
+                          measures: { ...value.shipping.measures, weightG: event.target.value },
+                        },
+                      })}
+                    />
+                    <Input
+                      label="Altura (cm)"
+                      inputMode="numeric"
+                      value={draft.shipping.measures.heightCm}
+                      error={errors["shipping.heightCm"]}
+                      onChange={(event) => setDraft((value) => value && {
+                        ...value,
+                        shipping: {
+                          ...value.shipping,
+                          measures: { ...value.shipping.measures, heightCm: event.target.value },
+                        },
+                      })}
+                    />
+                    <Input
+                      label="Largura (cm)"
+                      inputMode="numeric"
+                      value={draft.shipping.measures.widthCm}
+                      error={errors["shipping.widthCm"]}
+                      onChange={(event) => setDraft((value) => value && {
+                        ...value,
+                        shipping: {
+                          ...value.shipping,
+                          measures: { ...value.shipping.measures, widthCm: event.target.value },
+                        },
+                      })}
+                    />
+                    <Input
+                      label="Comprimento (cm)"
+                      inputMode="numeric"
+                      value={draft.shipping.measures.lengthCm}
+                      error={errors["shipping.lengthCm"]}
+                      onChange={(event) => setDraft((value) => value && {
+                        ...value,
+                        shipping: {
+                          ...value.shipping,
+                          measures: { ...value.shipping.measures, lengthCm: event.target.value },
+                        },
+                      })}
+                    />
+                  </>
+                )}
+              </div>
+            </fieldset>
             <TextareaField
               className={s.full}
               label="Descrição"
