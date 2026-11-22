@@ -3,6 +3,7 @@ import { Crop, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { Logo } from "@/shared/ui/Logo";
+import { notifyStoreContentChanged } from "@/features/catalog/store-content";
 import { validateBanner, type Errors } from "@/features/demo-data/rules";
 import type { DemoBanner } from "@/features/demo-data/model";
 import {
@@ -175,6 +176,7 @@ export function BannersPage() {
           (cause instanceof Error ? cause.message : "erro desconhecido"),
         );
         await reload();
+        notifyStoreContentChanged();
         return;
       }
       setDraft(null);
@@ -182,6 +184,7 @@ export function BannersPage() {
       setImageUrl("");
       setNotice("Banner salvo.");
       await reload();
+      notifyStoreContentChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível salvar o banner.");
     } finally {
@@ -200,6 +203,7 @@ export function BannersPage() {
         : "Banner e imagem desvinculados com sucesso.");
       setDel(null);
       await reload();
+      notifyStoreContentChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível excluir o banner.");
     } finally {
@@ -215,6 +219,7 @@ export function BannersPage() {
         ...banner, active,
       });
       await reload();
+      notifyStoreContentChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível alterar o status.");
     } finally {

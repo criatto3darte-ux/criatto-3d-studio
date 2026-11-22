@@ -9,6 +9,7 @@ import { DEFAULT_REAL_SETTINGS, readAdminStoreSettings, saveRealStoreSettings } 
 import { validateSettings, type Errors } from "@/features/demo-data/rules";
 import type { StoreSettings } from "@/features/demo-data/model";
 import { Check, TextareaField, adminStyles as s } from "../ui/AdminUI";
+import { notifyStoreContentChanged } from "@/features/catalog/store-content";
 
 export function SettingsPage() {
   const [form, setForm] = useState<StoreSettings>(DEFAULT_REAL_SETTINGS);
@@ -50,6 +51,7 @@ export function SettingsPage() {
       setForm(current.settings);
       setVersion(current.version);
       setSaved(true);
+      notifyStoreContentChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha ao salvar configurações.");
     } finally {
@@ -94,7 +96,7 @@ export function SettingsPage() {
       </Card>
       <div className={s.toolbar}>
         <Button onClick={() => void save()} disabled={busy || loading}><Save size={18} /> {busy ? "Salvando…" : "Salvar configurações"}</Button>
-        <span role="status" className={s.muted}>{saved ? "Configurações salvas no Supabase." : ""}</span>
+        <span role="status" className={s.muted}>{saved ? "Configurações salvas. A loja já mostra as mudanças." : ""}</span>
       </div>
 
     </div>

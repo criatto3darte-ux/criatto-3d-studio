@@ -6,6 +6,7 @@ import {
 } from "@/features/shipping/shipping.rules";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { CONTENT_CHANGED_KEY } from "@/features/catalog/store-content";
 import { listPublicCatalogImages } from "@/features/catalog/catalog-media";
 import type {
   Category,
@@ -269,13 +270,16 @@ async function loadCatalog(): Promise<{ products: Product[]; categories: Categor
   return { products, categories };
 }
 
-export function refreshPublicCatalog(): void {
+export function refreshPublicCatalog(options: { background?: boolean } = {}): void {
   if (request) return;
   if (!isSupabaseConfigured()) {
     publish({ state: "unconfigured", products: [], categories: [], error: null });
     return;
   }
-  publish({ ...snapshot, state: "loading", error: null });
+  // A background refresh keeps the products on screen; it only swaps them
+  // when the new list arrives, and keeps them if that request fails.
+  const background = options.background === true && snapshot.state === "ready";
+  if (!background) publish({ ...snapshot, state: "loading", error: null });
   const generation = ++requestGeneration;
   request = loadCatalog()
     .then(({ products, categories }) => {
@@ -283,7 +287,7 @@ export function refreshPublicCatalog(): void {
         publish({ state: "ready", products, categories, error: null });
     })
     .catch((error: unknown) => {
-      if (generation !== requestGeneration) return;
+      if (generation !== requestGeneration || background) return;
       publish({
         state: "error",
         products: [],
@@ -315,6 +319,8 @@ export function useRemoteCatalog(): CatalogSnapshot {
 }
 
 export function invalidatePublicCatalog(): void {
+  // Other tabs of this browser showing the store refresh at once.
+  try { localStorage.setItem(CONTENT_CHANGED_KEY, String(Date.now())); } catch { /* ignore */ }
   requestGeneration += 1;
   request = null;
   snapshot = { state: "loading", products: [], categories: [], error: null };
