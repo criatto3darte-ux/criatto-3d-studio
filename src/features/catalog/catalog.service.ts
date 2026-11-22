@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { listPublishedBanners } from "@/features/catalog/banners.service";
+import { useMemo } from "react";
 import type { Category, Product } from "@/shared/types/catalog";
-import { readPublicStoreSettings, DEFAULT_REAL_SETTINGS } from "@/features/catalog/store-settings.service";
+import { useStoreContent } from "@/features/catalog/store-content";
 import { useRemoteCatalog } from "@/features/catalog/supabase-catalog";
 import type { DemoBanner, StoreSettings } from "@/features/demo-data/model";
 
@@ -36,32 +35,12 @@ export function useStoreCatalog(): StoreCatalog {
   }, [snapshot]);
 }
 
-/** Public contact settings are loaded from the limited Supabase public view. */
+/** Public settings from the shared store content (one request per page). */
 export function useStoreSettings(): StoreSettings {
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_REAL_SETTINGS);
-  useEffect(() => {
-    let active = true;
-    void readPublicStoreSettings().then((value) => {
-      if (active) setSettings(value);
-    }).catch(() => {
-      if (active) setSettings(DEFAULT_REAL_SETTINGS);
-    });
-    return () => { active = false; };
-  }, []);
-  return settings;
+  return useStoreContent().settings;
 }
 
-/** Read the public-only banner view; never show demo banners in live mode. */
+/** Published hero banner; undefined when there is none (or still loading). */
 export function useHeroBanner(): DemoBanner | undefined {
-  const [banner, setBanner] = useState<DemoBanner | undefined>(undefined);
-  useEffect(() => {
-    let active = true;
-    void listPublishedBanners().then((items) => {
-      if (active) setBanner(items[0]);
-    }).catch(() => {
-      if (active) setBanner(undefined);
-    });
-    return () => { active = false; };
-  }, []);
-  return banner;
+  return useStoreContent().banner;
 }
