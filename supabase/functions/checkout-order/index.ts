@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     return output(req, 415, { error: "Use JSON para enviar o pedido." });
   }
   const bodyText = await req.text();
-  if (!bodyText || bodyText.length > 12000) {
+  if (!bodyText || bodyText.length > 14000) {
     return output(req, 413, { error: "Pedido ultrapassa o limite permitido." });
   }
   let body: unknown;
@@ -85,6 +85,9 @@ Deno.serve(async (req) => {
 
   const { data, error } = await service.rpc("create_checkout_order", { p_payload: payload });
   if (error) {
+    if (error.code === "23514" && /delivery/.test(error.message ?? "")) return output(req, 409, {
+      error: "A forma de entrega escolhida não está disponível para este CEP. Calcule o frete de novo.",
+    });
     if (error.code === "23514") return output(req, 409, {
       error: "Produto indisponível ou estoque insuficiente. Atualize o carrinho.",
     });
@@ -106,6 +109,10 @@ Deno.serve(async (req) => {
     orderId: result.order_id,
     orderNumber: result.order_number,
     subtotalCents: result.subtotal_cents,
+    shippingCents: result.shipping_cents ?? null,
+    totalCents: result.total_cents ?? null,
+    deliveryLabel: result.delivery_label ?? null,
+    deliveryDays: result.delivery_days ?? null,
     whatsapp: validWhatsapp ? whatsapp : "",
     whatsappConfigured: validWhatsapp,
     status: "aguardando-contato",

@@ -230,6 +230,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261118015832_cr014_finance_summary_aal2.sql':'56b89303e0634b381c3b4bca6d3f0a9e38cc97d7cbf1eade56b3c61367b2524f',
     '20261120170000_cr018_banner_hero_style.sql':'d1b73c2fd60ca2a6c214fc06b1b947112770477c34309aa1d6e0d100d41c20c1',
     '20261122120000_cr019a_shipping_config.sql':'7b64ea13b021393870d088e1debec6e0d436bb412ab4c027995cf324cd7d6822',
+    '20261123120000_cr019b_checkout_shipping.sql':'1c12372499776013a9768b11300acf41716d44dd5355f9598bc7115c938b4f90',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -1047,6 +1048,64 @@ INSERT INTO inventory(product_id,on_hand,allocated) VALUES({checkout_product},5,
         check(db,'CR-010C terminal status cannot transition again',
               actor('operator',f"SELECT * FROM public.transition_checkout_order({checkout_id},2,'confirmado','invalid')",'aal2'),
               error='invalid order status transition')
+        # CR-019B: shipping is recomputed by the server inside the checkout.
+        execute(db, """
+UPDATE shipping_settings SET pickup_enabled=true, pickup_address='Rua Teste, 1',
+  pickup_hours='Seg a sex', local_delivery_enabled=true WHERE id=1;
+INSERT INTO local_delivery_zones(name,cep_start,cep_end,price_cents,delivery_days)
+VALUES ('Centro','25010000','25099999',1500,1);
+""")
+        address = {'cep':'25030-058','street':'Rua A','number':'10','complement':'',
+                   'district':'Centro','city':'Duque de Caxias','state':'RJ'}
+        def checkout_with(key, delivery):
+            body = json.dumps({
+                'customerName':'Cliente Frete','customerPhone':'+5521987640769',
+                'privacyAccepted':True,'idempotencyKey':key,
+                'items':[{'productId':'c0000000-0000-4000-8000-000000000001','quantity':1,'sku':None}],
+                'delivery':delivery,
+            },separators=(',',':'))
+            return ("BEGIN; SET LOCAL ROLE service_role; SELECT subtotal_cents||':'||"
+                    "coalesce(shipping_cents::text,'-')||':'||coalesce(total_cents::text,'-')||':'||delivery_label "
+                    f"FROM public.create_checkout_order('{body}'::jsonb); COMMIT;")
+        check(db,'CR-019B options for a CEP inside a zone',
+              "BEGIN; SET LOCAL ROLE service_role; SELECT string_agg(value->>'method',',') FROM jsonb_array_elements(public.shipping_options('25030-058','[]'::jsonb)); COMMIT;",
+              'retirada,entrega-local,a-combinar')
+        check(db,'CR-019B options outside every zone',
+              "BEGIN; SET LOCAL ROLE service_role; SELECT string_agg(value->>'method',',') FROM jsonb_array_elements(public.shipping_options('01001000','[]'::jsonb)); COMMIT;",
+              'retirada,a-combinar')
+        check(db,'CR-019B anon cannot quote shipping',
+              "SET ROLE anon; SELECT public.shipping_options('25030058','[]'::jsonb)",error='permission denied')
+        check(db,'CR-019B authenticated cannot quote shipping',
+              actor('owner',"SELECT public.shipping_options('25030058','[]'::jsonb)"),error='permission denied')
+        check(db,'CR-019B local delivery priced by the server, browser price ignored',
+              checkout_with('c2222222-2222-4222-8222-222222222221', {**address,'method':'entrega-local','priceCents':1}),
+              '900:1500:2400:Entrega local — Centro')
+        check(db,'CR-019B local delivery stores the address snapshot',
+              "SELECT ship_cep||':'||ship_state||':'||delivery_method||':'||delivery_days FROM orders WHERE idempotency_key='c2222222-2222-4222-8222-222222222221'",
+              '25030058:RJ:entrega-local:1')
+        check(db,'CR-019B pickup is free and stores no address',
+              checkout_with('c2222222-2222-4222-8222-222222222222', {**address,'method':'retirada'}),
+              '900:0:900:Retirada')
+        check(db,'CR-019B pickup order has no address',
+              "SELECT coalesce(ship_cep,'none') FROM orders WHERE idempotency_key='c2222222-2222-4222-8222-222222222222'",'none')
+        check(db,'CR-019B to-be-agreed keeps shipping and total open',
+              checkout_with('c2222222-2222-4222-8222-222222222223', {**address,'method':'a-combinar'}),
+              '900:-:-:Envio a combinar pelo WhatsApp')
+        check(db,'CR-019B local delivery outside the zones is refused',
+              checkout_with('c2222222-2222-4222-8222-222222222224', {**address,'cep':'01001-000','method':'entrega-local'}),
+              error='delivery method unavailable')
+        check(db,'CR-019B delivery without address is refused',
+              checkout_with('c2222222-2222-4222-8222-222222222225', {'method':'entrega-local','cep':'25030058'}),
+              error='invalid delivery address')
+        check(db,'CR-019B unknown delivery method is refused',
+              checkout_with('c2222222-2222-4222-8222-222222222226', {**address,'method':'drone'}),
+              error='invalid delivery method')
+        check(db,'CR-019B refused orders leave no rows',
+              "SELECT count(*) FROM orders WHERE idempotency_key IN ('c2222222-2222-4222-8222-222222222224','c2222222-2222-4222-8222-222222222225','c2222222-2222-4222-8222-222222222226')",'0')
+        execute(db, "UPDATE shipping_settings SET pickup_enabled=false WHERE id=1;")
+        check(db,'CR-019B disabled pickup is refused',
+              checkout_with('c2222222-2222-4222-8222-222222222227', {**address,'method':'retirada'}),
+              error='delivery method unavailable')
         # service_role NÃO consegue DELETE em order_items (trigger append-only
         # rejeita a mutação). Usamos transação explícita com ROLLBACK e, após a
         # tentativa bloqueada, verificamos que o registro continua intacto.

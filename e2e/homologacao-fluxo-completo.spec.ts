@@ -33,8 +33,22 @@ test.describe("Fluxo completo da loja e do painel", () => {
 
     await page.getByLabel("Nome completo").fill("Teste Automático QA");
     await page.getByLabel("WhatsApp com DDD").pressSequentially(randomPhoneDigits());
+
+    // CR-019B: o frete é calculado pelo servidor a partir do CEP.
+    const register = page.getByRole("button", { name: /Registrar e continuar pelo WhatsApp/ });
+    await page.getByLabel("CEP de entrega").fill("25030058");
+    await page.getByRole("button", { name: "Calcular frete" }).click();
+    const toAgree = page.getByRole("radio", { name: /Envio a combinar pelo WhatsApp/ });
+    await expect(toAgree).toBeVisible();
+    await toAgree.check();
+    await page.getByLabel("Rua", { exact: true }).fill("Rua do Teste Automático");
+    await page.getByLabel("Número", { exact: true }).fill("100");
+    await page.getByLabel("Bairro", { exact: true }).fill("Centro");
+    await page.getByLabel("Cidade", { exact: true }).fill("Duque de Caxias");
+    await page.getByLabel("Estado", { exact: true }).selectOption("RJ");
     await page.locator('input[type="checkbox"]').first().check();
-    await page.getByRole("button", { name: /Registrar e continuar pelo WhatsApp/ }).click();
+    await expect(register).toBeEnabled();
+    await register.click();
 
     const confirmation = page.getByText(/Pedido #\d+ registrado!/);
     await expect(confirmation).toBeVisible();
@@ -48,6 +62,9 @@ test.describe("Fluxo completo da loja e do painel", () => {
     expect(message).toContain(`Pedido nº ${orderNumber}`);
     expect(message).toContain(QA_PRODUCT_NAME);
     expect(message).toMatch(/Subtotal: R\$ \d/);
+    expect(message).toContain("Entrega: Envio a combinar pelo WhatsApp");
+    expect(message).toContain("Endereço: Rua do Teste Automático, 100 — Centro, Duque de Caxias/RJ — CEP 25030-058");
+    expect(message).toContain("Frete: a combinar.");
     expect(message).not.toMatch(/Supabase|servidor/i);
     expect(problems, problems.join("\n")).toEqual([]);
   });

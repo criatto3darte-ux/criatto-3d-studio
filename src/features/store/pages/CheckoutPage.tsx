@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, MessageCircle } from "lucide-react";
 import { Button, buttonClass } from "@/shared/ui/Button";
@@ -17,9 +17,25 @@ import {
   createOfficialOrder,
   orderPayload,
   officialOrderWhatsAppUrl,
+  quoteShipping,
   type CheckoutCustomer,
+  type CheckoutDelivery,
   type OfficialOrder,
 } from "@/features/checkout/orders.service";
+import {
+  EMPTY_ADDRESS,
+  UF,
+  formatDeliveryDays,
+  formatDeliveryPrice,
+  maskCep,
+  needsAddress,
+  validateAddress,
+  type AddressErrors,
+  type DeliveryAddress,
+  type DeliveryMethod,
+  type DeliveryOption,
+} from "@/features/checkout/delivery.logic";
+import { normalizeCep } from "@/features/shipping/shipping.rules";
 import { formatBRL } from "@/shared/utils/format";
 import styles from "./CheckoutPage.module.css";
 import type { CartItem } from "@/shared/types/cart";
@@ -41,8 +57,49 @@ export function CheckoutPage() {
   const [order, setOrder] = useState<OfficialOrder | null>(null);
   const [submittedItems, setSubmittedItems] = useState<CartItem[] | null>(null);
   const [submittedCustomer, setSubmittedCustomer] = useState<CheckoutCustomer | null>(null);
+  const [cep, setCep] = useState("");
+  const [quoting, setQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
+  const [options, setOptions] = useState<DeliveryOption[] | null>(null);
+  const [method, setMethod] = useState<DeliveryMethod | null>(null);
+  const [address, setAddress] = useState<DeliveryAddress>(EMPTY_ADDRESS);
+  const [addressTouched, setAddressTouched] = useState(false);
+  const [submittedDelivery, setSubmittedDelivery] = useState<CheckoutDelivery | null>(null);
 
   const items = lines.map(({ item }) => item);
+  const itemsSignature = items.map((item) => `${item.productId}:${item.quantity}`).join("|");
+  // O prazo depende dos itens: mudou o carrinho, o frete é calculado de novo.
+  useEffect(() => {
+    if (order) return;
+    setOptions(null);
+    setMethod(null);
+  }, [itemsSignature, order]);
+
+  const selected = options?.find((option) => option.method === method) ?? null;
+  const addressErrors: AddressErrors = needsAddress(method) ? validateAddress(address) : {};
+  const deliveryReady = !!selected && Object.keys(addressErrors).length === 0;
+
+  async function calculate() {
+    const normalized = normalizeCep(cep);
+    if (!normalized) {
+      setQuoteError("Informe o CEP com 8 números.");
+      return;
+    }
+    setQuoting(true);
+    setQuoteError("");
+    try {
+      const next = await quoteShipping(normalized, items);
+      setOptions(next);
+      setMethod(next[0]?.method ?? null);
+      setAddress((current) => ({ ...current, cep: maskCep(normalized) }));
+    } catch (cause) {
+      setOptions(null);
+      setMethod(null);
+      setQuoteError(cause instanceof Error ? cause.message : "Não foi possível calcular o frete.");
+    } finally {
+      setQuoting(false);
+    }
+  }
   const customer = { name, phone, notes, privacyAccepted };
   const ready =
     LIVE_CHECKOUT_ENABLED &&
@@ -52,22 +109,25 @@ export function CheckoutPage() {
     !validateName(name) &&
     !validatePhone(phone) &&
     privacyAccepted &&
+    deliveryReady &&
     !submitting;
   const completedItems = submittedItems ?? items;
   const completedCustomer = submittedCustomer ?? customer;
   const whatsappLink = order
-    ? officialOrderWhatsAppUrl(order, completedItems, completedCustomer)
+    ? officialOrderWhatsAppUrl(order, completedItems, completedCustomer, submittedDelivery)
     : null;
 
   async function submit() {
-    if (!ready) return;
+    if (!ready || !method) return;
     setSubmitting(true);
     setError("");
     try {
-      const payload = orderPayload(items, products, customer, key);
+      const delivery: CheckoutDelivery = { method, address };
+      const payload = orderPayload(items, products, customer, key, delivery);
       const saved = await createOfficialOrder(payload);
       setSubmittedItems(items);
       setSubmittedCustomer(customer);
+      setSubmittedDelivery(delivery);
       setOrder(saved);
       cart.clear();
     } catch (cause) {
@@ -109,6 +169,79 @@ export function CheckoutPage() {
             onChange={(event) => setPhone(maskPhone(onlyDigits(event.target.value)))}
             disabled={!!order || submitting}
           />
+          <h2 className={styles.h2}>Entrega</h2>
+          <div className={styles.cepRow}>
+            <Input
+              label="CEP de entrega"
+              value={cep}
+              placeholder="00000-000"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              error={quoteError || undefined}
+              onChange={(event) => { setCep(maskCep(event.target.value)); setQuoteError(""); }}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void calculate(); } }}
+              disabled={!!order || submitting || quoting}
+            />
+            <Button variant="outline" onClick={() => void calculate()}
+              disabled={!!order || submitting || quoting || items.length === 0}>
+              {quoting ? "Calculando…" : "Calcular frete"}
+            </Button>
+          </div>
+          {options && (
+            <fieldset className={styles.options} disabled={!!order || submitting}>
+              <legend className={styles.label}>Escolha a forma de entrega</legend>
+              {options.map((option) => (
+                <label key={option.method} className={styles.option}>
+                  <input type="radio" name="delivery-method" value={option.method}
+                    checked={method === option.method}
+                    onChange={() => setMethod(option.method)} />
+                  <span className={styles.optionText}>
+                    <strong>{option.label}</strong>
+                    <span className={styles.hint}>{formatDeliveryDays(option.days)}</span>
+                    {option.detail && <span className={styles.hint}>{option.detail}</span>}
+                  </span>
+                  <strong className={styles.optionPrice}>{formatDeliveryPrice(option.priceCents)}</strong>
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {needsAddress(method) && (
+            <div className={styles.address}>
+              <Input className={styles.wide} label="Rua" value={address.street} maxLength={200}
+                autoComplete="address-line1"
+                error={(addressTouched && addressErrors.street) || undefined}
+                onChange={(event) => setAddress({ ...address, street: event.target.value })}
+                onBlur={() => setAddressTouched(true)} disabled={!!order || submitting} />
+              <Input label="Número" value={address.number} maxLength={20}
+                error={(addressTouched && addressErrors.number) || undefined}
+                onChange={(event) => setAddress({ ...address, number: event.target.value })}
+                onBlur={() => setAddressTouched(true)} disabled={!!order || submitting} />
+              <Input label="Complemento (opcional)" value={address.complement} maxLength={100}
+                autoComplete="address-line2"
+                onChange={(event) => setAddress({ ...address, complement: event.target.value })}
+                disabled={!!order || submitting} />
+              <Input label="Bairro" value={address.district} maxLength={100}
+                error={(addressTouched && addressErrors.district) || undefined}
+                onChange={(event) => setAddress({ ...address, district: event.target.value })}
+                onBlur={() => setAddressTouched(true)} disabled={!!order || submitting} />
+              <Input label="Cidade" value={address.city} maxLength={100} autoComplete="address-level2"
+                error={(addressTouched && addressErrors.city) || undefined}
+                onChange={(event) => setAddress({ ...address, city: event.target.value })}
+                onBlur={() => setAddressTouched(true)} disabled={!!order || submitting} />
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="checkout-state">Estado</label>
+                <select id="checkout-state" className={styles.select} value={address.state}
+                  autoComplete="address-level1"
+                  onChange={(event) => { setAddress({ ...address, state: event.target.value }); setAddressTouched(true); }}
+                  disabled={!!order || submitting}>
+                  <option value="">Escolha…</option>
+                  {UF.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                </select>
+                {addressTouched && addressErrors.state && <span className={styles.hint}>{addressErrors.state}</span>}
+              </div>
+              <p className={styles.hint}>CEP {address.cep}. Para trocar o CEP, calcule o frete de novo.</p>
+            </div>
+          )}
           <div className={styles.field}>
             <label className={styles.label} htmlFor="checkout-notes">
               Observações (opcional)
@@ -129,7 +262,8 @@ export function CheckoutPage() {
               disabled={!!order || submitting}
               onChange={(event) => setPrivacyAccepted(event.target.checked)}
             />
-            Autorizo o uso do meu nome e telefone para atendimento e acompanhamento deste pedido.
+            Autorizo o uso do meu nome, telefone e endereço para atendimento, entrega e acompanhamento
+            deste pedido.
           </label>
           {error && (
             <p role="alert" className={styles.errorSummary}>
@@ -141,7 +275,12 @@ export function CheckoutPage() {
               <p>
                 <CheckCircle2 size={20} /> Pedido #{order.orderNumber} registrado!
               </p>
-              <p className={styles.hint}>Status: aguardando contato. Frete a combinar.</p>
+              <p className={styles.hint}>
+                Status: aguardando contato.{" "}
+                {order.totalCents !== null
+                  ? `Total com frete: ${formatBRL(order.totalCents)}.`
+                  : "Frete a combinar pelo WhatsApp."}
+              </p>
               {whatsappLink && <a className={buttonClass("primary")} href={whatsappLink}
                 target="_blank" rel="noopener noreferrer" onClick={(event) => {
                   event.preventDefault();
@@ -207,9 +346,23 @@ export function CheckoutPage() {
             </strong>
           </div>
           <div className={styles.row}>
-            <span>Frete</span>
-            <span>A combinar</span>
+            <span>Frete{(order?.deliveryLabel ?? selected?.label) ? ` · ${order?.deliveryLabel ?? selected?.label}` : ""}</span>
+            <span>
+              {order
+                ? formatDeliveryPrice(order.shippingCents)
+                : selected
+                  ? formatDeliveryPrice(selected.priceCents)
+                  : "Calcule pelo CEP"}
+            </span>
           </div>
+          {(order ? order.totalCents !== null : selected?.priceCents !== null && selected !== null) && (
+            <div className={styles.row}>
+              <span>Total</span>
+              <strong className={styles.total}>
+                {formatBRL(order?.totalCents ?? cart.subtotalCents + (selected?.priceCents ?? 0))}
+              </strong>
+            </div>
+          )}
         </aside>
       </div>
     </div>
