@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, Home, Image, Layers, Package, Settings, ShoppingCart, Tag, Users, WandSparkles, type LucideIcon,
+  BarChart3, Boxes, Home, Image, Layers, Package, Settings, ShoppingCart, Tag, Truck, Users, WandSparkles, type LucideIcon,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -20,6 +20,7 @@ export const adminNav: AdminNavItem[] = [
   { to: "/admin/personalizacoes", label: "Personalizações", icon: WandSparkles, subtitle: "Analise solicitações de peças personalizadas." },
   { to: "/admin/banners", label: "Banners", icon: Image, subtitle: "Gerencie os banners da página inicial." },
   { to: "/admin/relatorios", label: "Relatórios", icon: BarChart3, subtitle: "Indicadores de pedidos e vendas." },
+  { to: "/admin/entrega", label: "Entrega", icon: Truck, subtitle: "CEP de origem, retirada, entrega local e embalagens." },
   { to: "/admin/configuracoes", label: "Configurações", icon: Settings, subtitle: "Dados da loja, WhatsApp, entrega e mensagens." },
 ];
 

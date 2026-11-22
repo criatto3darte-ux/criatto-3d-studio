@@ -90,6 +90,34 @@ test.describe("Fluxo completo da loja e do painel", () => {
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
+  test("admin grava peso e medidas da embalagem do produto (CR-019A)", async ({ page }) => {
+    const problems = watchProblems(page);
+    await loginAdmin(page);
+    await page.goto("/admin/produtos");
+    const edit = page.getByRole("button", { name: `Editar ${QA_PRODUCT_NAME}` }).first();
+
+    await edit.click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Como informar").selectOption("medidas");
+    await dialog.getByLabel("Peso com embalagem (g)").fill("250");
+    await dialog.getByLabel("Altura (cm)").fill("10");
+    await dialog.getByLabel("Largura (cm)").fill("12");
+    await dialog.getByLabel("Comprimento (cm)").fill("15");
+    await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(dialog).toBeHidden();
+
+    // Os valores voltam do banco; depois o produto de QA volta a "Ainda não definido".
+    await edit.click();
+    dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel("Como informar")).toHaveValue("medidas");
+    await expect(dialog.getByLabel("Peso com embalagem (g)")).toHaveValue("250");
+    await expect(dialog.getByLabel("Comprimento (cm)")).toHaveValue("15");
+    await dialog.getByLabel("Como informar").selectOption("nenhum");
+    await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    expect(problems, problems.join("\n")).toEqual([]);
+  });
+
   test("admin envia e remove imagem do banner e alterna texto/logo no topo", async ({ page }) => {
     const problems = watchProblems(page);
     await loginAdmin(page);

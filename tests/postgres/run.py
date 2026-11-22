@@ -201,6 +201,7 @@ def all_migrations():
     migs += list((ROOT/'supabase/migrations').glob('*_cr013*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr014*.sql'))
     migs += list((ROOT/'supabase/migrations').glob('*_cr018*.sql'))
+    migs += list((ROOT/'supabase/migrations').glob('*_cr019*.sql'))
     return sorted(set(migs))
 
 # SHA-256 of every CR-007* migration file at the approved commit (b53ac36).
@@ -228,6 +229,7 @@ APPROVED_MIGRATION_SHA256 = {
     '20261118004549_cr013_production_security_hardening.sql':'aa8f04957a2be9d706e70e55e1a633a11fead0609055c9285acba1983a7b4200',
     '20261118015832_cr014_finance_summary_aal2.sql':'56b89303e0634b381c3b4bca6d3f0a9e38cc97d7cbf1eade56b3c61367b2524f',
     '20261120170000_cr018_banner_hero_style.sql':'d1b73c2fd60ca2a6c214fc06b1b947112770477c34309aa1d6e0d100d41c20c1',
+    '20261122120000_cr019a_shipping_config.sql':'7b64ea13b021393870d088e1debec6e0d436bb412ab4c027995cf324cd7d6822',
 }
 APPROVED_ROLLBACK_SHA256 = {
     '20261116014216_cr010b1_catalog_stock_commands.sql':'731f645065f602c3f6100eab4a9e9b3b970d57c30575a35fa699271ee2636246',
@@ -768,6 +770,25 @@ COMMIT;
         check(db,'editor denied finance summary',actor('editor','SELECT count(*) FROM finance_order_summary'),'0')
         check(db,'CR-014 finance summary denied without MFA (aal1)',actor('finance','SELECT count(*) FROM finance_order_summary','aal1'),'0')
         check(db,'owner sees finance summary',actor('owner','SELECT count(*) FROM finance_order_summary'),'1')
+        # CR-019A: shipping configuration is owner-only with MFA, never anonymous.
+        check(db,'CR-019A owner reads shipping settings',actor('owner','SELECT count(*) FROM shipping_settings'),'1')
+        check(db,'CR-019A owner without MFA sees no shipping settings',actor('owner','SELECT count(*) FROM shipping_settings','aal1'),'0')
+        check(db,'CR-019A editor sees no shipping settings',actor('editor','SELECT count(*) FROM shipping_settings'),'0')
+        check(db,'CR-019A anon denied shipping settings',"SET ROLE anon; SELECT count(*) FROM public.shipping_settings",error='permission denied')
+        check(db,'CR-019A anon denied delivery zones',"SET ROLE anon; SELECT count(*) FROM public.local_delivery_zones",error='permission denied')
+        check(db,'CR-019A owner updates origin CEP',actor('owner',"WITH u AS (UPDATE shipping_settings SET origin_cep='25030059' WHERE id=1 RETURNING 1) SELECT count(*) FROM u"),'1')
+        check(db,'CR-019A editor cannot update shipping settings',actor('editor',"WITH u AS (UPDATE shipping_settings SET origin_cep='25030059' WHERE id=1 RETURNING 1) SELECT count(*) FROM u"),'0')
+        check(db,'CR-019A no second shipping settings row',actor('owner',"INSERT INTO shipping_settings(id) VALUES (1)"),error='permission denied')
+        check(db,'CR-019A pickup requires address',"UPDATE shipping_settings SET pickup_enabled=true, pickup_address='' WHERE id=1",error='shipping_pickup_address_check')
+        check(db,'CR-019A size preset must be complete',"UPDATE shipping_settings SET size_p_weight_g=100 WHERE id=1",error='shipping_size_p_complete')
+        check(db,'CR-019A owner creates delivery zone',actor('owner',"WITH i AS (INSERT INTO local_delivery_zones(name,cep_start,cep_end,price_cents,delivery_days) VALUES ('Centro','25010000','25099999',1500,1) RETURNING 1) SELECT count(*) FROM i"),'1')
+        check(db,'CR-019A editor cannot create delivery zone',actor('editor',"INSERT INTO local_delivery_zones(name,cep_start,cep_end,price_cents) VALUES ('X','25010000','25099999',0)"),error='row-level security')
+        check(db,'CR-019A owner without MFA cannot create delivery zone',actor('owner',"INSERT INTO local_delivery_zones(name,cep_start,cep_end,price_cents) VALUES ('X','25010000','25099999',0)",'aal1'),error='row-level security')
+        check(db,'CR-019A delivery zone range ordered',"INSERT INTO local_delivery_zones(name,cep_start,cep_end,price_cents) VALUES ('X','25099999','25010000',0)",error='local_delivery_zone_range')
+        check(db,'CR-019A product size and measures are exclusive',f"UPDATE products SET shipping_size='P',weight_g=100,height_cm=10,width_cm=10,length_cm=10 WHERE id={q('product')}",error='products_shipping_profile_check')
+        check(db,'CR-019A product measures must be complete',f"UPDATE products SET weight_g=100 WHERE id={q('product')}",error='products_shipping_profile_check')
+        check(db,'CR-019A product accepts a standard size',f"BEGIN; WITH u AS (UPDATE products SET shipping_size='M' WHERE id={q('product')} RETURNING 1) SELECT count(*) FROM u; ROLLBACK;",'1')
+        check(db,'CR-019A product accepts full measures',f"BEGIN; WITH u AS (UPDATE products SET weight_g=250,height_cm=10,width_cm=12,length_cm=15 WHERE id={q('product')} RETURNING 1) SELECT count(*) FROM u; ROLLBACK;",'1')
         # Existing baseline assertions.
         check(db,'all FK first columns indexed',"SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='f' AND NOT EXISTS(SELECT 1 FROM pg_index i WHERE i.indrelid=c.conrelid AND i.indisvalid AND i.indkey[0]=c.conkey[1])",'0')
         check(db,'all public views security_barrier',"SELECT bool_and(reloptions @> ARRAY['security_barrier=true']) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='v'",'t')

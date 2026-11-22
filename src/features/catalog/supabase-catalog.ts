@@ -1,4 +1,9 @@
 import { useSyncExternalStore } from "react";
+import {
+  productShippingColumns,
+  productShippingFromRow,
+  type ProductShipping,
+} from "@/features/shipping/shipping.rules";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { listPublicCatalogImages } from "@/features/catalog/catalog-media";
@@ -323,6 +328,7 @@ export interface AdminCategory extends Category {
 export interface AdminProduct extends Product {
   version: number;
   archivedAt: string | null;
+  shipping: ProductShipping;
 }
 
 function throwSafe(error: PostgrestError | null, fallback: string): void {
@@ -373,7 +379,7 @@ export async function listAdminProducts(
     client
       .from("products")
       .select(
-        "id,category_id,slug,name,description,tags,regular_price_cents,promo_price_cents,production_mode,production_days,active,featured,badge,archived_at,version",
+        "id,category_id,slug,name,description,tags,regular_price_cents,promo_price_cents,production_mode,production_days,active,featured,badge,archived_at,version,shipping_size,weight_g,height_cm,width_cm,length_cm",
       )
       .is("archived_at", null)
       .order("created_at", { ascending: false }),
@@ -423,7 +429,13 @@ export async function listAdminProducts(
       }[],
     );
     if (!product) return [];
-    return [{ ...product, active: row.active, version: row.version, archivedAt: row.archived_at }];
+    return [{
+      ...product,
+      active: row.active,
+      version: row.version,
+      archivedAt: row.archived_at,
+      shipping: productShippingFromRow(row),
+    }];
   });
 }
 
@@ -695,6 +707,7 @@ export async function saveAdminProduct(input: {
   featured: boolean;
   active: boolean;
   badge: "novo" | "destaque" | "promocao" | null;
+  shipping: ProductShipping;
 }): Promise<string> {
   const fields = {
     slug: input.slug.trim(),
@@ -709,6 +722,7 @@ export async function saveAdminProduct(input: {
     featured: input.featured,
     active: input.active,
     badge: input.badge,
+    ...productShippingColumns(input.shipping),
   };
   const query = getSupabase();
   const result = input.id
