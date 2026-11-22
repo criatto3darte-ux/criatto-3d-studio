@@ -151,8 +151,15 @@ test.describe("Fluxo completo da loja e do painel", () => {
   });
 });
 
+// Linha exata do pedido: "#1" não pode casar com "#11", "#12" etc.
+function orderRow(page: Page) {
+  return page.getByRole("row").filter({
+    has: page.getByRole("cell", { name: `#${orderNumber}`, exact: true }),
+  });
+}
+
 async function changeStatus(page: Page, status: string, label: string, note: string) {
-  const row = page.getByRole("row").filter({ hasText: `#${orderNumber}` });
+  const row = orderRow(page);
   await row.getByRole("button", { name: /Ver/ }).click();
   const modal = page.getByRole("dialog");
   await expect(modal.getByText(`Pedido #${orderNumber}`)).toBeVisible();
@@ -160,5 +167,5 @@ async function changeStatus(page: Page, status: string, label: string, note: str
   await modal.locator("#order-change-note").fill(note);
   await modal.getByRole("button", { name: "Atualizar status" }).click();
   await expect(modal).toBeHidden();
-  await expect(page.getByRole("row").filter({ hasText: `#${orderNumber}` })).toContainText(label);
+  await expect(orderRow(page)).toContainText(label);
 }
