@@ -562,7 +562,7 @@ try:
         expected_migs = len(all_migrations())
         check(db,'source migration count', f'SELECT {expected_migs}', str(expected_migs))
         check(db,'all table PKs',
-              "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='p'",'27')
+              "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='p'",'29')
         check(db,'composite foreign keys',
               "SELECT count(*)>=5 FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND c.contype='f' AND cardinality(c.conkey)>1",'t')
         check(db,'no anon base grants',
@@ -1128,8 +1128,8 @@ INSERT INTO inventory(product_id,on_hand,allocated) VALUES({checkout_product},5,
           "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",'19')
     for migration in rest:
         execute(db, migration.read_text())
-    check(db,'resume: 27 RLS/FORCE base tables',
-          "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",str(27))
+    check(db,'resume: 29 RLS/FORCE base tables',
+          "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity",str(29))
     resume_schema = structural_fingerprint(db)
     assert resume_schema == fingerprint, 'resume schema differs from clean rebuild'
     passed += 1; print('PASS resume apply produces byte-identical schema to clean rebuild')
